@@ -14,8 +14,10 @@ export interface UserRbacPolicy {
   scopes: RbacScope[];
 }
 
-const policiesByUser = new Map<string, UserRbacPolicy[]>();
+let policiesByUser = new Map<string, UserRbacPolicy[]>();
 let lastLoadedAt: string | null = null;
+let refreshInFlight: Promise<void> | null = null;
+let refreshTimer: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Load the PostgreSQL-backed RBAC policy into a read-only process cache.
@@ -23,53 +25,93 @@ let lastLoadedAt: string | null = null;
  * Call after persistence initialization and after every RBAC mutation.
  */
 export async function refreshRbacPolicy(): Promise<void> {
-  policiesByUser.clear();
-  lastLoadedAt = null;
-  if (!isPostgresPersistenceActive()) return;
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    try {
+      if (!isPostgresPersistenceActive()) {
+        policiesByUser = new Map();
+        lastLoadedAt = null;
+        return;
+      }
 
-  const roles = await queryRbac<any>(
-    'SELECT ur.user_id, r.role_key, r.name AS role_name, r.is_superadmin, r.is_active, p.permission_key ' +
-    'FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id ' +
-    'LEFT JOIN gabah_role_permissions rp ON rp.role_id = r.id ' +
-    'LEFT JOIN gabah_permissions p ON p.permission_key = rp.permission_key AND p.is_active = TRUE ' +
-    'WHERE r.is_active = TRUE ORDER BY ur.user_id, r.role_key, p.permission_key',
-  );
-  const scopes = await queryRbac<any>(
-    'SELECT s.role_id, r.role_key, s.module, s.scope_type, s.scope_value ' +
-    'FROM gabah_role_division_scopes s JOIN gabah_roles r ON r.id = s.role_id ' +
-    'WHERE r.is_active = TRUE ORDER BY s.role_id, s.scope_type, s.scope_value',
-  );
-  const roleScopes = new Map<string, RbacScope[]>();
-  for (const scope of scopes.rows) {
-    const key = String(scope.role_key);
-    const list = roleScopes.get(key) || [];
-    list.push({
-      module: scope.module == null ? null : String(scope.module),
-      type: scope.scope_type,
-      value: scope.scope_value == null ? null : String(scope.scope_value),
-    });
-    roleScopes.set(key, list);
-  }
+      const roles = await queryRbac<any>(
+        'SELECT ur.user_id, r.role_key, r.name AS role_name, r.is_superadmin, r.is_active, p.permission_key ' +
+        'FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id ' +
+        'LEFT JOIN gabah_role_permissions rp ON rp.role_id = r.id ' +
+        'LEFT JOIN gabah_permissions p ON p.permission_key = rp.permission_key AND p.is_active = TRUE ' +
+        'WHERE r.is_active = TRUE ORDER BY ur.user_id, r.role_key, p.permission_key',
+      );
+      const scopes = await queryRbac<any>(
+        'SELECT s.role_id, r.role_key, s.module, s.scope_type, s.scope_value ' +
+        'FROM gabah_role_division_scopes s JOIN gabah_roles r ON r.id = s.role_id ' +
+        'WHERE r.is_active = TRUE ORDER BY s.role_id, s.scope_type, s.scope_value',
+      );
 
-  for (const row of roles.rows) {
-    const userId = String(row.user_id);
-    const roleKey = String(row.role_key);
-    const list = policiesByUser.get(userId) || [];
-    let policy = list.find(item => item.roleKey === roleKey);
-    if (!policy) {
-      policy = {
-        roleKey,
-        roleName: String(row.role_name),
-        isSuperadmin: Boolean(row.is_superadmin),
-        permissions: new Set<string>(),
-        scopes: roleScopes.get(roleKey) || [],
-      };
-      list.push(policy);
-      policiesByUser.set(userId, list);
+      // Build a complete replacement off to the side, then atomically publish it.
+      // Requests continue using the last known-good cache during a healthy refresh.
+      const nextPoliciesByUser = new Map<string, UserRbacPolicy[]>();
+      const roleScopes = new Map<string, RbacScope[]>();
+      for (const scope of scopes.rows) {
+        const key = String(scope.role_key);
+        const list = roleScopes.get(key) || [];
+        list.push({
+          module: scope.module == null ? null : String(scope.module),
+          type: scope.scope_type,
+          value: scope.scope_value == null ? null : String(scope.scope_value),
+        });
+        roleScopes.set(key, list);
+      }
+
+      for (const row of roles.rows) {
+        const userId = String(row.user_id);
+        const roleKey = String(row.role_key);
+        const list = nextPoliciesByUser.get(userId) || [];
+        let policy = list.find(item => item.roleKey === roleKey);
+        if (!policy) {
+          policy = {
+            roleKey,
+            roleName: String(row.role_name),
+            isSuperadmin: Boolean(row.is_superadmin),
+            permissions: new Set<string>(),
+            scopes: roleScopes.get(roleKey) || [],
+          };
+          list.push(policy);
+          nextPoliciesByUser.set(userId, list);
+        }
+        if (row.permission_key) policy.permissions.add(String(row.permission_key));
+      }
+
+      policiesByUser = nextPoliciesByUser;
+      lastLoadedAt = new Date().toISOString();
+    } catch (error) {
+      // A failed refresh must never leave stale grants active on this node.
+      policiesByUser = new Map();
+      lastLoadedAt = null;
+      throw error;
     }
-    if (row.permission_key) policy.permissions.add(String(row.permission_key));
+  })();
+  try {
+    await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
   }
-  lastLoadedAt = new Date().toISOString();
+}
+
+/**
+ * Keep process-local policy caches convergent when another application node
+ * changes a role, permission, or scope in PostgreSQL. Local mutation handlers
+ * still refresh immediately; this bounded poll covers changes made on peers.
+ */
+export function startRbacPolicyRefresh(intervalMs = 5000): void {
+  if (refreshTimer || !isPostgresPersistenceActive()) return;
+  const safeInterval = Math.max(1000, Math.min(60000, Math.floor(intervalMs) || 5000));
+  refreshTimer = setInterval(() => {
+    void refreshRbacPolicy().catch(error => {
+      // refreshRbacPolicy clears the cache before querying, so errors fail closed.
+      console.error('[GABAH RBAC] Scheduled policy refresh failed; this node is default-deny until recovery:', error?.message || error);
+    });
+  }, safeInterval);
+  refreshTimer.unref?.();
 }
 
 function isAuditorUserId(userId: string): boolean {
