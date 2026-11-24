@@ -1201,6 +1201,12 @@ async function main() {
       }
       record('Primary restores RBAC grants after PostgreSQL policy query recovery', '200 within 12 seconds',
         `HTTP ${primaryAfterRecovery?.status ?? 'no response'}`, primaryAfterRecovery?.status === 200);
+      const karyawanReloginAfterPeerTest = await req(base, 'POST', '/api/auth/login', {
+        body: { email: KARYAWAN_EMAIL, password: USER_PASS },
+      });
+      karyawanToken = karyawanReloginAfterPeerTest.json?.data?.token || '';
+      record('Karyawan session is renewed after cross-instance role mutation checks', '200 + new token',
+        `HTTP ${karyawanReloginAfterPeerTest.status}`, karyawanReloginAfterPeerTest.status === 200 && Boolean(karyawanToken));
     } catch (error) {
       record('Dynamic RBAC cross-instance propagation integration', 'role revocation and restoration propagate',
         `error: ${error.message}`, false);
