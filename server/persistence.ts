@@ -864,6 +864,438 @@ export async function initializePersistence(): Promise<void> {
           [sequence.division, sequence.code, sequence.year, sequence.current],
         );
       }
+      // Reconcile contract counters from persisted CTR-YYYY-NNNN numbers.
+      // GREATEST preserves reservations even if a later contract write fails.
+      await pool.query(
+        `INSERT INTO contract_number_sequences (sequence_year, last_sequence)
+         SELECT
+           SUBSTRING(contract_number FROM '^CTR-([0-9]{4})-')::INTEGER,
+           MAX(SUBSTRING(contract_number FROM '-([0-9]+)
+      console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
+      saveStateToFile(createPayload());
+      return;
+    } catch (error: any) {
+      lastError = error;
+      if (attempt < maxAttempts) {
+        console.log(`[GABAH Persistence] PostgreSQL connection attempt ${attempt}/${maxAttempts} notice: ${error.message || error}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  }
+
+  // SECURITY/RELIABILITY (CR-04): production must never silently degrade to the
+  // JSON file store when PostgreSQL is explicitly configured but unavailable —
+  // that hides data-integrity incidents (authoritative store bypassed). The file
+  // fallback remains ONLY for local development/test convenience.
+  isPostgresAvailable = false;
+  if (process.env.NODE_ENV === 'production') {
+    console.error(`[GABAH Persistence] FATAL: PostgreSQL unavailable in production (${lastError?.code || lastError?.message || 'unknown'}). Refusing to fall back to the file store.`);
+    throw lastError instanceof Error ? lastError : new Error(`PostgreSQL unavailable in production: ${lastError?.message || lastError}`);
+  }
+  console.log(`[GABAH Persistence] PostgreSQL unavailable (${lastError?.code || lastError?.message || 'standalone'}). Development fallback: activating resilient persistent file store.`);
+
+  // Hydrate from persistent file store if it exists
+  const loaded = loadStateFromFile();
+  // T2B-1: backfill managing_unit_id (idempoten) — jalur fallback file store.
+  backfillManagingUnits('file fallback');
+  // T2B-2: backfill asset_location_id — jalur fallback file store.
+  backfillAssetLocations('file fallback');
+  if (loaded) {
+    console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
+  } else {
+    saveStateToFile(createPayload());
+    console.log('[GABAH Persistence] Initialized new persistent local storage file.');
+  }
+
+  ensureCanonicalAdministrator();
+  provisionCanonicalUserPasswords();
+  AssetNumberingEngine.syncFromExistingAssets(db.assets);
+}
+
+export function persistDataStore(): Promise<void> {
+  const payload = createPayload();
+
+  // A development file-store fallback is allowed only when PostgreSQL was
+  // unavailable during startup. Once PostgreSQL has been authoritative, never
+  // report success or write a newer local snapshot after a runtime outage.
+  if (postgresFailureLatched) {
+    return Promise.reject(Object.assign(new Error('PostgreSQL authoritative store mengalami gangguan; perubahan ditolak sampai layanan dipulihkan dan aplikasi direstart.'), { statusCode: 503 }));
+  }
+  if (!isPostgresAvailable) {
+    saveStateToFile(payload);
+    return persistQueue;
+  }
+
+  const write = persistQueue.then(async () => {
+    if (!isPostgresAvailable || postgresFailureLatched) {
+      throw Object.assign(new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.'), { statusCode: 503 });
+    }
+    try {
+      const committedPayload = await persistPostgresState();
+      // Publish the local recovery snapshot only after the PostgreSQL
+      // transaction commits, and use the exact payload committed by it.
+      saveStateToFile(committedPayload);
+    } catch (error: any) {
+      postgresFailureLatched = true;
+      isPostgresAvailable = false;
+      console.error('[GABAH Persistence] PostgreSQL write failed; authoritative writes are now latched closed:', error.message || error);
+      throw Object.assign(new Error('Gagal menyimpan perubahan ke PostgreSQL: ' + (error.message || String(error))), { statusCode: 503 });
+    }
+  });
+
+  // Keep the queue usable while returning this write's rejection to its caller.
+  persistQueue = write.catch(() => undefined);
+  return write;
+}
+
+export function getDbPool(): Pool {
+  return pool;
+}
+
+/**
+ * CR-04 observability: reports whether PostgreSQL is currently the active
+ * persistence layer. Exposed via /api/health so operators can detect a
+ * development file-store fallback immediately (production fail-fast makes
+ * that state impossible by design).
+ */
+export function isPostgresPersistenceActive(): boolean {
+  return isPostgresAvailable;
+}
+
+/**
+ * Reserve the next asset number atomically across PostgreSQL-backed app
+ * instances. Gaps are allowed after later create/persist failures; duplicates
+ * are not. Owner existence and active status are checked by the same statement.
+ */
+export async function reserveAssetNumberSequence(
+  ownerDivision: string,
+  assetCode: string,
+  year: number,
+): Promise<{ sequence: number; separator: string; sequence_digits: number }> {
+  if (!isPostgresAvailable || postgresFailureLatched) {
+    throw Object.assign(new Error('Penomoran aset memerlukan PostgreSQL aktif; nomor tidak diterbitkan dari cache lokal.'), { statusCode: 503 });
+  }
+  const owner = String(ownerDivision || '').trim().toUpperCase();
+  const code = String(assetCode || '').trim().toUpperCase();
+  if (!owner || !code || !Number.isInteger(year) || year < 2000 || year > 2100) {
+    throw Object.assign(new Error('Kunci sequence penomoran aset tidak valid.'), { statusCode: 400 });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Lock the current rule row so a concurrent Superadmin format/deactivation
+    // update cannot race the number issuance transaction.
+    const ruleResult = await client.query<{ separator: string; sequence_digits: number; is_active: boolean }>(
+      'SELECT separator, sequence_digits, is_active FROM asset_numbering_rules WHERE UPPER(owner_division) = UPPER($1) AND UPPER(asset_code) = UPPER($2) FOR SHARE',
+      [owner, code],
+    );
+    const rule = ruleResult.rows[0];
+    if (rule && rule.is_active !== true) {
+      throw Object.assign(new Error(`Aturan penomoran ${owner}/${code} sedang nonaktif. Aktifkan kembali melalui Administration Control Panel.`), { statusCode: 409 });
+    }
+    const result = await client.query<{ last_sequence: number }>(
+      `INSERT INTO asset_number_sequences (owner_division_id, asset_code, sequence_year, last_sequence)
+       SELECT id, $2, $3, 1 FROM divisions
+       WHERE UPPER(code) = UPPER($1) AND is_active = TRUE
+       ON CONFLICT (owner_division_id, asset_code, sequence_year)
+       DO UPDATE SET last_sequence = asset_number_sequences.last_sequence + 1
+       RETURNING last_sequence`,
+      [owner, code, year],
+    );
+    if (result.rows.length !== 1) {
+      throw Object.assign(new Error(`Owner aset "${owner}" tidak ditemukan atau nonaktif pada PostgreSQL.`), { statusCode: 409 });
+    }
+    const sequence = Number(result.rows[0].last_sequence);
+    if (!Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error('PostgreSQL mengembalikan sequence nomor aset yang tidak valid.');
+    }
+    await client.query('COMMIT');
+    return {
+      sequence,
+      separator: rule?.separator || '-',
+      sequence_digits: Number(rule?.sequence_digits) || 4,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** True after an authoritative PostgreSQL runtime failure; restart is required. */
+export function isPostgresFailureLatched(): boolean {
+  return postgresFailureLatched;
+}
+
+/**
+ * Reserve a yearly contract number atomically across PostgreSQL-backed app
+ * instances. Sequence gaps are allowed if the contract write later fails.
+ */
+export async function reserveContractNumberSequence(year: number): Promise<number> {
+  if (!isPostgresAvailable || postgresFailureLatched) {
+    throw Object.assign(new Error('Penomoran kontrak memerlukan PostgreSQL aktif; nomor tidak diterbitkan dari cache lokal.'), { statusCode: 503 });
+  }
+  if (!Number.isInteger(year) || year < 2000 || year > 2100) {
+    throw Object.assign(new Error('Tahun sequence nomor kontrak tidak valid.'), { statusCode: 400 });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await client.query<{ last_sequence: number }>(
+      `INSERT INTO contract_number_sequences (sequence_year, last_sequence)
+       VALUES ($1, 1)
+       ON CONFLICT (sequence_year)
+       DO UPDATE SET last_sequence = contract_number_sequences.last_sequence + 1,
+                     updated_at = NOW()
+       RETURNING last_sequence`,
+      [year],
+    );
+    const sequence = Number(result.rows[0]?.last_sequence);
+    if (!Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error('PostgreSQL mengembalikan sequence nomor kontrak yang tidak valid.');
+    }
+    await client.query('COMMIT');
+    return sequence;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+
+
+/**
+ * Dynamic RBAC administrative persistence helpers.
+ * These APIs intentionally fail closed when PostgreSQL is not active: role
+ * configuration must never silently fall back to browser/local JSON state.
+ */
+export async function queryRbac<T = any>(sql: string, params: unknown[] = []): Promise<{ rows: T[]; rowCount: number }> {
+  if (!isPostgresAvailable) {
+    throw new Error('Dynamic RBAC memerlukan PostgreSQL aktif; perubahan role tidak disimpan ke file-store.');
+  }
+  const result = await pool.query(sql, params);
+  return { rows: result.rows as T[], rowCount: result.rowCount || 0 };
+}
+
+export async function withRbacTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  if (!isPostgresAvailable) {
+    throw new Error('Dynamic RBAC memerlukan PostgreSQL aktif; transaksi dibatalkan.');
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+)::INTEGER)
+         FROM contracts
+         WHERE contract_number ~ '^CTR-[0-9]{4}-[0-9]+
+      console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
+      saveStateToFile(createPayload());
+      return;
+    } catch (error: any) {
+      lastError = error;
+      if (attempt < maxAttempts) {
+        console.log(`[GABAH Persistence] PostgreSQL connection attempt ${attempt}/${maxAttempts} notice: ${error.message || error}`);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+  }
+
+  // SECURITY/RELIABILITY (CR-04): production must never silently degrade to the
+  // JSON file store when PostgreSQL is explicitly configured but unavailable —
+  // that hides data-integrity incidents (authoritative store bypassed). The file
+  // fallback remains ONLY for local development/test convenience.
+  isPostgresAvailable = false;
+  if (process.env.NODE_ENV === 'production') {
+    console.error(`[GABAH Persistence] FATAL: PostgreSQL unavailable in production (${lastError?.code || lastError?.message || 'unknown'}). Refusing to fall back to the file store.`);
+    throw lastError instanceof Error ? lastError : new Error(`PostgreSQL unavailable in production: ${lastError?.message || lastError}`);
+  }
+  console.log(`[GABAH Persistence] PostgreSQL unavailable (${lastError?.code || lastError?.message || 'standalone'}). Development fallback: activating resilient persistent file store.`);
+
+  // Hydrate from persistent file store if it exists
+  const loaded = loadStateFromFile();
+  // T2B-1: backfill managing_unit_id (idempoten) — jalur fallback file store.
+  backfillManagingUnits('file fallback');
+  // T2B-2: backfill asset_location_id — jalur fallback file store.
+  backfillAssetLocations('file fallback');
+  if (loaded) {
+    console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
+  } else {
+    saveStateToFile(createPayload());
+    console.log('[GABAH Persistence] Initialized new persistent local storage file.');
+  }
+
+  ensureCanonicalAdministrator();
+  provisionCanonicalUserPasswords();
+  AssetNumberingEngine.syncFromExistingAssets(db.assets);
+}
+
+export function persistDataStore(): Promise<void> {
+  const payload = createPayload();
+
+  // A development file-store fallback is allowed only when PostgreSQL was
+  // unavailable during startup. Once PostgreSQL has been authoritative, never
+  // report success or write a newer local snapshot after a runtime outage.
+  if (postgresFailureLatched) {
+    return Promise.reject(Object.assign(new Error('PostgreSQL authoritative store mengalami gangguan; perubahan ditolak sampai layanan dipulihkan dan aplikasi direstart.'), { statusCode: 503 }));
+  }
+  if (!isPostgresAvailable) {
+    saveStateToFile(payload);
+    return persistQueue;
+  }
+
+  const write = persistQueue.then(async () => {
+    if (!isPostgresAvailable || postgresFailureLatched) {
+      throw Object.assign(new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.'), { statusCode: 503 });
+    }
+    try {
+      const committedPayload = await persistPostgresState();
+      // Publish the local recovery snapshot only after the PostgreSQL
+      // transaction commits, and use the exact payload committed by it.
+      saveStateToFile(committedPayload);
+    } catch (error: any) {
+      postgresFailureLatched = true;
+      isPostgresAvailable = false;
+      console.error('[GABAH Persistence] PostgreSQL write failed; authoritative writes are now latched closed:', error.message || error);
+      throw Object.assign(new Error('Gagal menyimpan perubahan ke PostgreSQL: ' + (error.message || String(error))), { statusCode: 503 });
+    }
+  });
+
+  // Keep the queue usable while returning this write's rejection to its caller.
+  persistQueue = write.catch(() => undefined);
+  return write;
+}
+
+export function getDbPool(): Pool {
+  return pool;
+}
+
+/**
+ * CR-04 observability: reports whether PostgreSQL is currently the active
+ * persistence layer. Exposed via /api/health so operators can detect a
+ * development file-store fallback immediately (production fail-fast makes
+ * that state impossible by design).
+ */
+export function isPostgresPersistenceActive(): boolean {
+  return isPostgresAvailable;
+}
+
+/**
+ * Reserve the next asset number atomically across PostgreSQL-backed app
+ * instances. Gaps are allowed after later create/persist failures; duplicates
+ * are not. Owner existence and active status are checked by the same statement.
+ */
+export async function reserveAssetNumberSequence(
+  ownerDivision: string,
+  assetCode: string,
+  year: number,
+): Promise<{ sequence: number; separator: string; sequence_digits: number }> {
+  if (!isPostgresAvailable || postgresFailureLatched) {
+    throw Object.assign(new Error('Penomoran aset memerlukan PostgreSQL aktif; nomor tidak diterbitkan dari cache lokal.'), { statusCode: 503 });
+  }
+  const owner = String(ownerDivision || '').trim().toUpperCase();
+  const code = String(assetCode || '').trim().toUpperCase();
+  if (!owner || !code || !Number.isInteger(year) || year < 2000 || year > 2100) {
+    throw Object.assign(new Error('Kunci sequence penomoran aset tidak valid.'), { statusCode: 400 });
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Lock the current rule row so a concurrent Superadmin format/deactivation
+    // update cannot race the number issuance transaction.
+    const ruleResult = await client.query<{ separator: string; sequence_digits: number; is_active: boolean }>(
+      'SELECT separator, sequence_digits, is_active FROM asset_numbering_rules WHERE UPPER(owner_division) = UPPER($1) AND UPPER(asset_code) = UPPER($2) FOR SHARE',
+      [owner, code],
+    );
+    const rule = ruleResult.rows[0];
+    if (rule && rule.is_active !== true) {
+      throw Object.assign(new Error(`Aturan penomoran ${owner}/${code} sedang nonaktif. Aktifkan kembali melalui Administration Control Panel.`), { statusCode: 409 });
+    }
+    const result = await client.query<{ last_sequence: number }>(
+      `INSERT INTO asset_number_sequences (owner_division_id, asset_code, sequence_year, last_sequence)
+       SELECT id, $2, $3, 1 FROM divisions
+       WHERE UPPER(code) = UPPER($1) AND is_active = TRUE
+       ON CONFLICT (owner_division_id, asset_code, sequence_year)
+       DO UPDATE SET last_sequence = asset_number_sequences.last_sequence + 1
+       RETURNING last_sequence`,
+      [owner, code, year],
+    );
+    if (result.rows.length !== 1) {
+      throw Object.assign(new Error(`Owner aset "${owner}" tidak ditemukan atau nonaktif pada PostgreSQL.`), { statusCode: 409 });
+    }
+    const sequence = Number(result.rows[0].last_sequence);
+    if (!Number.isSafeInteger(sequence) || sequence < 1) {
+      throw new Error('PostgreSQL mengembalikan sequence nomor aset yang tidak valid.');
+    }
+    await client.query('COMMIT');
+    return {
+      sequence,
+      separator: rule?.separator || '-',
+      sequence_digits: Number(rule?.sequence_digits) || 4,
+    };
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/** True after an authoritative PostgreSQL runtime failure; restart is required. */
+export function isPostgresFailureLatched(): boolean {
+  return postgresFailureLatched;
+}
+
+
+
+/**
+ * Dynamic RBAC administrative persistence helpers.
+ * These APIs intentionally fail closed when PostgreSQL is not active: role
+ * configuration must never silently fall back to browser/local JSON state.
+ */
+export async function queryRbac<T = any>(sql: string, params: unknown[] = []): Promise<{ rows: T[]; rowCount: number }> {
+  if (!isPostgresAvailable) {
+    throw new Error('Dynamic RBAC memerlukan PostgreSQL aktif; perubahan role tidak disimpan ke file-store.');
+  }
+  const result = await pool.query(sql, params);
+  return { rows: result.rows as T[], rowCount: result.rowCount || 0 };
+}
+
+export async function withRbacTransaction<T>(work: (client: PoolClient) => Promise<T>): Promise<T> {
+  if (!isPostgresAvailable) {
+    throw new Error('Dynamic RBAC memerlukan PostgreSQL aktif; transaksi dibatalkan.');
+  }
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const result = await work(client);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    await client.query('ROLLBACK').catch(() => undefined);
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+         GROUP BY 1
+         ON CONFLICT (sequence_year)
+         DO UPDATE SET
+           last_sequence = GREATEST(contract_number_sequences.last_sequence, EXCLUDED.last_sequence),
+           updated_at = NOW()`,
+      );
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
       saveStateToFile(createPayload());
