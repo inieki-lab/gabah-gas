@@ -1124,6 +1124,7 @@ export async function withLastSuperadminGuard<T>(work: () => Promise<T>): Promis
     return await work();
   } catch (error) {
     if (!acquired) {
+      discardClient = true;
       throw Object.assign(new Error('Tidak dapat mengunci perubahan akun Superadmin; perubahan dibatalkan.'), { statusCode: 503 });
     }
     throw error;
