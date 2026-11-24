@@ -234,6 +234,12 @@ Mencatat permohonan bantuan teknis dan pemenuhan SLA layanan.
 - `updated_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 - **Indeks Penting**: `idx_contracts_expiry` ON contracts(end_date, status)
 
+### 2.13c Tabel `contract_number_sequences` (Reservasi Nomor Kontrak)
+- `sequence_year` (INTEGER, PRIMARY KEY) — satu counter untuk setiap tahun.
+- `last_sequence` (INTEGER, NOT NULL, default 0) dan `updated_at` (TIMESTAMPTZ).
+- Alokasi `CTR-YYYY-NNNN` dilakukan dalam transaksi PostgreSQL menggunakan `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`; counter dibagi semua instance aplikasi.
+- Saat startup, counter direkonsiliasi dari `contracts.contract_number` dengan `GREATEST` sehingga nilai yang sudah direservasi tidak turun. Gap diperbolehkan bila penyimpanan kontrak setelah reservasi gagal; nomor tidak digunakan ulang.
+
 ### 2.14 Tabel `notifications` (Notifikasi Sistem & Perutean Divisi)
 - `id` (VARCHAR(64), PRIMARY KEY)
 - `recipient_user_id` (VARCHAR(64), REFERENCES users(id))
