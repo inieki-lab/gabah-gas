@@ -1526,7 +1526,7 @@ async function startServer() {
 
   // P2#10: live numbering sequence snapshot for the admin Asset Numbering panel
   // (replaces the hardcoded sample counters previously shown in the UI).
-  app.get('/api/numbering/sequences', (req, res) => {
+  app.get('/api/numbering/sequences', async (req, res) => {
     // This endpoint exposes live asset-numbering counters for the Administration panel.
     // Keep it Admin GABAH-only even in file-store compatibility mode, where dynamic
     // RBAC permission checks intentionally defer to legacy application-role guards.
@@ -1536,7 +1536,22 @@ async function startServer() {
     }
     if (!requireRbacPermission(req, res, 'numbering.read')) return;
 
-    res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
+    try {
+      if (isPostgresPersistenceActive()) {
+        const result = await queryRbac<any>(
+          `SELECT d.code AS division, s.asset_code AS code, s.sequence_year AS year,
+                  s.last_sequence AS current,
+                  d.code || ':' || s.asset_code || ':' || s.sequence_year::text AS key
+           FROM asset_number_sequences s
+           JOIN divisions d ON d.id = s.owner_division_id
+           ORDER BY s.sequence_year DESC, d.code, s.asset_code`,
+        );
+        return res.json({ success: true, data: result.rows });
+      }
+      return res.json({ success: true, data: AssetNumberingEngine.getAssetSequenceSnapshot() });
+    } catch (error: any) {
+      return res.status(503).json({ success: false, message: error.message || 'Sequence penomoran tidak tersedia.' });
+    }
   });
 
   // Configurable numbering rules: Superadmin-only, persisted in PostgreSQL and audited.
