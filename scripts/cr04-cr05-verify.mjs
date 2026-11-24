@@ -358,6 +358,13 @@ async function main() {
         `db count helper calls=${serverSource.split('await countActiveSuperadminsInDatabase()').length - 1}`,
         serverSource.split('await countActiveSuperadminsInDatabase()').length - 1 === 2,
       );
+      record(
+        'Last-Superadmin guard fails closed after persistence failure and discards a failed lock connection',
+        'latched PostgreSQL failure returns 503; failed lock connection is discarded',
+        `latched guard=${persistenceSource.includes('if (postgresFailureLatched)')}; discard=${persistenceSource.includes('discardClient = true')}`,
+        persistenceSource.includes('if (postgresFailureLatched)')
+          && persistenceSource.includes('discardClient = true'),
+      );
     } catch (error) {
       record('Last active Superadmin concurrency integration', 'one of two parallel demotions denied',
         `error: ${error.message}`, false);
