@@ -251,3 +251,16 @@ Endpoint dashboard sudah memfilter kartu pinjaman dengan borrower sendiri atau s
 
 ### Status verifikasi
 Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI exact head belum berjalan.
+
+
+## 25 November 2026 — Dashboard Attention: tiket ME berbasis unit
+
+### Temuan
+- Pemeriksaan objek tiket pada middleware sudah mengizinkan petugas dengan scope unit `UNIT-PIBC-ME` untuk mengakses tiket ME.
+- Filter akhir `filterDashboardAttentionItems()` hanya memeriksa reporter, assignee, dan owner-division scope. Ia belum memeriksa `assigned_unit_id`, sehingga kartu tindak lanjut tiket ME dapat hilang bagi petugas yang sah hanya memiliki scope unit.
+
+### Perbaikan
+- Tambahkan `assigned_unit_id` pada kontrak tiket yang dipakai filter dashboard.
+- Filter akhir kini memakai callback `canReadTicketUnit` yang memeriksa Dynamic RBAC unit scope di PostgreSQL; fallback file-store dibatasi untuk Admin Tiket ME.
+- Tambahkan regression assertion pada pemeriksaan antrean PIBC ME untuk memastikan filter akhir dan wiring endpoint tetap konsisten.
+- CI exact-head PR #273 menjadi gate sebelum perubahan digabungkan.
