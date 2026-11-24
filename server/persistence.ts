@@ -1110,6 +1110,9 @@ export async function withRbacTransaction<T>(work: (client: PoolClient) => Promi
  * persistence helpers that acquire their own pool connections.
  */
 export async function withLastSuperadminGuard<T>(work: () => Promise<T>): Promise<T> {
+  if (postgresFailureLatched) {
+    throw Object.assign(new Error('PostgreSQL persistence sedang dalam status gagal; perubahan akun Superadmin dibatalkan.'), { statusCode: 503 });
+  }
   if (!isPostgresAvailable) return work();
   const client = await pool.connect();
   const lockKey = '742061124001';
