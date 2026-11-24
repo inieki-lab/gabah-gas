@@ -14,6 +14,7 @@ interface ScopedTicket {
   reporter_id?: string;
   assigned_agent_id?: string;
   category: string;
+  assigned_unit_id?: string;
 }
 
 export interface DashboardAttentionScope {
@@ -23,6 +24,7 @@ export interface DashboardAttentionScope {
   loans: readonly ScopedLoan[];
   tickets: readonly ScopedTicket[];
   canReadOwnerScope: (module: 'loans' | 'tickets', owner: string) => boolean;
+  canReadTicketUnit: (unitId: string) => boolean;
 }
 
 /**
@@ -56,6 +58,7 @@ export function filterDashboardAttentionItems<T extends DashboardAttentionItem>(
           ticket.reporter_id === scope.actorId
           || ticket.assigned_agent_id === scope.actorId
           || scope.canReadOwnerScope('tickets', ticket.category)
+          || Boolean(ticket.assigned_unit_id && scope.canReadTicketUnit(ticket.assigned_unit_id))
         ));
       }
       default:
