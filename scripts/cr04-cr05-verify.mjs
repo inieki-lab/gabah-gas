@@ -556,12 +556,12 @@ async function main() {
       const roomStatusById = Object.fromEntries(roomStatuses.rows.map(row => [row.id, row.status]));
       const roomConcurrencyPass = waitedOnRoomLock
         && Boolean(roomSecondError)
-        && roomSecondError.code === 'P0001'
+        && ['P0001', '23P01'].includes(roomSecondError.code)
         && roomStatusById[roomReservationAId] === 'pending'
         && roomStatusById[roomReservationBId] === 'cancelled';
       record(
         'Concurrent overlapping room reservations serialize and reject the second transaction',
-        'one pending + one cancelled; second transaction waits and receives P0001',
+        'one pending + one cancelled; second transaction waits and receives P0001 (trigger) or 23P01 (exclusion constraint)',
         `waited=${waitedOnRoomLock}; error=${roomSecondError?.code || 'none'}; statuses=${JSON.stringify(roomStatusById)}`,
         roomConcurrencyPass,
       );
