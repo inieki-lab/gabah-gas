@@ -70,7 +70,7 @@ For every mutation workflow, test valid input, invalid input, wrong owner, missi
 Create synthetic assets with distinct owner domains and locations. Include at least:
 - IT-owned laptop at PIBC;
 - IT-owned network device at HO;
-- GA-owned furniture at RPC/SC;
+- GA-owned furniture at RPC;
 - GA-owned facility asset at Pangsub;
 - a legacy/uncertain owner record reserved for Super Admin review.
 
