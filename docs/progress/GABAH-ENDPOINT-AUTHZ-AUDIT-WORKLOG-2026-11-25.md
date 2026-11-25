@@ -552,3 +552,38 @@ The scripts assert permission/scope checks, active-user eligibility, read-only h
 1. Review direct-ID mutation response consistency and object-level scope across assets/loans/tickets/contracts/rooms.
 2. Add negative tests for any remaining source-only scope checks.
 3. Keep production release blocked on browser UAT, database upgrade rehearsal, backup/restore, staging deployment/rollback, and business-owner sign-off.
+
+
+## 21. Batch 15 — legacy facility-location payload validation and atomicity (2026-11-25)
+
+**Confirmed defect:** `POST/PATCH /api/master/locations` used `.trim()` on client-supplied fields without validating their types. On PATCH, an earlier valid field (such as `name`) could be mutated before a later invalid field (such as numeric `address`) threw a TypeError. The route then returned 500 while leaving the in-memory object partially changed.
+
+### Correction
+
+- Reject null, array, and non-object JSON payloads before accessing fields.
+- Validate `name`, `address`, and `capacity` as strings, enforce maximum lengths, and reject NUL bytes.
+- Reject blank names.
+- Validate the complete PATCH payload before changing any field; invalid requests leave the existing record unchanged.
+- New facility-location IDs use `crypto.randomUUID()` rather than millisecond timestamps.
+
+### Regression and CI
+
+- Extended live `scripts/org-model-verify.mjs` checks:
+  - PATCH with valid name plus invalid numeric address returns 400.
+  - Follow-up GET confirms the name was not partially changed.
+  - PATCH with JSON null returns 400.
+  - POST with a non-string name returns 400.
+- PR #324 merged as `a5a104909dba68eb68132ce24825d55035625cdb`.
+- Exact-head CI run `45643550850`: **SUCCESS**. TypeScript, production build, Docker runtime smoke, PostgreSQL 17 integration, P0 live HTTP security, organization-model live HTTP checks, and the full 118-step verification workflow passed.
+
+### Boundary
+
+- No schema migration or existing facility-location record was changed.
+- The route remains Superadmin-only; this fix hardens malformed input and atomicity, not role grants.
+- Browser UAT of the facility master screen remains part of release acceptance.
+
+### Next batch
+
+1. Review consistency of 403/404 behavior for direct-ID mutations without changing existing role contracts accidentally.
+2. Add runtime negative tests for any remaining source-only authorization assertions.
+3. Continue per-persona browser UAT preparation and keep production go-live blocked until backup/restore, migration rehearsal, staging deploy/rollback, and owner sign-off are recorded.
