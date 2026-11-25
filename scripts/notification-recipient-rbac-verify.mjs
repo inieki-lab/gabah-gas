@@ -81,7 +81,7 @@ async function liveRecipientChecks() {
   const port = await availablePort();
   const base = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, [serverPath], {
-    env: { ...process.env, PORT: String(port), NODE_ENV: 'development' },
+    env: { ...process.env, PORT: String(port), NODE_ENV: 'development', DATABASE_URL: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let serverLog = '';
