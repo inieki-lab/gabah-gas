@@ -228,7 +228,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               : isGA
               ? 'Helpdesk & Tiket Layanan GA'
               : isSC
-              ? 'Helpdesk & Tiket Supply Chain'
+              ? 'Helpdesk & Tiket RPC (Legacy)'
               : isMEOperator
               ? 'Helpdesk & Tiket ME'
               : isPIBC
@@ -243,7 +243,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               : isGA
               ? 'Daftar tiket kendala fasilitas gedung & sarana GA, serta tiket kendala yang Anda ajukan.'
               : isSC
-              ? 'Daftar kendala operasional Supply Chain dan tiket yang Anda ajukan.'
+              ? 'Daftar tiket historis terkait lokasi RPC dan tiket yang Anda ajukan.'
               : isMEOperator
               ? 'Daftar antrean Mechanical, Electrical, dan Perawatan unit ME.'
               : isPIBC
