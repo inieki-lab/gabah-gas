@@ -13,14 +13,28 @@ export const BatchQRPrintModal: React.FC<BatchQRPrintModalProps> = ({
   onClose,
   assets = [],
 }) => {
-  const [filterDivision, setFilterDivision] = useState<string>('ALL');
+  const [filterOwnerDomain, setFilterOwnerDomain] = useState<string>('ALL');
+  const legacyLocationOwnerCodes = new Set(['SC', 'PIBC']);
+  const ownerCodeOf = (asset: Asset) => String(asset.owner_division || '').trim().toUpperCase();
+  const ownerOptions = Array.from(new Set(
+    assets.map(ownerCodeOf).filter(code => code && !legacyLocationOwnerCodes.has(code)),
+  )).sort();
+  const hasLegacyLocationOwners = assets.some(asset => legacyLocationOwnerCodes.has(ownerCodeOf(asset)));
+  const ownerLabel = (value?: string | null) => {
+    const code = String(value || '').trim().toUpperCase();
+    if (code === 'SC') return 'Legacy owner code SC (RPC)';
+    if (code === 'PIBC') return 'Legacy owner code PIBC';
+    return code || 'Owner belum ditetapkan';
+  };
   const printRef = useRef<HTMLDivElement | null>(null);
 
   if (!isOpen) return null;
 
-  const filtered = assets.filter(a => {
-    if (filterDivision === 'ALL') return true;
-    return a.owner_division === filterDivision;
+  const filtered = assets.filter(asset => {
+    if (filterOwnerDomain === 'ALL') return true;
+    const code = ownerCodeOf(asset);
+    if (filterOwnerDomain === 'LEGACY_LOCATION_OWNER') return legacyLocationOwnerCodes.has(code);
+    return code === filterOwnerDomain;
   });
 
   const handlePrint = () => {
@@ -49,17 +63,15 @@ export const BatchQRPrintModal: React.FC<BatchQRPrintModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Filter division */}
+            {/* Dynamic owner-domain filter; legacy location codes are grouped for review. */}
             <select
-              value={filterDivision}
-              onChange={(e) => setFilterDivision(e.target.value)}
+              value={filterOwnerDomain}
+              onChange={(e) => setFilterOwnerDomain(e.target.value)}
               className="text-xs bg-white border border-slate-300 rounded-xl px-2.5 py-1.5 font-medium text-slate-700 focus:outline-none focus:ring-1 focus:ring-emerald-500"
             >
-              <option value="ALL">Semua Divisi ({assets.length})</option>
-              <option value="IT">Divisi IT</option>
-              <option value="GA">Divisi GA</option>
-              <option value="Supply Chain">Supply Chain</option>
-              <option value="PIBC">Pasar Induk PIBC</option>
+              <option value="ALL">Semua owner domain ({assets.length})</option>
+              {ownerOptions.map(owner => <option key={owner} value={owner}>Owner {owner}</option>)}
+              {hasLegacyLocationOwners && <option value="LEGACY_LOCATION_OWNER">Kode owner legacy (SC/PIBC) — review</option>}
             </select>
 
             <button
@@ -111,7 +123,7 @@ export const BatchQRPrintModal: React.FC<BatchQRPrintModalProps> = ({
                       </div>
                     </div>
                     <span className="text-[8px] font-bold px-1.5 py-0.5 rounded bg-slate-100 border border-slate-300">
-                      {asset.owner_division || asset.category_type}
+                      {asset.owner_division ? ownerLabel(asset.owner_division) : asset.category_type}
                     </span>
                   </div>
 
