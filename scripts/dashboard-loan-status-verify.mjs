@@ -1,9 +1,14 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import { isActiveLoanStatus, isPendingLoanStatus } from '../src/utils/dashboardLoanStatus.ts';
+import { getDashboardLoanStatusLabel, isActiveLoanStatus, isPendingLoanStatus } from '../src/utils/dashboardLoanStatus.ts';
 
 const app = fs.readFileSync(new URL('../src/App.tsx', import.meta.url), 'utf8');
 const dashboard = fs.readFileSync(new URL('../src/components/views/DashboardView.tsx', import.meta.url), 'utf8');
+
+assert.equal(getDashboardLoanStatusLabel('pending_approval'), 'Menunggu Persetujuan');
+assert.equal(getDashboardLoanStatusLabel('borrowed'), 'Dipinjam');
+assert.equal(getDashboardLoanStatusLabel('overdue'), 'Terlambat');
+assert.equal(getDashboardLoanStatusLabel('returned'), 'Dikembalikan');
 
 for (const status of ['pending', 'pending_approval']) {
   assert.equal(isPendingLoanStatus(status), true, `${status} must count as awaiting approval`);
@@ -26,4 +31,5 @@ assert.doesNotMatch(dashboard, /loan\.status === 'pending'/,
 console.log('PASS | pending_approval and legacy pending are counted as awaiting approval');
 console.log('PASS | approved, borrowed, overdue, and legacy active are counted as active');
 console.log('PASS | sidebar and dashboard share the backend lifecycle status classification');
+console.log('PASS | dashboard displays Indonesian labels for persisted loan states');
 console.log('PASS | rejected, returned, closed, and cancelled loans are excluded');
