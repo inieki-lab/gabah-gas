@@ -317,7 +317,7 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
                     </button>
                   </div>
                   <div className="text-[10px] text-slate-500 mt-1">
-                    Format resmi: <code className="font-bold text-slate-700">&#123;DIVISI&#125;-&#123;KODE&#125;-&#123;TAHUN&#125;-&#123;URUT&#125;</code> (Divisi Pemilik: <strong className="text-emerald-700">{asset.owner_division}</strong>)
+                    Nomor tersimpan mengikuti aturan penerbitan yang berlaku saat aset dibuat. Owner domain: <strong className="text-emerald-700">{asset.owner_division}</strong>
                   </div>
                 </div>
 

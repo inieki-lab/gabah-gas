@@ -10,6 +10,11 @@ const migration = fs.readFileSync(path.join(root, 'server/migrations/043_asset_n
 const persistence = fs.readFileSync(path.join(root, 'server/persistence.ts'), 'utf8');
 const services = fs.readFileSync(path.join(root, 'server/services.ts'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src/index.css'), 'utf8');
+const createAssetUi = fs.readFileSync(path.join(root, 'src/components/modals/CreateAssetModal.tsx'), 'utf8');
+const assetDetailUi = fs.readFileSync(path.join(root, 'src/components/modals/AssetDetailModal.tsx'), 'utf8');
+const assetImportUi = fs.readFileSync(path.join(root, 'src/components/modals/AssetImportModal.tsx'), 'utf8');
+const mockKnowledge = fs.readFileSync(path.join(root, 'src/data/mockData.ts'), 'utf8');
+const dbSeed = fs.readFileSync(path.join(root, 'server/db.ts'), 'utf8');
 
 AssetNumberingEngine._resetForTesting();
 AssetNumberingEngine.configureRules([{
@@ -61,6 +66,23 @@ assert.match(server, /requireRbacPermission\(req, res, 'numbering\.manage'\)/);
 assert.match(server, /usageCount > 0 \|\| \(sequence\?\.current \|\| 0\) > 0/);
 assert.match(server, /confirmation !== expected \|\| reason\.length < 20/);
 assert.match(server, /nomor yang telah terbit tidak diubah/);
+assert.doesNotMatch(createAssetUi, /Sistem Penomoran Resmi GABAH|Format Nomor Aset Resmi/,
+  'asset creation UI must not call an unapproved technical format the corporate standard');
+assert.match(createAssetUi, /Nomor aset diterbitkan server berdasarkan aturan aktif saat disimpan/);
+assert.match(createAssetUi, /Nomor diterbitkan server saat penyimpanan/);
+assert.doesNotMatch(createAssetUi, /livePreviewNumber|Seq \\+1|currentYear/,
+  'client must not fabricate the next canonical asset number or sequence');
+assert.doesNotMatch(assetDetailUi, /Format resmi:.*DIVISI/,
+  'asset detail must not describe a historical pattern as an approved corporate standard');
+assert.match(assetImportUi, /nomor aset diterbitkan otomatis mengikuti aturan aktif/);
+const mockNumberingArticleStart = mockKnowledge.indexOf("id: 'kb-003'");
+const mockNumberingArticleEnd = mockKnowledge.indexOf("id: 'kb-004'", mockNumberingArticleStart);
+assert.ok(mockNumberingArticleStart >= 0 && mockNumberingArticleEnd > mockNumberingArticleStart);
+const mockNumberingArticle = mockKnowledge.slice(mockNumberingArticleStart, mockNumberingArticleEnd);
+assert.match(mockNumberingArticle, /Standar nomor aset korporat belum disahkan/);
+assert.doesNotMatch(mockNumberingArticle, /Struktur Format Nomor Aset Resmi|SC-MSN-2026|PIBC-KDR-2026/);
+assert.match(dbSeed, /Standar nomor aset korporat belum disahkan/);
+assert.doesNotMatch(dbSeed, /Nomor Resmi Aset \(\{DIVISI\}-\{KODE\}-\{TAHUN\}-XXXX\)/);
 assert.match(css, /Theme enforcement layer/);
 assert.match(css, /--gabah-green-800/);
 
