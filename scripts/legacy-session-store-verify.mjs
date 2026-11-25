@@ -4,6 +4,7 @@ const read = path => fs.readFileSync(path, 'utf8');
 const auth = read('server/auth.ts');
 const persistence = read('server/persistence.ts');
 const db = read('server/db.ts');
+const server = read('server.ts');
 const legacySchema = read('server/migrations/002_gabah_auth_hardening.sql');
 
 // Remove comments before checking executable persistence code. The legacy
@@ -13,7 +14,7 @@ const stripComments = source => source
   .replace(/^\s*\/\/.*$/gm, '')
   .replace(/^\s*--.*$/gm, '');
 
-const runtimePersistence = stripComments(persistence);
+const runtimePersistence = stripComments(persistence + '\\n' + auth + '\\n' + server);
 const sqlSessionTableAccess = /\b(?:SELECT[\s\S]{0,180}?FROM|INSERT\s+INTO|UPDATE|DELETE\s+FROM)\s+["'`]?user_sessions\b/i;
 
 const checks = [
