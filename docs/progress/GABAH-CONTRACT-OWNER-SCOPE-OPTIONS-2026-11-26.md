@@ -46,3 +46,10 @@ Issue #296 remained open after PR #297 because non-admin users were shown at mos
 - Initial CI run `45713076046` found a TypeScript reference left behind after removing the primary-division assumption (`ownDivision`); corrected by using the selected `ownerDivision` state.
 - The same run also showed two older source-contract assertions still expected the global divisions endpoint and client-side legacy-code filter. Updated `scripts/contract-owner-filter-verify.mjs` to assert the server-authorized options endpoint and backend filtering instead.
 - Exact-head CI after these corrections: PENDING. Do not treat earlier partial source checks as a full pass.
+
+
+## Successful CI evidence
+
+- Corrected implementation/test head `19952cb7f4dc984ad47dfd2e526d6c1cd25acd67`: CI run `45713527575` (#3621) completed SUCCESS, including TypeScript, the new contract owner-scope guard (10/10), and the updated legacy owner-filter guard (8/8).
+- Live PostgreSQL multi-scope and browser persona UAT remain outstanding; CI success is not a substitute for those acceptance cases.
+- This worklog-only commit creates a newer PR head; recheck its CI before considering the latest PR head fully green.
