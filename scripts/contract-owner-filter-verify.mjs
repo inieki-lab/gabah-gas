@@ -1,4 +1,10 @@
 import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const contractsService = fs.readFileSync(new URL('../server/contracts.ts', import.meta.url), 'utf8');
+const notificationLogMethod = contractsService.slice(contractsService.indexOf('getNotificationLogs('));
+assert.ok(notificationLogMethod.includes('isSuperadminActor(user) || isAuditorActor(user)'), 'contract notification logs must use effective Superadmin, not stored Admin GABAH label');
+assert.ok(!notificationLogMethod.includes("user.role === 'Admin GABAH'"), 'stored primary profile label must not grant global contract log visibility');
 
 const source = fs.readFileSync(new URL('../src/components/views/ContractsView.tsx', import.meta.url), 'utf8');
 const createModal = fs.readFileSync(new URL('../src/components/modals/CreateContractModal.tsx', import.meta.url), 'utf8');
