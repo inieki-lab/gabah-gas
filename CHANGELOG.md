@@ -1,3 +1,7 @@
+## [2026-11-25] — Keep Superadmin separate from Humas and Sekdir sidebar personas
+- Prevent the Superadmin wildcard permission set from activating Humas/Sekdir staff labels and suppressing operational badges.
+- Add navigation regression checks for Superadmin persona precedence.
+
 ## [2026-11-25] — Correct operational navigation persona for canonical employees
 - Classify staff-facing sidebar labels from effective operational permissions instead of the primary `Karyawan` profile alone.
 - IT/GA/ME operators retain operational section labels and pending-work badges; ordinary employees and request-only Humas/Sekdir personas retain staff labels.
