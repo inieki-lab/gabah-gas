@@ -1644,3 +1644,9 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added audit event `LOAN_APPROVAL_DENIED` and runtime regression coverage: self-approval returns 403 and leaves the request pending; Superadmin can still approve as the documented break-glass exception.
 - File-store compatibility still uses legacy owner role keys as the authority signal; it does not have the PostgreSQL permission/scope policy cache. This remains a separate compatibility limitation to address without weakening production RBAC.
 - Exact-head CI required before merge.
+
+
+### Loan pool overlapping pending-request regression — 2026-11-25
+- Added an end-to-end HTTP regression that creates two overlapping pending requests for one IT pool asset, approves the first, and verifies the second is rejected with 409 while remaining pending.
+- The test also verifies the physical asset remains reserved for the winning approval; no request or asset state is silently overwritten.
+- Exact-head CI is required before merge.
