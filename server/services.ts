@@ -945,6 +945,13 @@ export class GabahDomainService {
       throw Object.assign(new Error('Akses ditolak: hanya pengguna dengan permission approve dan scope owner aset yang sesuai atau Super Admin yang dapat menyetujui pinjaman.'), { statusCode: 403 });
     }
 
+    // Separation of duties: an operational custodian cannot approve their own
+    // request. Superadmin remains the explicit global break-glass authority.
+    if (loan.borrower_id === actor.id && !isSuperadminActor(actor)) {
+      this.recordAudit('LOAN_APPROVAL_DENIED', 'Loans', `Ditolak: pemohon ${actor.name} tidak boleh menyetujui pinjamannya sendiri (${loan.loan_number})`, actor, loan.id);
+      throw Object.assign(new Error('Akses ditolak: pemohon tidak boleh menyetujui pinjaman miliknya sendiri.'), { statusCode: 403 });
+    }
+
     // Approval is a one-way transition from pending_approval only.
     // Prevent re-approving completed/rejected loans after an asset is returned.
     if (loan.status !== 'pending_approval') {

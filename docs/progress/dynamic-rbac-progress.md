@@ -1636,3 +1636,11 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Follow-up commit 35616260fbdcb8873a26e61d0f51a449c1c7359c also brings the file-store Attention Center into line: `admin_tiket_me` can see ME-linked attention items only when the ticket is assigned to `UNIT-PIBC-ME`. Regression guard added in `scripts/pibc-me-ticket-queue-verify.mjs`; PostgreSQL continues to use explicit unit scope.
 - Notification recipient filtering now applies the same narrow file-store fallback for `recipient_unit_id = UNIT-PIBC-ME`; other unit notifications remain hidden outside PostgreSQL Dynamic RBAC. The ME queue regression script guards this path as well.
 - Commit 51a2ef35521a2dbc7974351aabbad47a39f87f2e updates the primary-role policy regression to verify the explicit ME role alias rather than the former one-line resolver shape.
+
+
+### Loan approval separation-of-duties audit — 2026-11-25
+- Review confirmed owner-domain approval checks were already enforced through `canOperateLoan()` in PostgreSQL mode; Auditor is denied and Superadmin is global.
+- Found no explicit self-approval denial after owner authorization. Added a service-layer rule: a borrower cannot approve their own loan unless acting as Superadmin. This protects against operational IT/GA users approving requests they created themselves.
+- Added audit event `LOAN_APPROVAL_DENIED` and runtime regression coverage: self-approval returns 403 and leaves the request pending; Superadmin can still approve as the documented break-glass exception.
+- File-store compatibility still uses legacy owner role keys as the authority signal; it does not have the PostgreSQL permission/scope policy cache. This remains a separate compatibility limitation to address without weakening production RBAC.
+- Exact-head CI required before merge.

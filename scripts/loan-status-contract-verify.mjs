@@ -13,6 +13,8 @@ const start = services.indexOf('static approveLoan(');
 const end = services.indexOf('\n  /**', start + 10);
 assert.ok(start >= 0 && end > start, 'approveLoan must exist');
 const approve = services.slice(start, end);
+assert.ok(approve.includes("loan.borrower_id === actor.id && !isSuperadminActor(actor)"), 'non-Superadmin borrower cannot approve own loan');
+assert.ok(approve.includes("LOAN_APPROVAL_DENIED"), 'self-approval attempts must be audited');
 assert.ok(approve.includes("loan.status !== 'pending_approval'"), 'only pending requests may be approved');
 assert.ok(approve.includes('statusCode: 409'), 'invalid transitions must return conflict');
 const api = fs.readFileSync('server.ts', 'utf8');
