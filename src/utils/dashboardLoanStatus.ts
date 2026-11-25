@@ -8,3 +8,20 @@ export function isPendingLoanStatus(status: unknown): boolean {
 export function isActiveLoanStatus(status: unknown): boolean {
   return ACTIVE_LOAN_STATUSES.has(String(status || '').trim().toLowerCase());
 }
+
+export function getDashboardLoanStatusLabel(status: unknown): string {
+  const normalized = String(status || '').trim().toLowerCase();
+  const labels: Record<string, string> = {
+    pending: 'Menunggu Persetujuan',
+    pending_approval: 'Menunggu Persetujuan',
+    approved: 'Disetujui',
+    active: 'Dipinjam',
+    borrowed: 'Dipinjam',
+    overdue: 'Terlambat',
+    returned: 'Dikembalikan',
+    rejected: 'Ditolak',
+    closed: 'Ditutup',
+    cancelled: 'Dibatalkan',
+  };
+  return labels[normalized] || (normalized || 'Tidak diketahui');
+}
