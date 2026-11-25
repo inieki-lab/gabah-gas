@@ -189,3 +189,37 @@ Important deployment note: migration 105 has not been run against production. Be
 - Contract document upload/download: current implementation and regression assertions located; runtime test not executed here.
 - Room double-booking: confirmed schema/predicate/test-fixture mismatch; fix proposed in PR #303, CI pending.
 - No production database or operational records changed.
+
+## 10. Batch 4 — vendor, maintenance, reports, and audit-log review (2026-11-25)
+
+### Vendor endpoints
+- GET /api/vendors requires vendors.read and filters non-global readers by the explicit vendor owner_division; ownerless legacy rows are hidden from scoped readers.
+- POST /api/vendors requires vendors.create in PostgreSQL mode, validates the active owner master, and requires matching vendor division scope (or effective Superadmin).
+- PATCH /api/vendors/:id requires vendors.update, validates both existing and requested owner domains, and requires scope over both before allowing an owner transfer. Input fields are allowlisted and validated.
+- Create/update call persistBeforeSuccess before returning success; audit events are appended.
+- No confirmed vendor authorization bypass found in the reviewed handlers.
+
+### Maintenance endpoints
+- GET /api/maintenances requires maintenances.read. PostgreSQL-mode non-global readers are limited to schedules whose linked assets are visible under dynamic owner scopes, plus their own assigned-asset baseline where applicable.
+- GA's special read-only IT workstation inventory permission is explicitly not reused to reveal IT maintenance schedules.
+- POST /api/maintenances requires maintenances.create plus owner-domain authority inherited from the linked asset; vendor references are resolved and validated.
+- PATCH /api/maintenances/:id requires maintenances.update plus scope over the schedule's stored owner domain. Server-owned asset identity/owner fields are excluded from the update allowlist; vendor references are revalidated.
+- Mutations use persistBeforeSuccess. No confirmed maintenance owner-scope bypass found in the reviewed handlers.
+
+### Reports, exports, and audit
+- Sidebar navigation requires reports.read for the Reports workspace. The current ReportsView is a client-side aggregation/export view, not a separate /api/reports or /api/exports backend. It receives assets, loans, tickets, and maintenance schedules already loaded through their respective API handlers; CSV exports operate on the current filtered arrays.
+- Current source has reports.read (seeded for Superadmin, IT, GA, Auditor) but no reports.export permission. This is a policy/design gap only if the business requires export entitlement to be narrower than report viewing; no such rule is assumed in this audit. Record an owner decision before introducing a new permission.
+- GET /api/audit-logs requires audit.read. Migration 025 grants that global audit capability to the intended Auditor/Superadmin roles; current route returns the audit log collection. ReportsView receives an auditLogs prop but does not currently render or export it. No separate audit export route was found in the reviewed API paths.
+- Reconciliation GET requires reconciliation.read and builds output from the actor's scoped assets (global Superadmin/Auditor receives global view). POST link requires reconciliation.link plus assets.update owner mutation authority; global API mutation persistence middleware commits successful writes before sending the response.
+- No confirmed authorization defect found in vendor, maintenance, report aggregation, or audit-log paths reviewed in this batch. These conclusions are static-source observations; no live account/HTTP UAT was run here.
+
+### Merged work and current CI
+- PR #303 merged to main as commit 6826116d7647502198c06a3f228433f0bb085040 after CI run 45618201678 completed SUCCESS (119/119 steps) on exact head 06573108f0306c1c8f721cd428190c6d6af1cb5f.
+- PR #302 merged to main as commit 17e2126fbaa8dc0ca05ed571c168918d46e7a5d6 after CI run 45618338825 completed SUCCESS on exact head e63b56d720bdf5648366b01d852e8db501072823.
+- PR #301's contract notification-log effective-Superadmin correction and regression assertion were committed to its existing branch; exact head adc706edcb038b41a35bbfb2ea429f0293777169. CI run 45625865976 was IN_PROGRESS at this update; PR remains OPEN pending exact-head CI and final review.
+
+### Batch 4 status
+- Vendor, maintenance, reports, and audit-log source review: COMPLETE for the handlers and UI data path described above.
+- No new confirmed application defect in this batch.
+- Open policy question: whether report export should have a separate reports.export permission. Do not invent or grant it until business owner confirms.
+- Continue with module lifecycle, dashboard aggregates, search, licences, and direct-ID endpoint coverage while PR #301 CI runs.
