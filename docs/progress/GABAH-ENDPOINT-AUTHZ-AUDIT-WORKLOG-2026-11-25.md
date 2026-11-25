@@ -413,3 +413,60 @@ The scripts assert permission/scope checks, active-user eligibility, read-only h
 1. Review maintenance schedule and work-order endpoints: create/update/delete, assignment, status transitions, vendor linkage, costs, and asset ownership/scope.
 2. Check that maintenance write paths preserve server-owned identifiers and do not permit cross-owner asset mutation through client-supplied fields.
 3. Review maintenance regression scripts and CI coverage before proposing any code change.
+
+
+## 17. Batch 11 — maintenance lifecycle and input boundary (2026-11-25)
+
+**Base:** `main` @ `f67934e3a3e613c365d9c6f3d6f83dea7239cee2`.  
+**Fix:** PR #319 merged as `ff49b04d2c7d2e782f30e604e1dfcab0971118bb`.
+
+### Confirmed defect and correction
+
+- Before the fix, `validateMaintenanceInput` checked that a status belonged to the enum but `PATCH /api/maintenances/:id` did not enforce a lifecycle. A caller could jump directly from `scheduled` to `completed`, reopen a completed schedule, or create a new schedule already completed.
+- The UI exposes the operational flow `scheduled → in_progress → completed`; server enforcement now matches that flow while retaining explicit `overdue` and `cancelled` paths:
+  - `scheduled → in_progress | overdue | cancelled`
+  - `overdue → in_progress | cancelled`
+  - `in_progress → completed | cancelled`
+  - `completed` and `cancelled` are terminal.
+- New schedules must start as `scheduled`; the server does not accept a client-supplied initial terminal/work status.
+- `last_completed_at` is written only when the schedule actually transitions into `completed`, not on unrelated edits to an already-completed schedule.
+- The input validator now rejects null, undefined, array, and non-object JSON payloads before route code dereferences fields.
+
+### Regression and CI evidence
+
+- Extended `scripts/maintenance-authz-verify.mjs` with live HTTP assertions for null payloads, initial-completed creation, skipped transition rejection, valid start/completion, and terminal completion.
+- Extended `scripts/maintenance-input-validation-verify.mjs` with lifecycle and object-payload source-contract assertions.
+- Initial exact-head CI `45638372764` caught a stale source-test expectation after the stricter body validation change; this was a test-contract mismatch, not a runtime failure. The test was corrected.
+- Final exact-head CI run `45639035905`: **SUCCESS**. Typecheck, production build, Docker runtime smoke, PostgreSQL 17 fresh-database/persistence, P0 live HTTP security, maintenance authorization live HTTP, maintenance dynamic-scope, vendor reference, and maintenance input/lifecycle checks all completed successfully.
+- PR #319 merged to main as `ff49b04d2c7d2e782f30e604e1dfcab0971118bb`.
+
+### Boundaries
+
+- No schema migration or production maintenance record was changed.
+- CI verifies isolated test data only; no production browser UAT or owner sign-off was performed.
+
+## 18. Batch 12 — notification recipient ownership and contract document file access (2026-11-25)
+
+**Review basis:** `main` after PR #319 merge. Static route/domain review plus existing CI regression source and PostgreSQL integration coverage.
+
+### Notification recipient authorization
+
+- `GET /api/notifications` requires `notifications.read` and returns only records accepted by `isNotificationRecipient`.
+- Recipient precedence is explicit user ID, then assigned unit, then effective role, then division. A user-specific recipient cannot be widened by notification title/message text.
+- `PATCH /api/notifications/:id/read` requires `notifications.read` and returns 404 for a missing or non-recipient notification; `POST /api/notifications/read-all` separately requires `notifications.read_all` and only marks the actor's own recipient set.
+- Unit-targeted ME ticket notifications use explicit unit scope in PostgreSQL; file-store compatibility uses the ME function capability.
+- Existing `test:notification-recipient-rbac` is a source-contract test. No dedicated live HTTP recipient-IDOR matrix was found in the current CI workflow; retain this as a UAT/test-coverage gap rather than claiming runtime proof.
+
+### Contract document upload/download and notification logs
+
+- Upload middleware requires `contracts.documents.upload`, resolves the contract, and verifies `canEditContract` before multipart parsing. The handler rechecks permission/scope before writing.
+- Uploads enforce bounded multipart resources/concurrency, validate file signatures, normalize names, generate random storage names, write under a contract-specific directory, and remove file/metadata on failed persistence.
+- Download requires `contracts.read` and `canSeeContract`; inaccessible contracts/documents return 404. File paths are constrained to the contract-specific storage directory; documents are not served from a public static directory.
+- `scripts/cr04-cr05-verify.mjs` covers invalid signatures, upload persistence, exact-byte download, out-of-scope Karyawan denial, authorized Auditor additional-role download, and bytes surviving application restart. `scripts/upload-security-verify.mjs` covers concurrency and multipart bounds.
+- `GET /api/contracts/:id/notification-logs` requires `contracts.read`. `getNotificationLogs` uses effective Superadmin/Auditor checks; other users see logs only for contracts returned by `listContracts(user)`. No display-label-based global access fallback remains.
+
+### Result and next work
+
+- No new confirmed notification recipient or contract file-access bypass found in the reviewed paths.
+- Contract document upload/download has live PostgreSQL integration coverage in CI; notification recipient isolation remains source-contract coverage and should receive a focused live HTTP negative test.
+- Next: add a disposable-user notification recipient IDOR HTTP matrix, then continue direct-ID authorization review for remaining administration/master-data and download endpoints. Keep browser UAT and release gates open.
