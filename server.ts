@@ -2396,16 +2396,25 @@ async function startServer() {
       if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang menambah master lokasi.' });
       }
-      const { name, address, capacity } = req.body;
-      if (!name || !name.trim()) {
-        return res.status(400).json({ success: false, message: 'Nama lokasi fasilitas wajib diisi.' });
+      const body = req.body;
+      if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return res.status(400).json({ success: false, message: 'Payload lokasi harus berupa objek JSON.' });
+      }
+      const { name, address, capacity } = body;
+      if (typeof name !== 'string' || !name.trim() || name.includes('\\u0000') || name.length > 160) {
+        return res.status(400).json({ success: false, message: 'Nama lokasi wajib berupa teks 1–160 karakter.' });
+      }
+      for (const [field, value, maxLength] of [['address', address, 500], ['capacity', capacity, 120]] as const) {
+        if (value !== undefined && (typeof value !== 'string' || value.includes('\\u0000') || value.length > maxLength)) {
+          return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
+        }
       }
       if (!db.locations) db.locations = [];
       const newLoc = {
-        id: `loc-${Date.now()}`,
+        id: `loc-${crypto.randomUUID()}`,
         name: name.trim(),
-        address: address?.trim() || 'Kawasan PIBC, Jakarta Timur',
-        capacity: capacity?.trim() || 'Fasilitas Operasional'
+        address: typeof address === 'string' && address.trim() ? address.trim() : 'Kawasan PIBC, Jakarta Timur',
+        capacity: typeof capacity === 'string' && capacity.trim() ? capacity.trim() : 'Fasilitas Operasional'
       };
       db.locations.push(newLoc);
       GabahDomainService.recordAudit('LOCATION_CREATED', 'MasterData', `Menambahkan master lokasi ${newLoc.name}`, actor);
@@ -2423,14 +2432,32 @@ async function startServer() {
       if (!isSuperadminActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Super Admin yang berwenang mengedit master lokasi.' });
       }
+      const body = req.body;
+      if (!body || typeof body !== 'object' || Array.isArray(body)) {
+        return res.status(400).json({ success: false, message: 'Payload lokasi harus berupa objek JSON.' });
+      }
       if (!db.locations) db.locations = [];
       const target = db.locations.find(l => l.id === req.params.id);
       if (!target) return res.status(404).json({ success: false, message: 'Lokasi tidak ditemukan.' });
 
-      const { name, address, capacity } = req.body;
-      if (name) target.name = name.trim();
-      if (address !== undefined) target.address = address.trim();
-      if (capacity !== undefined) target.capacity = capacity.trim();
+      for (const [field, value, maxLength] of [
+        ['name', body.name, 160],
+        ['address', body.address, 500],
+        ['capacity', body.capacity, 120],
+      ] as const) {
+        if (value !== undefined && (typeof value !== 'string' || value.includes('\\u0000') || value.length > maxLength)) {
+          return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
+        }
+      }
+      if (body.name !== undefined && !body.name.trim()) {
+        return res.status(400).json({ success: false, message: 'Nama lokasi tidak boleh kosong.' });
+      }
+
+      // Validate the complete payload before mutating any field; invalid later
+      // fields must not leave a partially changed in-memory master record.
+      if (body.name !== undefined) target.name = body.name.trim();
+      if (body.address !== undefined) target.address = body.address.trim();
+      if (body.capacity !== undefined) target.capacity = body.capacity.trim();
 
       GabahDomainService.recordAudit('LOCATION_UPDATED', 'MasterData', `Memperbarui master lokasi ${target.name}`, actor);
       await persistDataStore();
