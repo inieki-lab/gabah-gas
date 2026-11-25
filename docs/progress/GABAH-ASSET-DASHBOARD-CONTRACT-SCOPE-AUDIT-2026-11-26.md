@@ -71,18 +71,18 @@ All source files below were read from the dependency branch at the time of this 
 ## Checks and evidence
 
 - Source review: completed for the seven files listed above.
-- New regression guard: registered; exact-head CI is the execution evidence (see below).
-- Local test execution: NOT RUN in this session (no repository checkout/runtime attached).
+- New regression guard: registered; all 13 source assertions passed in a preflight against the exact branch sources. Exact-head CI remains the authoritative execution evidence and is currently pending.
+- Local repository test execution: NOT RUN in this session (no repository checkout/runtime attached).
 - PostgreSQL fresh-install/legacy-upgrade tests: pending.
 - Browser UAT: NOT RUN.
 - Production acceptance: NOT CLAIMED.
 
 ## Next steps
 
-1. Add executable regression guards for the endpoint matrix, including detail-by-ID and exports.
-2. Run the existing asset-scope and CR-04/CR-05 integration suites on PostgreSQL.
-3. Review any failures and fix the API/service boundary, not only the UI.
-4. Record exact commit SHA and CI run in this worklog.
+1. Review exact-head CI for the newly registered source regression guard; fix any mismatch it exposes.
+2. Extend runtime tests for search/filter/export and direct-ID access where an API path exists.
+3. Run the existing asset-scope and CR-04/CR-05 integration suites on PostgreSQL, then execute the persona matrix in UAT.
+4. Record exact commit SHA and CI run in this worklog after the run completes.
 5. Keep dependent PR #328 and this follow-up unmerged until exact-head CI, UAT, and owner review pass.
 
 **Merge policy:** No merge to `main` without explicit owner approval.
