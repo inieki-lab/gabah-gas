@@ -385,6 +385,7 @@ export default function App() {
           purpose: data.purpose,
           start_date: data.start_date,
           due_date: data.due_date,
+          borrower_phone: data.borrower_phone,
         });
         showToast(`${res.count || data.asset_ids.length} Permohonan pinjaman berhasil diajukan! Tiket diteruskan independen ke divisi terkait (IT/GA).`);
       } else {
@@ -395,6 +396,7 @@ export default function App() {
           purpose: data.purpose,
           start_date: data.start_date,
           due_date: data.due_date,
+          borrower_phone: data.borrower_phone,
         });
         showToast(`Reservasi ${newLoan.loan_number} (${newLoan.asset_name}) berhasil diajukan! Menunggu persetujuan.`);
       }
