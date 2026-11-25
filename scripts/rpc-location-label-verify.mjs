@@ -11,6 +11,7 @@ const businessRules = fs.readFileSync('docs/product/BUSINESS-RULES.md', 'utf8');
 const batchQrUi = fs.readFileSync('src/components/modals/BatchQRPrintModal.tsx', 'utf8');
 const gabahServiceUi = fs.readFileSync('src/services/gabahService.ts', 'utf8');
 const mockData = fs.readFileSync('src/data/mockData.ts', 'utf8');
+const ticketsView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
 const checks = [
   ['Office location OFF-RPC is displayed as RPC in migration and defaults', migration.includes("name = 'RPC'") && migration.includes("WHERE id = 'OFF-RPC'") && db.includes("id: 'OFF-RPC', name: 'RPC'") && persistence.includes("id: 'OFF-RPC', name: 'RPC'")],
   ['Legacy unit ID remains stable while its display label becomes RPC', migration.includes("WHERE id = 'UNIT-SC'") && db.includes("id: 'UNIT-SC', name: 'RPC'") && persistence.includes("id: 'UNIT-SC', name: 'RPC'")],
@@ -24,6 +25,7 @@ const checks = [
   ['Legacy SC/PIBC values are grouped as review-only labels in QR output', batchQrUi.includes('LEGACY_LOCATION_OWNER') && batchQrUi.includes('Legacy owner code (RPC)') && batchQrUi.includes('Legacy owner code PIBC')],
   ['Legacy owner badges no longer call SC/PIBC active divisions', gabahServiceUi.includes('Kode owner legacy (RPC)') && gabahServiceUi.includes('Kode owner legacy PIBC') && !gabahServiceUi.includes('Divisi Supply Chain') && !gabahServiceUi.includes('Divisi Pasar PIBC')],
   ['Mock SC assets remain historical fixtures, not active Supply Chain ownership claims', mockData.includes('Legacy SC owner-code fixtures retained for per-asset review') && !mockData.includes('// SC Assets - Owned by Supply Chain')],
+  ['Legacy ticket queue uses the current RPC display name, not Supply Chain', ticketsView.includes('Helpdesk & Tiket RPC (Legacy)') && ticketsView.includes('Daftar tiket historis terkait lokasi RPC') && !ticketsView.includes('Helpdesk & Tiket Supply Chain') && !ticketsView.includes('Daftar kendala operasional Supply Chain')],
 ];
 
 for (const [name, pass] of checks) console.log(`${pass ? 'PASS' : 'FAIL'} | ${name}`);
