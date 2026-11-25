@@ -106,6 +106,7 @@ async function liveRecipientChecks() {
       admin: 'admin@foodstation.co.id',
       it: 'it.support@foodstation.co.id',
       ga: 'ga@foodstation.co.id',
+      humas: 'humas@foodstation.co.id',
     };
     const sessions = {};
     for (const [key, email] of Object.entries(accounts)) {
@@ -116,6 +117,20 @@ async function liveRecipientChecks() {
       record(`Login ${key}`, '200 + session cookie', `HTTP ${login.status}`, login.status === 200 && Boolean(sessions[key]));
     }
 
+
+
+    const humasRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.humas });
+    const humasRoleSeed = (humasRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-HUMAS-001');
+    const itHumasRoleSeed = (itRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-HUMAS-001');
+    const gaHumasRoleSeed = (gaRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-HUMAS-001');
+    record('Humas receives role-only Humas notification', 'NOTIF-HUMAS-001 visible to Humas',
+      `HTTP ${humasRoleNotifications.status}, visible=${Boolean(humasRoleSeed)}`, humasRoleNotifications.status === 200 && Boolean(humasRoleSeed));
+    record('IT and GA cannot see role-only Humas notification', 'hidden from IT and GA',
+      `IT=${Boolean(itHumasRoleSeed)}, GA=${Boolean(gaHumasRoleSeed)}`, !itHumasRoleSeed && !gaHumasRoleSeed);
+    const wrongHumasRead = await request(base, 'PATCH', '/api/notifications/NOTIF-HUMAS-001/read', { cookie: sessions.it });
+    const correctHumasRead = await request(base, 'PATCH', '/api/notifications/NOTIF-HUMAS-001/read', { cookie: sessions.humas });
+    record('IT cannot mark Humas role-only notification as read', '404', `HTTP ${wrongHumasRead.status}`, wrongHumasRead.status === 404);
+    record('Humas can mark its own role-only notification as read', '200', `HTTP ${correctHumasRead.status}`, correctHumasRead.status === 200);
 
     const itRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.it });
     const gaRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.ga });
