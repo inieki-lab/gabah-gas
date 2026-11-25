@@ -379,6 +379,22 @@ async function main() {
     record('Loan request preserves borrower contact entered in the form', '+62 813-5555-0101',
       loanContactSnapshot?.borrower_phone || '(missing)', loanContactSnapshot?.borrower_phone === '+62 813-5555-0101');
 
+    // Separation of duties: an IT custodian may request an asset, but cannot
+    // approve that same request. Superadmin is the explicit break-glass exception.
+    const selfApprovalLoan = await mkLoan(it.token, itAsset6.id);
+    const selfApprovalAttempt = selfApprovalLoan.id
+      ? await appr(selfApprovalLoan.id, it.token)
+      : { status: 0 };
+    const selfApprovalAfter = await loanStatus(selfApprovalLoan.id);
+    record('Custodian cannot approve their own loan request', '403 + pending_approval',
+      `HTTP ${selfApprovalAttempt.status} + ${selfApprovalAfter}`,
+      selfApprovalAttempt.status === 403 && selfApprovalAfter === 'pending_approval');
+    const superadminApproval = selfApprovalLoan.id
+      ? await appr(selfApprovalLoan.id, admin.token)
+      : { status: 0 };
+    record('Superadmin retains explicit break-glass approval authority', '200',
+      `HTTP ${superadminApproval.status}`, superadminApproval.status === 200);
+
     // Approve: IT approves IT loans, GA approves GA loan
     const appr = async (loanId, token) => req(base, 'POST', `/api/loans/${loanId}/approve`, { token, body: {} });
     const aL1 = await appr(L1.id, it.token);
@@ -522,6 +538,7 @@ async function main() {
     const logs = await req(base, 'GET', '/api/audit-logs', { token: admin.token });
     const entries = logs.json?.data || [];
     const has = (action, entityId) => entries.some(e => e.action === action && (!entityId || e.entity_id === entityId));
+    record('Audit: LOAN_APPROVAL_DENIED self-approval attempt recorded', 'logged', has('LOAN_APPROVAL_DENIED', selfApprovalLoan.id) ? 'logged' : 'missing', has('LOAN_APPROVAL_DENIED', selfApprovalLoan.id));
     record('Audit: LOAN_HANDOVER success recorded', 'logged', has('LOAN_HANDOVER', L1.id) ? 'logged' : 'missing', has('LOAN_HANDOVER', L1.id));
     record('Audit: LOAN_RETURNED success recorded', 'logged', has('LOAN_RETURNED', L4.id) ? 'logged' : 'missing', has('LOAN_RETURNED', L4.id));
     record('Audit: LOAN_HANDOVER_DENIED recorded', 'logged', has('LOAN_HANDOVER_DENIED', L1.id) ? 'logged' : 'missing', has('LOAN_HANDOVER_DENIED', L1.id));
