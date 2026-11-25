@@ -4,9 +4,31 @@ const ui = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
 const app = fs.readFileSync('src/App.tsx', 'utf8');
 const types = fs.readFileSync('src/types.ts', 'utf8');
 const services = fs.readFileSync('server/services.ts', 'utf8');
+const bastModal = fs.readFileSync('src/components/modals/BastDocumentModal.tsx', 'utf8');
 assert.ok(ui.includes("status === 'pending_approval'"));
 assert.ok(ui.includes("status === 'borrowed'"));
 assert.ok(ui.includes('normalizeLoanStatus(loan.status)'));
+assert.ok(ui.includes("const canPrintBast = ['approved', 'active', 'returned'].includes(loanStatus)"),
+  'loan BAST must only be printable after approval / active handover / return');
+assert.ok(ui.includes('{canPrintBast && ('), 'pending approval and rejected loans must not expose BAST printing');
+assert.ok(!ui.includes("loanStatus !== 'rejected'"), 'BAST must not be shown for every non-rejected state');
+assert.ok(app.includes('const [selectedAssetForBast, setSelectedAssetForBast] = useState<Asset | null>(null)'),
+  'permanent assignment BAST must use asset state, not a fabricated loan');
+assert.ok(app.includes("['active', 'borrowed', 'approved', 'overdue', 'returned'].includes(String(l.status).toLowerCase())"),
+  'existing borrowed/overdue loan records must be recognized before generating assignment BAST');
+assert.ok(app.includes('setSelectedAssetForBast(ast);') && app.includes('asset={selectedAssetForBast ||'),
+  'assignment BAST must pass the real asset directly to the document modal');
+assert.ok(!app.includes("borrower_phone: '021-5000-888'"),
+  'BAST must not fabricate a borrower phone number');
+assert.ok(app.includes('currentUser={currentUser}'), 'BAST assignment document must receive the authenticated actor');
+assert.ok(bastModal.includes('formatOwnerDivision(isAssignmentMode ? asset?.owner_division : loan!.owner_division)'),
+  'BAST responsible division must follow owner_division, not service category');
+assert.ok(!bastModal.includes("loan!.category_type === 'IT'"),
+  'BAST must not infer asset owner from category_type');
+assert.ok(bastModal.includes("loan!.owner_division || 'UNASSIGNED'"),
+  'loan BAST number must not invent an owner when owner_division is missing');
+
+
 assert.ok(ui.includes("hasEffectivePermission('loans.approve'"), 'Superadmin/effective permission must control approval UI');
 assert.ok(types.includes("'pending_approval'") && types.includes("'borrowed'"));
 const start = services.indexOf('static approveLoan(');
@@ -38,7 +60,7 @@ assert.ok(returnButtonStart >= 0 && returnButtonEnd > returnButtonStart, 'return
 const returnButton = ui.slice(returnButtonStart, returnButtonEnd);
 assert.ok(returnButton.indexOf('if (succeeded === false) return') < returnButton.indexOf('setReturningLoan(null)'), 'failed return must keep modal and entered notes open');
 const appReturnStart = app.indexOf('const handleReturnLoan = async');
-const appReturnEnd = app.indexOf('// Direct BAST Document Generation', appReturnStart);
+const appReturnEnd = app.indexOf('// Direct BAST generation keeps permanent asset assignment separate from a loan.', appReturnStart);
 assert.ok(appReturnStart >= 0 && appReturnEnd > appReturnStart, 'App return handler must exist');
 const appReturn = app.slice(appReturnStart, appReturnEnd);
 assert.ok(appReturn.includes('return false;') && appReturn.includes('return true;'), 'App must distinguish failed API return from committed return');

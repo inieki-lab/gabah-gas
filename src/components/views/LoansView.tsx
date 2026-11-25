@@ -181,6 +181,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
           const userCanReject = canReject(loan);
           const userCanHandover = canHandover(loan);
           const userCanReturn = canReturn(loan);
+          const canPrintBast = ['approved', 'active', 'returned'].includes(loanStatus);
 
           return (
             <div 
@@ -331,7 +332,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Cetak Berita Acara Serah Terima (BAST) untuk approved, active, returned */}
-                  {loanStatus !== 'rejected' && (
+                  {canPrintBast && (
                     <button
                       onClick={() => handleOpenBastDoc(loan)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-300 text-xs font-semibold transition-all shadow-xs"

@@ -242,7 +242,7 @@ export const EditAssetModal: React.FC<EditAssetModalProps> = ({
                     Penugasan Pengguna (PIC Karyawan)
                   </h4>
                 </div>
-                {onOpenBastModal && (asset.assigned_to || selectedUserId) && (
+                {onOpenBastModal && canEditThisAsset && (asset.assigned_to || selectedUserId) && (
                   <button
                     type="button"
                     onClick={() => onOpenBastModal(asset, targetAssignedUser)}

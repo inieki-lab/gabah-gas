@@ -51,17 +51,25 @@ export const BastDocumentModal: React.FC<BastDocumentModalProps> = ({
     ? 'Penugasan Inventaris Kerja Tetap (Operasional Kedinasan Pegawai)' 
     : loan!.purpose;
 
+  // Owner domain is authoritative for the responsible asset function.
+  // Never infer IT/GA ownership from service category or a missing value.
+  const formatOwnerDivision = (owner?: string | null) => {
+    const value = String(owner || '').trim();
+    const normalized = value.toUpperCase();
+    if (normalized === 'IT') return 'Divisi Teknologi Informasi';
+    if (normalized === 'GA') return 'Divisi Umum & Rumah Tangga (GA)';
+    return value ? `Owner ${value}` : 'Owner belum ditetapkan';
+  };
+
   // Giver / Approver details
   const giverName = isAssignmentMode
-    ? (currentUser?.name || 'Tim Pengelola Aset (IT Admin)')
-    : (loan!.approver_name || 'Tim Pengelola Aset (GA / IT Admin)');
-  const giverDivision = isAssignmentMode
-    ? (asset?.owner_division === 'IT' ? 'Divisi Teknologi Informasi' : 'Divisi Umum & Rumah Tangga (GA)')
-    : (loan!.category_type === 'IT' ? 'Divisi Teknologi Informasi' : 'Divisi Umum & Rumah Tangga (GA)');
+    ? (currentUser?.name || 'Tim Pengelola Aset')
+    : (loan!.approver_name || 'Tim Pengelola Aset');
+  const giverDivision = formatOwnerDivision(isAssignmentMode ? asset?.owner_division : loan!.owner_division);
 
   const bastNumber = isAssignmentMode
-    ? `BAST/ASSIGN/${asset?.owner_division || 'IT'}/${new Date().getFullYear()}/${(asset?.asset_number || 'AST-001').replace(/[^a-zA-Z0-9]/g, '')}`
-    : `BAST/${loan!.category_type}/${new Date().getFullYear()}/${loan!.loan_number.replace('LOAN-', '')}`;
+    ? `BAST/ASSIGN/${asset?.owner_division || 'UNASSIGNED'}/${new Date().getFullYear()}/${(asset?.asset_number || 'AST-001').replace(/[^a-zA-Z0-9]/g, '')}`
+    : `BAST/${loan!.owner_division || 'UNASSIGNED'}/${new Date().getFullYear()}/${loan!.loan_number.replace('LOAN-', '')}`;
 
   const todayFormatted = new Date().toLocaleDateString('id-ID', {
     weekday: 'long',
