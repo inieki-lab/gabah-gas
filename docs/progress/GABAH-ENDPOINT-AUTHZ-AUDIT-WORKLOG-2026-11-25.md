@@ -372,3 +372,44 @@ Fix is open as PR #311:
 - PR #316 documentation CI run `45634694803` was still IN_PROGRESS (79/118 at last poll); the latest documentation update will start a fresh exact-head run.
 - Main branch CI run `45634781924` on `e376f44dc61d1616cdbbcf94478d9f3516cadd8d` was IN_PROGRESS at last poll; PR #317 merge triggers a new main run.
 
+
+
+## 16. Batch 10 — ticket workflow authorization and mutation integrity (2026-11-25)
+
+**Base:** `main` @ `db1e91e96e16023b98e4c62eeeb97fab5c259316` (after PR #316 merge).  
+**Method:** Static source review of ticket routes, shared scope helpers, UI/API contract tests, and CI result. No live DB or browser mutation was performed.
+
+### Reviewed paths and controls
+
+- `GET /api/tickets/:id/assignees` and `PATCH /api/tickets/:id/assignment`: require `tickets.assign`, then enforce object-level owner-division or assigned-unit scope. Read-only actors are rejected by the assignment policy.
+- Candidate assignees must be active, non-read-only, non-Superadmin users with `tickets.update` and matching division/unit scope in PostgreSQL. File-store compatibility recognizes secondary functional roles while canonical primary profile remains Karyawan.
+- Assignment changes are restricted to `open`/`assigned`; started work returns HTTP 409. New assignee receives an in-app notification, changes are audited, and persistence failure restores ticket/notification/audit snapshots.
+- `GET /api/tickets/:id/comments`: requires `tickets.read` plus per-ticket visibility. PostgreSQL query binds ticket ID and joins user display names.
+- `POST /api/tickets/:id/comments`: rejects read-only actors; only reporter or authorized operational handler can write. Body must be non-empty text and at most 4,000 characters. Writes use a PostgreSQL transaction; file-store mode returns 503 rather than pretending comments were saved.
+- `PATCH /api/tickets/:id/status`: requires authenticated ticket-read capability plus object-level reporter/handler rules, and operational handlers additionally need `tickets.update`. Reporter-only transitions are limited to confirming resolved tickets or reopening closed tickets. State machine rejects skipped transitions.
+- Server-computed `allowed_actions` are used by the ticket UI; client controls do not independently grant authority.
+
+### Existing regression coverage found
+
+- `test:ticket-assignment-api`
+- `test:ticket-comments-api`
+- `test:ticket-reporter-transition`
+- `test:ticket-lifecycle-no-skip`
+- `test:ticket-mutation-atomicity`
+- `test:ticket-allowed-actions`
+
+The scripts assert permission/scope checks, active-user eligibility, read-only handling, state transitions, bounded comment input, transactional persistence, rollback, audit, notifications, and UI/API wiring. These scripts were inspected as source; their execution is not separately claimed here.
+
+### Result
+
+- No new confirmed authorization defect was found in these reviewed ticket paths; no speculative code change was made.
+- PR #316 documentation update merged successfully as `db1e91e96e16023b98e4c62eeeb97fab5c259316`.
+- PR #316 exact-head CI run `45635218073`: **SUCCESS**; its `verify` job completed successfully.
+- No ticket, user, role, scope, notification, or audit records were changed.
+- This is not live PostgreSQL/browser UAT and does not authorize production go-live.
+
+### Next batch
+
+1. Review maintenance schedule and work-order endpoints: create/update/delete, assignment, status transitions, vendor linkage, costs, and asset ownership/scope.
+2. Check that maintenance write paths preserve server-owned identifiers and do not permit cross-owner asset mutation through client-supplied fields.
+3. Review maintenance regression scripts and CI coverage before proposing any code change.
