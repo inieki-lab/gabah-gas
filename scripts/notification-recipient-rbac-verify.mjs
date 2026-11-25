@@ -88,6 +88,7 @@ async function liveRecipientChecks() {
   const cleanup = () => {
     try { child.kill('SIGKILL'); } catch { /* already stopped */ }
     if (backup !== null) fs.writeFileSync(stateFile, backup);
+    else fs.rmSync(stateFile, { force: true });
   };
   try {
     let ready = false;
