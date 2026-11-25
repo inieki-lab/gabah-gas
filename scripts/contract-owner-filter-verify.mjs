@@ -40,6 +40,19 @@ const checks = [
       && createModal.includes('disabled={saving || !canCreateContract}'),
   ],
   [
+    'Contract creation owner choices are loaded from the configurable master, not a hard-coded role/division list',
+    createModal.includes('gabahApi.getDivisions()')
+      && createModal.includes('ownerDomains.map')
+      && !createModal.includes('OWNER_DIVISION_OPTIONS')
+      && !createModal.includes("['GA', 'IT', 'SC', 'PIBC', 'Sekretariat Direksi', 'Humas', 'Komersial', 'Keuangan', 'SDM']"),
+  ],
+  [
+    'Contract creation filters location-only legacy codes and fails closed without an active owner',
+    createModal.includes("new Set(['SC', 'SUPPLY CHAIN', 'PIBC', 'RPC'])")
+      && createModal.includes('ownerDomains.some(option => option.code === ownerDivision)')
+      && createModal.includes('lokasi, bukan owner kontrak otomatis'),
+  ],
+  [
     'Creating a linked helpdesk ticket is gated by tickets.create, not contract renewal decision',
     source.includes("const canCreateLinkedTicket = !isAuditor && hasPermission('tickets.create'")
       && linkedTicketButton >= 0
