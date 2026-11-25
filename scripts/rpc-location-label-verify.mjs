@@ -15,7 +15,7 @@ const checks = [
   ['Legacy Supply Chain user is normalized to Karyawan at RPC without changing account ID', db.includes('Karyawan — Lokasi RPC') && persistence.includes('Karyawan — Lokasi RPC') && persistence.includes("office_location_id = 'OFF-RPC'")],
   ['New assets cannot use SC/PIBC as owner domains', services.includes("['SC', 'PIBC', 'UNASSIGNED']") && server.includes("!['SC', 'PIBC'].includes(owner.code)")],
   ['Migration does not rewrite existing assets or user role assignments', !/UPDATE (assets|users|gabah_user_roles)|DELETE FROM (assets|users|gabah_user_roles)/i.test(migration)],
-  ['README and PRD distinguish RPC/PIBC locations from asset ownership', readme.includes('RPC/PIBC adalah lokasi atau unit operasional') && prd.includes('RPC dan PIBC dalam konteks pembahasan ini adalah nama kantor/unit lokasi operasional')],
+  ['README and PRD distinguish RPC/PIBC locations from asset ownership', readme.includes('RPC dan PIBC adalah konteks lokasi, bukan owner aset otomatis.') && prd.includes('RPC dan PIBC dalam konteks pembahasan ini adalah nama kantor/unit lokasi operasional')],
   ['Business rules preserve legacy owner records pending per-asset review', businessRules.includes('owner code') && businessRules.includes('SC/PIBC') && businessRules.includes('ditinjau satu per satu')],
 ];
 
