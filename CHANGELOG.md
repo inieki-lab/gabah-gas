@@ -1,3 +1,7 @@
+## [2026-11-25] — Restrict administrative settings reads to Superadmin
+- Require an active Dynamic RBAC Superadmin assignment to read notification-rule and company system settings, matching the existing write boundary and Administration UI visibility.
+- Extend both persistence regression checks to prevent authenticated non-admin users from reading administrative configuration.
+
 -
 ## [2026-11-25] — Preserve HTTP 403 for denied asset lifecycle mutations
 - `mutateLifecycle()` now attaches `statusCode: 403` when the actor lacks the required operation permission or owner scope, matching asset update, assignment, and movement behavior.
