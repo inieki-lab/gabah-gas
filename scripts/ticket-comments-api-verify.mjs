@@ -28,6 +28,6 @@ assert.match(apiClient, /getTicketComments\(ticketId: string\)/);
 assert.match(apiClient, /addTicketComment\(ticketId: string, body: string\)/);
 assert.match(ticketView, /Lihat Diskusi \/ Komentar/);
 assert.match(ticketView, /submitTicketComment/);
-assert.match(ticketView, /!isAuditor/);
+assert.match(ticketView, /!isReadOnly/);
 assert.match(ticketView, /maxLength=\{4000\}/);
 console.log('PASS: ticket discussion is reachable from the list UI and Auditor cannot submit comments.');
