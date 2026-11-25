@@ -4,8 +4,10 @@
 **Repository:** `inieki-lab/gabah-gas`  
 **Base:** `main` @ `ec4e648281363e63effcf6d2642ebc9c457b2333`  
 **Branch:** `fix/retire-legacy-owner-domains-2026-11-26`  
-**Code head before this worklog commit:** `1b7ba5316c2ece22c4bf69d7c05ac19df27c55c1`  
-**Status:** IMPLEMENTED ON BRANCH — exact-head CI pending; not merged.
+**Implementation/code+test head before PR:** `1b7ba5316c2ece22c4bf69d7c05ac19df27c55c1`  
+**Draft PR:** [#328](https://github.com/inieki-lab/gabah-gas/pull/328)  
+**PR head at creation:** `3c45a4661cd7ac2a0461cf5d72f81beffb1698f8`  
+**Status:** IMPLEMENTED ON BRANCH — exact-head CI pending; not merged. PR metadata is the authority for the latest branch HEAD after this worklog synchronization.
 
 ## 1. Finding
 
@@ -28,7 +30,7 @@ The CI workflow already registers both:
 - `node scripts/cr04-cr05-verify.mjs` (PostgreSQL 17 fresh-database/persistence integration)
 
 **Local execution:** NOT RUN in this session (no repository checkout/runtime attached).  
-**Exact-head CI:** PENDING — run only after PR creation; no PASS is claimed yet.  
+**Exact-head CI:** PENDING — PR #328 is open as a draft; the latest PR head must be checked after the worklog synchronization commit. No PASS is claimed yet.  
 **Browser UAT:** NOT RUN. Scenario 2E was added to `docs/testing/UAT.md`.
 
 ## 4. Data-safety boundary
