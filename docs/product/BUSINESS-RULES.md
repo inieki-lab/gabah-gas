@@ -132,17 +132,17 @@
 
 ### BR-06.1: Alur Penghapusan Aset BUMD (*Disposal*)
 - **Aturan**: Mutasi aset menuju status `disposed` (dihapuskan dari buku aset) harus melalui tahapan usulan (`propose_disposal` $\to$ status `pending_disposal`).
-- **Otoritas Tunggal**: Hanya peran `Admin GABAH` yang berwenang mengeksekusi `approve_disposal`. Peran lain yang mencoba menyetujui penghapusan akan ditolak oleh sistem.
-- **Enforcement Kode**: `server/services.ts` (baris 367-372).
+- **Otoritas Tunggal**: Hanya akun dengan kapabilitas administrasi global Superadmin yang berwenang mengeksekusi `approve_disposal`. Identitas profil utamanya adalah `Admin GABAH`; otorisasi backend menggunakan resolver Superadmin, bukan pencocokan label tampilan.
+- **Enforcement Kode**: `server/services.ts` melalui `isSuperadminActor(actor)`; lifecycle permission dan owner scope tetap diperiksa sebelum aksi.
 
 ---
 
 ## 7. Aturan Pengawasan Satuan Pengawas Internal / Auditor (BR-07)
 
-### BR-07.1: Strict Read-Only Mode
-- **Aturan**: Akun dengan peran `Auditor` memiliki hak inspeksi penuh ke seluruh data sistem (katalog aset, tiket, log peminjaman, rekonsiliasi Accurate, log audit), tetapi **diblokir dari segala bentuk mutasi data**.
-- **Enforcement Kode**: `server/runtime-hardening.ts` (baris 108-118).
-- **Pengecualian**: Middleware mengizinkan `/api/auth/logout`, `/api/notifications/read-all`, dan `/api/notifications/:id/read` untuk tindakan non-GET yang terbatas. `/api/auth/switch-role` bukan pengecualian Auditor. Verifikasi ulang `server/runtime-hardening.ts` setelah perubahan auth.
+### BR-07.1: Strict Read-Only Capability
+- **Aturan**: Pegawai dengan capability audit/read-only yang ditetapkan secara eksplisit memperoleh akses inspeksi hanya pada data sesuai scope audit, tetapi **diblokir dari segala bentuk mutasi data**. Capability ini dapat menjadi assignment tambahan pada profil Karyawan; Auditor bukan profil utama dan bukan alasan membuat katalog role primer terpisah.
+- **Enforcement yang ditemukan**: `server/runtime-hardening.ts` memanggil `isAuditorActor(actor)`; PostgreSQL policy saat ini mengenali role key `auditor` secara khusus. Ini adalah implementasi khusus yang masih perlu dievaluasi terhadap target role/capability sepenuhnya dinamis; jangan menyimpulkan bahwa role custom lain otomatis mendapat perilaku read-only yang sama.
+- **Pengecualian runtime saat ini**: Middleware mengizinkan `/api/auth/logout`, `/api/notifications/read-all`, dan `/api/notifications/:id/read` untuk tindakan non-GET yang terbatas. `/api/auth/switch-role` bukan pengecualian. Verifikasi ulang setelah perubahan auth.
 
 ---
 

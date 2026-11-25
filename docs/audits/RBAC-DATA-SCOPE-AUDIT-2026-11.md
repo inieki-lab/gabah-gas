@@ -54,7 +54,11 @@ Jabatan, unit, dan lokasi tidak boleh otomatis memberikan permission. Super Admi
 
 Supply Chain dan PIBC adalah atribut lokasi kerja/unit organisasi. Lokasi aset tidak menentukan owner_division atau siapa yang boleh memutasi aset.
 
-## 2. Temuan source code terverifikasi
+## 2. Temuan source code terverifikasi — SNAPSHOT HISTORIS 8 NOVEMBER 2026
+
+> **JANGAN DIPAKAI SEBAGAI STATUS CURRENT MAIN.** Daftar temuan P0/P1 di bawah merekam kondisi branch pada tanggal audit awal. Sejumlah temuan sudah berubah setelah migrasi dan PR berikutnya. Status kode saat ini wajib diperiksa ulang pada exact commit `main`; daftar ini tidak boleh dijadikan alasan untuk menghidupkan kembali sembilan role primer, role SC/PIBC, atau matriks permission statis. Model yang berlaku: dua profil utama (Admin GABAH/Karyawan), role fungsi dinamis, permission dan scope terpisah. Gunakan `PRD.md`, `docs/PROJECT-CONTEXT.md`, `docs/product/BUSINESS-RULES.md`, dan `docs/architecture/RBAC.md` sebagai acuan intent; gunakan source dan test exact-head untuk status implementasi.
+
+
 
 ### P0 — Otorisasi backend dan kebocoran scope
 

@@ -1,3 +1,5 @@
+> **Koreksi otoritas dokumentasi — 25 November 2026:** Catatan di bawah adalah log kronologis perubahan pada commit/PR masing-masing, bukan definisi model role yang berlaku. Istilah “sembilan role legacy” hanya merujuk kompatibilitas teknis/migrasi yang masih harus diaudit; bukan sembilan role utama dan bukan target desain. Profil utama hanya Admin GABAH dan Karyawan. Role fungsi bersifat dinamis; permission dan scope menjadi dasar otorisasi. Setiap fallback berbasis `users.role` atau nama role harus diperlakukan sebagai gap kompatibilitas, bukan kebijakan permanen.
+
 
 ### Loan request error recovery and borrower contact — 2026-11-25
 

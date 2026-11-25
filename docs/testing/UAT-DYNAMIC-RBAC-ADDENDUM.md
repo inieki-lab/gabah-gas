@@ -19,12 +19,12 @@ Do not infer effective access from a job title, unit name, office location, or m
 
 | Persona | Identity/assignment under test | Required assertion |
 |---|---|---|
-| Super Admin | One active account with the designated superadmin capability | Can administer users, role templates, permissions, scopes, and audit; last active Super Admin cannot be removed or demoted |
+| Admin GABAH | One active account with the designated Superadmin administration capability | Can administer users, role templates, permissions, scopes, and audit; last active Superadmin cannot be removed or demoted |
 | IT | IT application role with explicitly configured module permissions and IT owner scopes | Sees and mutates only records allowed by each module permission and IT owner scope |
 | GA | GA application role with explicitly configured module permissions and GA owner scopes | Sees and mutates only GA-owned records; IT workstation read is absent unless the dedicated read-only permission is enabled |
 | Karyawan | Primary employee identity, no additional operational role | Sees own assigned assets, own loans, own tickets, and own permitted requests; cannot browse other employees' records |
 | Karyawan + additional role | Same employee identity with one explicitly assigned additional application role | Additional role grants only its configured permission/scope; primary identity and personal baseline remain intact after unrelated profile updates and restart |
-| Auditor | Auditor as primary role and, in a separate test, as an additional role | Authorized reads work; all create/update/delete/approve/assign operations are denied by API, not merely hidden in UI |
+| Karyawan + Auditor capability | Primary profile Karyawan with the explicitly assigned Auditor/read-only capability; never provision Auditor as a primary profile | Authorized reads work; all create/update/delete/approve/assign operations are denied by API, not merely hidden in UI. Also verify the read-only policy cannot be bypassed by another assigned write capability |
 | Sekretariat Direksi capability | Employee identity with explicitly approved secretariat capability | Only approved executive reservation/meeting actions appear and succeed; no implicit global asset or contract access |
 | Humas capability | Employee identity with explicitly approved Humas capability | Sees only documentation-request queue items; other people's private contacts, attendee lists, IT facilities, consumption details, and internal notes are redacted |
 | Supply Chain employee | Primary Karyawan; unit/location attributes identify Supply Chain / RPC-SC | Supply Chain is not required as an application role; location alone grants no owner scope or module permission |
@@ -54,7 +54,9 @@ For every mutation workflow, test valid input, invalid input, wrong owner, missi
 
 ## 4. Required multi-role and persistence scenarios
 
-1. Assign a primary Karyawan role plus one approved additional role through the administration UI/API.
+1. Provision only one of the two primary profiles: Admin GABAH or Karyawan. Never create IT, GA, Auditor, Humas, Sekretariat Direksi, RPC/SC, or PIBC as a primary profile.
+2. Create a new custom function role with a name/key not present in the source code, grant one test permission and one explicit scope, assign it to a Karyawan, and verify the expected access works without code changes. Verify the same user is denied outside that scope.
+3. Assign a primary Karyawan profile plus one approved additional role through the administration UI/API.
 2. Confirm the assignment is transactional and auditable; invalid role IDs or inactive roles are rejected.
 3. Confirm the additional role does not change the employee ID, job level, organizational unit, or office location.
 4. Update an unrelated user profile field, restart the application, and re-read the role assignments and effective permissions.
