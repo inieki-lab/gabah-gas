@@ -50,11 +50,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const currentRoleKeys = currentUser?.role_keys || [];
   const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentRoleKeys.includes('superadmin')
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
   const hasEffectivePermission = (permission: string, legacyRoles: string[] = []): boolean => {
-    if (isAuditor) return false;
+    if (isReadOnly) return false;
     if (isSuperAdmin) return true;
     if (hasPermissionMetadata) {
       return currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission);
