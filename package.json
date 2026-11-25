@@ -109,6 +109,7 @@
     "test:production-dependency-policy": "node scripts/production-dependency-policy-verify.mjs",
     "test:shared-rate-limits": "node --import tsx scripts/shared-rate-limit-verify.ts",
     "test:auth-rate-limit-memory": "node --import tsx scripts/auth-rate-limit-memory-verify.mjs",
+    "test:legacy-session-store": "node scripts/legacy-session-store-verify.mjs",
     "test:production-secret-policy": "node --import tsx scripts/production-secret-policy-verify.mjs"
   },
   "dependencies": {
