@@ -430,7 +430,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           {isReadOnly && (
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Akun Auditor berstatus <strong>Read-Only</strong> untuk kepatuhan SPI. Anda tidak dapat membuat tiket baru.</span>
+              <span>Akun ini memiliki kebijakan <strong>Read-Only</strong>. Anda tidak dapat membuat tiket baru.</span>
             </div>
           )}
 
