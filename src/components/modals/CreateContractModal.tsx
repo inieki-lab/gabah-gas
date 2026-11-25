@@ -195,7 +195,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
                 <option value="">{ownerDomainsLoading ? 'Memuat owner domain...' : 'Pilih owner domain aktif'}</option>
                 {ownerDomains.map(option => (
                   <option key={option.code} value={option.code}>
-                    {option.name} ({option.code}){option.code === ownDivision ? ' — owner Anda' : ''}
+                    {option.name} ({option.code}){option.code === ownerDivision ? ' — dipilih' : ''}
                   </option>
                 ))}
               </select>
