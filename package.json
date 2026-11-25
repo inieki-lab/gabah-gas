@@ -33,6 +33,7 @@
     "test:dashboard-scope": "tsx scripts/dashboard-scope-verify.ts",
     "test:dashboard-attention-scope": "tsx scripts/dashboard-attention-scope-verify.ts",
     "test:asset-scope-policy": "node scripts/asset-scope-policy-verify.mjs",
+    "test:asset-dashboard-contract-scope": "node scripts/asset-dashboard-contract-scope-verify.mjs",
     "test:asset-assignment-active-user": "node --import tsx scripts/asset-assignment-active-user-verify.mjs",
     "test:asset-category-filter": "tsx scripts/asset-category-filter-verify.ts",
     "test:branch-migration-safety": "node scripts/branch-migration-safety-verify.mjs",
