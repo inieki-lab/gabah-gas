@@ -314,3 +314,35 @@ Fix is open as PR #311:
 - PostgreSQL ticket scope and backend authorization unchanged.
 - No ticket records or operational data modified.
 - Continue scanning remaining legacy-primary-role branches while PR #311 CI runs.
+
+## 14. Batch 8 — secondary-role UI capability parity (2026-11-25)
+
+### Merged work after Batch 7
+- PR #314 merged to main as `0fe041d29301667a53e81112b219d7357fd4f6c4`; exact-head CI run `45632931632` SUCCESS (119/119). It aligns additional IT/GA capabilities across contract creation, vendor/knowledge UI, and notification badges.
+- PR #315 is open at exact head `f9ab1553d0fb14380675b5c2541032827c799b9d`; CI run `45633864278` was IN_PROGRESS (48/118 at last poll).
+
+### Confirmed residual UI inconsistency — PR #315
+- `AssetsView` file-store compatibility fallback checked only `currentUser.role` for IT/GA, while the canonical profile is Karyawan and functional roles are retained in `role_keys`.
+- This hid asset create/import controls for a Karyawan account with an additional IT or GA function in file-store mode. This is a UI compatibility issue, not a PostgreSQL backend authorization bypass.
+- Updated fallback to `GabahService.hasLegacyCapability(currentUser, 'it'|'ga')` and added a regression check.
+- During test review, found the LicensesView secondary-IT assertion had been appended after `process.exit()` in `asset-scope-policy-verify.mjs`; moved it into the counted `checks` array so CI actually executes it.
+- No role assignment, database rows, or asset data changed.
+
+### Other related merged fixes revalidated
+- PR #305 merged; its exact-head CI `45627849061` SUCCESS. License workspace requires both `licenses.read` and backing `assets.read`; renewal KPIs derive from actual expiration dates and distinguish overdue from upcoming.
+- PR #306 merged; exact-head CI `45628963545` SUCCESS. `sanitizeUser()` excludes server-only `authVersion` from client payloads.
+- PR #308 merged; exact-head CI `45630247071` SUCCESS. BAST is hidden before loan approval, permanent assignment BAST no longer synthesizes loan/contact/due-date data, owner division comes from `owner_division`, and edit authority is rechecked.
+- PR #311 merged; Auditor additional-role file-store ticket visibility uses effective Auditor membership. PostgreSQL scoped response path unchanged.
+- PR #307/#309/#312 are audit documentation batches; merged to main after their CI checks.
+
+### Scope and validation boundary
+- Dashboard stats and attention endpoints require `dashboard.read`; assets are resolved through `getScopedAssets`; loans/tickets are filtered by borrower/reporter/assignee plus explicit owner/unit scopes. Global Superadmin/Auditor behavior is explicit.
+- Global search is client-side over the already scoped asset/loan/ticket collections; it introduces no separate search endpoint or broader server query.
+- Module registry read requires authenticated actor; module audit and status changes require effective Superadmin. Status change requires a validated reason and writes audit history transactionally.
+- `GET /api/users` requires `users.read`; `sanitizeUser()` removes password material, Telegram chat ID unless Superadmin, and now authVersion.
+- These remain source/CI-contract observations. No new live browser UAT or production PostgreSQL UAT was performed in this session.
+
+### Batch 8 status
+- Secondary IT/GA UI consistency: one residual AssetsView fallback fixed in PR #315; CI pending.
+- PR #314 and all merged PRs above are on main; PR #315 must not merge until exact-head CI succeeds.
+- Continue checking remaining frontend compatibility helpers and endpoint-level object scope; do not stop while PR #315 CI is running.
