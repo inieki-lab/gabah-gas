@@ -1141,7 +1141,10 @@ async function main() {
           `GET=${scopedAssetRead.status}; POST=${blockedAssetWrite.status}`,
           scopedAssetRead.status === 200 && blockedAssetWrite.status === 403);
 
-        const superadminRole = await rbacGuardClient.query("SELECT id FROM gabah_roles WHERE role_key = 'superadmin'");
+        const readOnlyCheckClient = new pg.Client({ connectionString: TEST_DB_URL });
+        await readOnlyCheckClient.connect();
+        const superadminRole = await readOnlyCheckClient.query("SELECT id FROM gabah_roles WHERE role_key = 'superadmin'");
+        await readOnlyCheckClient.end();
         const conflictingAssignment = await req(base, 'PUT', `/api/admin/rbac/users/${rbacGuardUserId}/roles`, {
           token: adminToken,
           body: { role_ids: [customReadOnlyRoleId, Number(superadminRole.rows[0]?.id)] },
