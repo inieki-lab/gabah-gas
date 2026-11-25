@@ -15,13 +15,13 @@ This document records decisions and constraints explicitly supplied by the proje
 
 ## 2. Organization, role, and location
 
-- Supply Chain is referred to as **RPC** in current organizational terminology. Do not reintroduce “Supply Chain/SC” as an application role merely because legacy records or account aliases use it.
-- **RPC/SC and PIBC are locations/operational contexts, not application roles and not automatic divisions or asset-owner domains.**
-- Active office/operational locations recorded for the current model: HO, PIBC, RPC/SC, Pangsub, and Kantor Perawatan. Subang is closed/inactive; preserve historical references.
+- Nama operasional saat ini adalah **RPC**; “Supply Chain” adalah nama lama dan `SC` hanya kode legacy pada data/alias historis. Jangan gunakan Supply Chain/SC sebagai role atau divisi baru.
+- **RPC (legacy code SC) and PIBC are locations/operational contexts, not application roles and not automatic divisions or asset-owner domains.**
+- Active office/operational locations recorded for the current model: HO, PIBC, RPC, Pangsub, and Kantor Perawatan. Subang is closed/inactive; preserve historical references.
 - A person at any location may hold a job level such as Kadiv, Kadep, Kasi, or Staf. Location does not determine job level or permission.
 - Keep these dimensions separate: employee identity, application role/capability, permission, data scope, job level, organizational unit, office location, asset owner domain, physical asset location, and custodian/PIC.
 - Profil utama aplikasi hanya `Admin GABAH` (administrator sistem) dan `Karyawan` (seluruh pegawai). IT, GA, Auditor, Sekretariat Direksi, Humas, ME Admin, dan fungsi kerja lain adalah role/capability tambahan yang dibuat serta ditetapkan melalui Dynamic RBAC; tidak boleh dijadikan union role primer yang di-hardcode.
-- RPC/SC dan PIBC tidak boleh muncul sebagai role aplikasi. Akun lama dinormalisasi menjadi profil Karyawan, dengan role fungsi yang sah tetap dipertahankan sebagai assignment terpisah; assignment Supply Chain/PIBC dinonaktifkan karena keduanya hanya lokasi/unit.
+- RPC dan PIBC tidak boleh muncul sebagai role aplikasi. Akun lama dinormalisasi menjadi profil Karyawan, dengan role fungsi yang sah tetap dipertahankan sebagai assignment terpisah; assignment legacy SC/PIBC dinonaktifkan karena keduanya hanya lokasi/unit.
 - Role dan capability harus fleksibel dan dapat dikelola. Jangan hard-code katalog role fungsi atau menganggap jabatan/lokasi memberi permission.
 
 ## 3. Asset ownership and access
