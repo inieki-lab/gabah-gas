@@ -31,14 +31,14 @@ Sebelum mengubah kode atau dokumen, baca [docs/GABAH-DOCUMENTATION-CONTROL.md](.
 Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server backend** (`server/services.ts`, `server/runtime-hardening.ts`, `server/auth.ts`, `server/numbering.ts`). Klien frontend (`src/`) hanya berperan sebagai antarmuka presentasi dan tidak boleh dijadikan satu-satunya pelindung integritas data.
 
 ### 2.1 Penomoran Aset (Asset Numbering)
-- Format resmi: `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` (Contoh: `IT-HLT-2026-0001`, `GA-INV-F-2026-0001`).
+- **Standar nomor aset korporat belum ditetapkan/ disahkan.** Jangan menyebut pola teknis yang sedang dipakai aplikasi atau prefix historis sebagai format resmi perusahaan. Perubahan standar menunggu keputusan pemilik proses/standar perusahaan.
 - Penomoran dibuat oleh backend. PostgreSQL mode wajib memakai reservasi atomik pada tabel `asset_number_sequences` (UPSERT di dalam transaksi) dan tidak boleh fallback ke counter lokal saat database gagal. File-store development boleh memakai counter in-memory. Jangan klaim production-ready sebelum uji concurrent multi-instance dan restart lulus.
-- Urutan sequence nomor mereset per tahun per kombinasi divisi pemilik dan kode aset.
+- Perilaku sequence, reset tahunan, owner, kategori, dan format penerbitan adalah perilaku implementasi yang harus dicatat terpisah dari standar korporat yang belum disahkan.
 - Frontend dilarang meng-generate atau meng-hardcode nomor aset secara manual saat create asset.
-- Aturan format disimpan di PostgreSQL (`asset_numbering_rules`) dan hanya dapat dikelola Superadmin. Aturan yang sudah dipakai boleh mengubah format penerbitan berikutnya, tetapi identitas divisi/kode dikunci dan nomor historis tidak boleh ditulis ulang.
-- Penghapusan hanya untuk aturan tanpa aset/sequence, wajib konfirmasi kode `DIV/CODE` dan alasan minimal 20 karakter; aturan terpakai harus dinonaktifkan, bukan dihapus.
+- Aturan format disimpan di PostgreSQL (`asset_numbering_rules`) dan hanya dapat dikelola Superadmin. Aturan yang sudah dipakai boleh mengubah format penerbitan berikutnya, tetapi identitas owner/kode yang telah dipakai dan nomor historis tidak boleh ditulis ulang tanpa keputusan serta migrasi yang disetujui.
+- Penghapusan hanya untuk aturan tanpa aset/sequence, wajib konfirmasi kode dan alasan; aturan terpakai harus dinonaktifkan, bukan dihapus.
 - Nomor ERP Accurate disimpan secara terpisah di kolom `corporate_asset_number` dan tidak boleh menimpa nomor kanonikal.
-
+ 
 ### 2.2 Pencegahan Tabrakan Peminjaman (Loan Anti-Collision)
 - Backend memeriksa ketersediaan aset secara otoritatif sebelum permohonan pinjaman dibuat dan sebelum pinjaman disetujui.
 - Tabrakan jadwal dihitung **strictly per aset**: jika aset A sedang dipinjam/disetujui pada rentang tanggal tertentu, aset A tidak boleh dipinjam lagi pada rentang tersebut.
