@@ -728,7 +728,7 @@ export class GabahService {
     }
 
     // 1b. Auditor: strict read-only visibility over ALL tickets (never able to mutate)
-    if (user.role === 'Auditor') {
+    if (this.isAuditor(user)) {
       return true;
     }
 
