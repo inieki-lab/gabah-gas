@@ -36,7 +36,7 @@
 | Karyawan + role tambahan GA asset operator | Permission operasional GA dan owner scope GA | Aset GA, sarpras, peminjaman/approval sesuai kewenangan |
 | Karyawan + role tambahan GA (read-only workstation) | Grant khusus `assets.read.it_workstations` tanpa permission mutasi IT | Hanya baca Laptop/PC owner IT; direct API mutation harus ditolak |
 | Karyawan HO | Fungsi dasar karyawan dan office location HO | Aset pribadi/pool, tiket sendiri, reservasi dan layanan mandiri |
-| Karyawan RPC | Fungsi dasar karyawan dan office location RPC/SC | Lokasi kerja tidak otomatis memberi role, owner scope, atau akses aset |
+| Karyawan RPC | Fungsi dasar karyawan dan office location RPC (legacy code SC) | Lokasi kerja tidak otomatis memberi role, owner scope, atau akses aset |
 | Karyawan PIBC | Fungsi dasar karyawan dan office location PIBC | Lokasi kerja tidak otomatis memberi role, owner scope, atau akses aset |
 | ME / Perawatan | Permission maintenance/tickets yang disetujui dan scope unit terkait | Routing dan penanganan tiket ME PIBC |
 | Humas capability | Akun karyawan dengan capability/permission Humas yang eksplisit | Antrean dokumentasi dan notifikasi yang memang ditugaskan |
@@ -48,7 +48,7 @@
 
 ## 3. Skenario Pengujian UAT
 
-> **Prinsip model organisasi:** Supply Chain dan PIBC adalah unit/lokasi, bukan role aplikasi permanen. Lokasi kantor aktif saat ini: HO, PIBC, RPC/SC, Pangsub, dan Kantor Perawatan. Subang tidak aktif. Owner aset berbeda dari lokasi fisik dan lokasi kerja pegawai. Pengujian akses dilakukan terhadap permission dan scope efektif di PostgreSQL.
+> **Prinsip model organisasi:** RPC dan PIBC adalah lokasi/unit operasional, bukan role aplikasi permanen. `SC` hanya kode legacy. Lokasi kantor aktif saat ini: HO, PIBC, RPC, Pangsub, dan Kantor Perawatan. Subang tidak aktif. Owner aset berbeda dari lokasi fisik dan lokasi kerja pegawai. Pengujian akses dilakukan terhadap permission dan scope efektif di PostgreSQL.
 
 ### Skenario 1: Autentikasi, Token Sesi & Logout
 - **Tujuan**: Memastikan sesi diterbitkan dengan aman dan dibersihkan saat logout.
@@ -65,7 +65,7 @@
 ### Skenario 2: Matriks Permission dan Scope Aset
 - **Tujuan**: Memastikan owner, lokasi, dan akses tidak tercampur.
 - **Langkah Pengujian**:
-  1. Login sebagai Karyawan dengan role tambahan IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC/SC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
+  1. Login sebagai Karyawan dengan role tambahan IT. Pastikan aset owner IT terlihat di HO, PIBC, RPC, Pangsub, dan lokasi lain yang terdaftar; aset owner lain tidak dapat dimutasi oleh IT.
   2. Login sebagai Karyawan dengan role tambahan GA. Pastikan aset owner GA terlihat lintas lokasi. Jika permission assets.read.it_workstations aktif, hanya Laptop/PC owner IT yang dapat dibaca; mutasi langsung via API harus ditolak.
   3. Login sebagai Karyawan di lokasi RPC dan PIBC. Pastikan fungsi dasar karyawan tersedia; lokasi kerja tidak otomatis membuka katalog aset unit/lokasi.
   4. Uji aset historis dengan owner SC/PIBC secara read/review sesuai grant sementara yang disahkan. Jangan menganggap RPC/SC atau PIBC sebagai owner domain baru. Aset owner ambigu tetap menunggu klasifikasi per aset; lokasi fisik tidak memberi hak mutasi.
@@ -105,7 +105,7 @@
 - **Tujuan**: Memastikan akun baru dibuat dengan role primer pegawai dan lokasi kerja yang independen.
 - **Langkah Pengujian**:
   1. Sebagai Super Admin, buat akun baru dengan role primer Karyawan.
-  2. Pilih lokasi kantor dari master aktif (misalnya PIBC atau RPC/SC); jangan memilih Supply Chain/PIBC sebagai role aplikasi.
+  2. Pilih lokasi kantor dari master aktif (misalnya PIBC atau RPC/SC); jangan memilih kode lokasi/legacy sebagai role aplikasi.
   3. Simpan akun dan pastikan lokasi kerja tersimpan pada atribut office location.
   4. Jika pegawai memiliki tugas khusus, tetapkan role tambahan melalui tombol Role; jangan mengubah role primer hanya karena unit/lokasi.
   5. Periksa daftar pengguna: role primer dan role tambahan harus terlihat terpisah.
@@ -186,8 +186,10 @@
 
 ---
 
+> **HISTORICAL SCENARIO — NOT CURRENT OWNER POLICY:** The contract-owner examples below were written before the current RPC/PIBC location-only rule. Do not create new contracts with SC/PIBC as owner; see issue #291. Existing records remain readable and unchanged.
+
 ### Skenario 10: Contract Management (Domain Tersendiri) & Kategori Tiket
-1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware → `IT`; fasilitas → `GA`; SC → `SC`; PIBC → `PIBC`. Tidak ada opsi License/General/Contract di form.
+1. **Kategori tiket**: ajukan tiket software license (Accurate/M365/VPN) → tercatat kategori `IT`; hardware → `IT`; fasilitas → `GA`; RPC (legacy ticket category code SC) → `SC`; PIBC → `PIBC`. Tidak ada opsi License/General/Contract di form.
 2. **Create Contract** untuk GA (security), IT (maintenance firewall), SC (supplier beras), PIBC (layanan pasar) — masing-masing tersimpan dengan PIC divisi terkait.
 3. **Dokumen kontrak**: unggah PDF/DOC/JPG yang sah, unduh kembali sebagai PIC/owner yang berwenang, dan pastikan user di luar scope menerima 404. Restart aplikasi; file harus tetap dapat diunduh. Backup database dan volume uploads harus diuji bersama.
 3. **Reminder 60/35/7 hari**: kontrak dengan end_date mendekati threshold menampilkan status WARNING/URGENT/CRITICAL beserta sisa hari; `POST /api/contracts/reminders/run` mengantre notifikasi sekali per threshold per hari.
