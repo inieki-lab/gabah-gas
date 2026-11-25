@@ -36,8 +36,8 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
-  const isAuditor = GabahService.isAuditor(currentUser);
-  const canCreateContract = !isAuditor && (isAdmin || (hasPermissionMetadata
+  const isReadOnly = GabahService.isReadOnly(currentUser);
+  const canCreateContract = !isReadOnly && (isAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('contracts.create')
     : ['IT', 'GA'].includes(currentUser.role)));
   const ownDivision = (currentUser.division || 'GA').toUpperCase();
