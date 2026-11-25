@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync('src/components/modals/CreateLoanModal.tsx', 'utf8');
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const loansView = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
 const services = fs.readFileSync('server/services.ts', 'utf8');
 const taxonomy = fs.readFileSync('server/taxonomy.ts', 'utf8');
@@ -33,6 +35,10 @@ const checks = [
   ['Borrower phone defaults to the employee profile instead of a fabricated sample number', /useState<string>\(currentUser\?\.phone \|\| ''\)/.test(source) && !source.includes('0812-3456-7890')],
   ['Loan request accepts and validates a supplied borrower phone number', /borrower_phone\?: string/.test(services) && /typeof payload\.borrower_phone !== 'string'/.test(services) && services.includes("payload.borrower_phone.includes('\\u0000')") && /payload\.borrower_phone\.trim\(\)\.length > 40/.test(services)],
   ['Loan record stores the validated supplied phone with profile fallback', /const borrowerPhone = typeof payload\.borrower_phone === 'string'[\s\S]*?\(borrower\.phone \|\| '-'\)/.test(services) && /borrower_phone: borrowerPhone/.test(services)],
+  ['Single and batch loan API payloads accept the optional borrower phone', /requestLoan\(payload: \{[\s\S]*?borrower_phone\?: string/.test(apiClient) && /requestBatchLoans\(payload: \{[\s\S]*?borrower_phone\?: string/.test(apiClient)],
+  ['Loan form forwards the entered borrower phone through both single and batch request paths', /requestBatchLoans\([\s\S]*?borrower_phone: data\.borrower_phone/.test(app) && /requestLoan\([\s\S]*?borrower_phone: data\.borrower_phone/.test(app)],
+  ['Loan request form remains open on failed requests and is closed only by parent after API success', /await onRequestLoan\(\{[\s\S]*?borrower_phone: borrowerPhone\.trim\(\),[\s\S]*?\}\);/.test(source) && !/onRequestLoan\(\{[\s\S]*?\}\);\s*onClose\(\);/.test(source)],
+  ['Loan form prevents duplicate submissions while the API request is pending', /if \(isSubmitting\) return/.test(source) && /disabled=\{isSubmitting \|\| !canCreateLoan/.test(source) && /isSubmitting \? 'Mengirim Permohonan\.\.\.'/i.test(source)],
 ];
 
 for (const [name, pass] of checks) console.log(`${pass ? 'PASS' : 'FAIL'} | ${name}`);
