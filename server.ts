@@ -444,6 +444,20 @@ async function startServer() {
     }
     return actor;
   };
+  // Notification recipient_role stores a functional role label, not a primary profile.
+  // Never collapse IT/GA/Humas/etc. into the canonical Karyawan profile.
+  const notificationRoleKey = (label: string): string => {
+    const normalized = String(label || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const aliases: Record<string, string> = {
+      admin_gabah: 'superadmin',
+      super_admin: 'superadmin',
+      superadmin: 'superadmin',
+      sekretaris_direksi: 'sekretaris_direksi',
+      supply_chain: 'supply_chain',
+    };
+    return aliases[normalized] || normalized;
+  };
+
   const primaryRoleKey = (label: string): string => {
     const normalized = String(label || 'Karyawan').trim();
     return normalized === 'Admin GABAH' || normalized === 'Superadmin'
@@ -4451,7 +4465,7 @@ async function startServer() {
     }
     // A user may hold additional RBAC roles beyond the primary profile role.
     if (notification.recipient_role) {
-      return hasApplicationRole(actor, primaryRoleKey(notification.recipient_role));
+      return hasApplicationRole(actor, notificationRoleKey(notification.recipient_role));
     }
     if (notification.recipient_division) return notification.recipient_division === actor.division;
     return false;
