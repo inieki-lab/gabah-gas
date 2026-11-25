@@ -19,26 +19,26 @@ const route = (method, path) => {
 
 const checks = [
   ['asset catalogue requires assets.read and server-side scoped collection',
-    /requireRbacPermission\(req, res, 'assets\\.read'\)/.test(route('get', '/api/assets'))
+    /requireRbacPermission\(req, res, 'assets\.read'\)/.test(route('get', '/api/assets'))
       && /GabahDomainService\.getScopedAssets\(actor\)/.test(route('get', '/api/assets'))],
   ['asset direct-ID lookup applies the identical scoped collection and fails closed',
-    /requireRbacPermission\(req, res, 'assets\\.read'\)/.test(route('get', '/api/assets/:id'))
+    /requireRbacPermission\(req, res, 'assets\.read'\)/.test(route('get', '/api/assets/:id'))
       && /getScopedAssets\(actor\)\.find\(a => a\.id === req\.params\.id\)/.test(route('get', '/api/assets/:id'))
       && /404/.test(route('get', '/api/assets/:id'))],
   ['asset mutation checks read-only deny-write and explicit owner permission/scope',
-    /requireRbacPermission\(req, res, 'assets\\.update'\)/.test(route('patch', '/api/assets/:id'))
+    /requireRbacPermission\(req, res, 'assets\.update'\)/.test(route('patch', '/api/assets/:id'))
       && /isReadOnlyActor\(actor\)/.test(route('patch', '/api/assets/:id'))
-      && /canMutateAssetOwner\(actor, asset\.owner_division, 'assets\\.update'\)/.test(route('patch', '/api/assets/:id'))],
+      && /canMutateAssetOwner\(actor, asset\.owner_division, 'assets\.update'\)/.test(route('patch', '/api/assets/:id'))],
   ['PostgreSQL asset visibility unions dynamic scopes and the narrow IT workstation read-only exception',
     /filterAssetsByDynamicScopes\(db\.assets, user\)/.test(services)
-      && /hasRbacPermission\(String\(user\.id\), 'assets\\.read\\.it_workstations'\)/.test(services)
+      && /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)
       && /owner_division \|\| ''\)\.toUpperCase\(\) === 'IT' && isItWorkstation/.test(services)
       && /visibleIds = new Set\(\[\.\.\.personalAssets, \.\.\.dynamicAssets, \.\.\.readOnlyItWorkstations\]/.test(services)],
   ['GA workstation read-only exception excludes IT servers and infrastructure in file-store fallback',
     /hasGaCapability/.test(services)
       && /owner_division \|\| ''\)\.toUpperCase\(\) === 'IT'[\s\S]*?\['HLT', 'HPC'\]/.test(services)],
   ['dashboard stats use scoped assets and separate module-specific loans/tickets owner scopes',
-    /requireRbacPermission\(req, res, 'dashboard\\.read'\)/.test(route('get', '/api/dashboard/stats'))
+    /requireRbacPermission\(req, res, 'dashboard\.read'\)/.test(route('get', '/api/dashboard/stats'))
       && /getScopedAssets\(actor\)/.test(route('get', '/api/dashboard/stats'))
       && /hasRbacScope\(String\(actor\.id\), 'division', owner, module\)/.test(route('get', '/api/dashboard/stats'))
       && /visibleLoans/.test(route('get', '/api/dashboard/stats'))
@@ -49,15 +49,15 @@ const checks = [
       && /filterDashboardAttentionItems\(items/.test(route('get', '/api/dashboard/attention'))
       && /canReadTicketUnit/.test(route('get', '/api/dashboard/attention'))],
   ['contract list API requires contracts.read and delegates to server-side listContracts',
-    /requireRbacPermission\(req, res, 'contracts\\.read'\)/.test(route('get', '/api/contracts'))
+    /requireRbacPermission\(req, res, 'contracts\.read'\)/.test(route('get', '/api/contracts'))
       && /ContractDomainService\.listContracts\(actor\)/.test(route('get', '/api/contracts'))],
   ['contract direct-ID API requires contracts.read and delegates to guarded getContract',
-    /requireRbacPermission\(req, res, 'contracts\\.read'\)/.test(route('get', '/api/contracts/:id'))
+    /requireRbacPermission\(req, res, 'contracts\.read'\)/.test(route('get', '/api/contracts/:id'))
       && /ContractDomainService\.getContract\(actor, req\.params\.id\)/.test(route('get', '/api/contracts/:id'))],
   ['contract list and direct-ID service share canSeeContract; PostgreSQL requires permission plus explicit owner scope',
     /listContracts\(user: ServerUser\): ServerContract\[\] \{\s*return db\.contracts\.filter\(c => canSeeContract\(user, c\)\)/.test(contracts)
       && /getContract\(user: ServerUser, contractId: string\)[\s\S]*?if \(!canSeeContract\(user, contract\)\)/.test(contracts)
-      && /hasRbacPermission\(String\(user\.id\), 'contracts\\.read'\)[\s\S]*?hasRbacScope\(String\(user\.id\), 'division', owner, 'contracts'\)/.test(contracts)],
+      && /hasRbacPermission\(String\(user\.id\), 'contracts\.read'\)[\s\S]*?hasRbacScope\(String\(user\.id\), 'division', owner, 'contracts'\)/.test(contracts)],
   ['contract PIC visibility is record-specific and does not grant owner-domain visibility',
     /if \(contract\.pic_user_id === user\.id\) return true;/.test(contracts)
       && /if \(!owner\) return false;/.test(contracts)],
