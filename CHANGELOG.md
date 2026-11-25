@@ -1,3 +1,7 @@
+## [2026-11-25] — Restrict module registry reads to Superadmin
+- Require an active Dynamic RBAC Superadmin assignment to read the module registry, matching the privileged lifecycle management and audit endpoints.
+- Extend module lifecycle API verification to enforce the read boundary.
+
 ## [2026-11-25] — Restrict administrative settings reads to Superadmin
 - Require an active Dynamic RBAC Superadmin assignment to read notification-rule and company system settings, matching the existing write boundary and Administration UI visibility.
 - Extend both persistence regression checks to prevent authenticated non-admin users from reading administrative configuration.
