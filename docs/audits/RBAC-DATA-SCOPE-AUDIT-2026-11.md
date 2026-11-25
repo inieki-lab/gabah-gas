@@ -313,3 +313,5 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 - Klasifikasi persona staf kini mempertimbangkan permission operasional efektif (mis. `tickets.update`, `tickets.assign`, `assets.create/update`, persetujuan pinjaman, dan pengelolaan fasilitas).
 - Pegawai biasa dan pemohon layanan tetap mendapat label staf; operator dengan permission pengelolaan mendapat label operasional dan badge antrean.
 - Regression test navigasi mencakup profil Karyawan dengan permission request-only, IT/GA/ME operasional, Humas dokumentasi, dan Superadmin wildcard.
+
+- Pemeriksaan lanjutan menemukan wildcard Superadmin juga membuat predicate Humas/Sekdir pada Sidebar bernilai benar. Persona khusus tersebut kini dikecualikan untuk Superadmin, agar label Dashboard dan badge antrean tidak salah diklasifikasikan sebagai staf.
