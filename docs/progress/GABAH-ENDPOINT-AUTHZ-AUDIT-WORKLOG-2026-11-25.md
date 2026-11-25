@@ -223,3 +223,39 @@ Important deployment note: migration 105 has not been run against production. Be
 - No new confirmed application defect in this batch.
 - Open policy question: whether report export should have a separate reports.export permission. Do not invent or grant it until business owner confirms.
 - Continue with module lifecycle, dashboard aggregates, search, licences, and direct-ID endpoint coverage while PR #301 CI runs.
+
+## 11. Batch 5 — dashboard, global search, module lifecycle, and directory (2026-11-25)
+
+### Dashboard aggregates and attention
+- GET /api/dashboard/stats requires dashboard.read. Assets are sourced through getScopedAssets; loans are restricted to own borrower records or explicit loans owner scope; tickets are restricted to reporter, assigned agent, explicit ticket owner scope, or assigned unit scope. Counts are computed only from these filtered collections.
+- GET /api/dashboard/attention requires dashboard.read. PostgreSQL notification-rule settings fail closed when unavailable; attention items are scoped in the service and by the runtime response filter. Existing dashboard-scope and attention-scope regression suites cover the route/data contract.
+- Dashboard UI consumes the already scoped arrays; no client-side role-label filter is treated as the security boundary.
+
+### Global search
+- No standalone /api/search route exists. GlobalSearchModal performs local search over assets, loans, and tickets passed from App state.
+- App passes each collection only when the current effective permissions allow the relevant workspace; each collection is populated from its own backend endpoint, which enforces permission and object scope. Search therefore does not create a second data access path.
+- Search result selection is also guarded by the same effective workspace permission before opening an asset/loan/ticket.
+- No independent search endpoint bypass found in the inspected UI path.
+
+### Module lifecycle
+- GET /api/modules requires an authenticated session and returns module registry status so the client can hide inactive modules.
+- GET /api/modules/:moduleKey/audit and PATCH /api/modules/:moduleKey require effective Superadmin. The update validates module key, strict boolean status, and mandatory 5–500 character reason, then writes module state and audit history transactionally.
+- Runtime module-status enforcement occurs before business handlers; disabled modules return 403, including for Superadmin. Existing module-lifecycle API/UI and registry regression scripts cover these rules.
+- No confirmed authorization bypass found in the inspected module lifecycle routes.
+
+### Employee directory and sanitized identity payload
+- GET /api/users requires users.read in PostgreSQL mode; migration 028 grants this to Superadmin, IT, and GA for operational assignment/helpdesk routing. File-store fallback is explicitly limited to the same operational custodians.
+- Responses use sanitizeUser; password hash/salt and temporary password are excluded, and Telegram chat ID is included only for effective Superadmin.
+- Additional review found authVersion is documented server-only but was not previously removed by sanitizeUser. A focused fix is open as PR #306 to redact authVersion and add a regression assertion.
+
+### PR and CI state at this worklog update
+- PR #301 merged to main as `18f068bc2b0a5f5b8137abcf3bf656b3a6f934e6`; exact-head CI run 45625865976 SUCCESS. Its contract notification-log shortcut now uses effective Superadmin and has a regression assertion.
+- PR #304 merged to main as `3872c14b8466e802bfb3f1a57ca1cc7e84ffcdcd`; exact-head CI run 45626176102 SUCCESS.
+- PR #305 contains license/report navigation alignment and dynamic renewal KPI. CI runs 45627202504 and 45627504766 failed only at the navigation-policy test's outdated default-landing expectation. The test has been corrected on exact current head `5403c4bfe1985f35108449076cca0c5bf7f40fb2`; new CI run pending at this update. No merge until exact-head CI passes.
+- PR #306 redacts server-only authVersion; exact head `333edd1a893571ce78168da90577c65439287728`; CI run 45627752964 was in progress at this update.
+
+### Batch 5 status
+- Dashboard scope, attention response filtering, local search data path, module lifecycle authorization, and employee-directory gate: STATIC REVIEW COMPLETE.
+- No new confirmed data-scope bypass found in these areas.
+- authVersion payload exposure: confirmed low-severity internal metadata leak; correction proposed in PR #306.
+- Continue auditing remaining direct-ID routes, BAST/document exports, and role-specific menu/page actions while CI runs.
