@@ -77,7 +77,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermission = (permission: string, legacyRoles: string[] = []) => {
     if (isAdmin) return true;
     if (Array.isArray(currentUser.permission_keys)) {
@@ -87,9 +87,9 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
   };
   // Legacy file-store compatibility is restricted to actual IT/GA roles.
   // Supply Chain and PIBC are office/location labels, not application roles.
-  const canManage = !isAuditor && hasPermission('contracts.create', ['IT', 'GA']);
-  const canCreateLinkedTicket = !isAuditor && hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
-  const canUploadDocuments = !isAuditor && hasPermission('contracts.documents.upload', ['IT', 'GA']);
+  const canManage = !isReadOnly && hasPermission('contracts.create', ['IT', 'GA']);
+  const canCreateLinkedTicket = !isReadOnly && hasPermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
+  const canUploadDocuments = !isReadOnly && hasPermission('contracts.documents.upload', ['IT', 'GA']);
 
   const vendors = useMemo(() => Array.from(new Set(contracts.map(c => c.vendor_name))).sort(), [contracts]);
   const types = useMemo(() => Array.from(new Set(contracts.map(c => c.contract_type))).sort(), [contracts]);
@@ -285,7 +285,7 @@ export const ContractsView: React.FC<ContractsViewProps> = ({
           const rb = reminderBadge(contract);
           const st = STATUS_META[contract.status] || STATUS_META.active;
           const isOpen = expandedId === contract.id;
-          const canDecide = !isAuditor && hasPermission('contracts.renewal.decide', ['IT', 'GA']);
+          const canDecide = !isReadOnly && hasPermission('contracts.renewal.decide', ['IT', 'GA']);
 
           return (
             <div key={contract.id} className="rounded-2xl bg-white border border-slate-200 shadow-xs overflow-hidden">
