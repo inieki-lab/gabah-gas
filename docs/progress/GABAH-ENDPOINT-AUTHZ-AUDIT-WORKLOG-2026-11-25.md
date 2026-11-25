@@ -259,3 +259,33 @@ Important deployment note: migration 105 has not been run against production. Be
 - No new confirmed data-scope bypass found in these areas.
 - authVersion payload exposure: confirmed low-severity internal metadata leak; correction proposed in PR #306.
 - Continue auditing remaining direct-ID routes, BAST/document exports, and role-specific menu/page actions while CI runs.
+
+## 12. Batch 6 — BAST document workflow review (2026-11-25)
+
+### Confirmed BAST workflow issues
+- LoansView previously exposed Cetak BAST for every status except rejected. This included pending_approval before approval, contrary to the UI comment that BAST is available only after approval/active/return.
+- Permanent asset-assignment BAST was fabricated as a Loan object in App.tsx. The generated object included a hardcoded borrower phone (021-5000-888), synthetic due date, and synthetic approved status. BastDocumentModal therefore rendered it as a loan BAST rather than its existing asset-assignment mode.
+- Asset-to-loan matching for BAST omitted backend statuses borrowed and overdue, so an active loan could be mistaken for a permanent assignment.
+- BastDocumentModal inferred the responsible division from category_type and defaulted unknown/non-IT owners to GA. This violated the canonical owner-domain rule; category/service type is not asset ownership.
+
+A focused fix is open as PR #308:
+- URL: https://github.com/inieki-lab/gabah-gas/pull/308
+- Branch: fix/bast-document-authorization-and-data-accuracy-2026-11-25
+- Latest exact head at this update: 2f8708a0d9bc39765275a3684768f52d43527217
+- Loan BAST button is limited to normalized approved/active/returned states; pending_approval and rejected are hidden.
+- Permanent assignment BAST now passes the actual asset directly to BastDocumentModal, without synthesizing a loan or contact/due-date values.
+- Existing loan detection includes active, borrowed, approved, overdue, and returned.
+- BAST responsible division/number now uses owner_division; missing owner is displayed as UNASSIGNED rather than inferred from category.
+- State is cleared on logout/role switch; regression coverage added to test:loan-status-contract.
+- CI on intermediate heads failed only because an existing source-boundary assertion still expected the old App.tsx comment. The assertion has been updated; CI for the latest exact head is pending.
+
+### Related PR and CI state
+- PR #305 merged to main as `de7334bf5b5bea4dfdc6bbe0ae05862c355abb05`; exact-head CI run 45627849061 SUCCESS. License/report workspace permissions and live renewal KPI are now on main.
+- PR #307 merged to main as `2d83ff7d6f0134fc337c0630564af043b385f8ed`; exact-head CI run 45628009554 SUCCESS. Dashboard/search/module lifecycle audit worklog is now on main.
+- PR #306 latest head `f249a2b1e42116403107b8f92bdc1b6e2c7a4f9d`; an earlier CI failure exposed a stale Telegram redaction test assertion. That test now checks both Telegram ID and authVersion redaction; new CI run 45628963545 is in progress.
+- PR #308 latest exact head and CI run 45629379626 are in progress.
+
+### Batch 6 status
+- BAST state visibility, synthetic document data, active-loan matching, and owner-domain labeling: source-reviewed; confirmed UI/data integrity issues are addressed in PR #308.
+- No database records are created or changed by BAST document generation in this change.
+- Do not merge PR #306 or #308 until CI passes on their exact latest heads.
