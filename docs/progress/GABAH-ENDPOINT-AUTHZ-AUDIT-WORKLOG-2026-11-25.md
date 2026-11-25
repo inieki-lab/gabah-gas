@@ -289,3 +289,28 @@ A focused fix is open as PR #308:
 - BAST state visibility, synthetic document data, active-loan matching, and owner-domain labeling: source-reviewed; confirmed UI/data integrity issues are addressed in PR #308.
 - No database records are created or changed by BAST document generation in this change.
 - Do not merge PR #306 or #308 until CI passes on their exact latest heads.
+
+## 13. Batch 7 — secondary Auditor fallback consistency (2026-11-25)
+
+### Confirmed compatibility-path defect
+- `GabahService.isAuditor()` already recognizes Auditor in `role_keys` (additional role), and `isReadOnly()` therefore denies writes for an account whose primary profile is Karyawan and additional role is Auditor.
+- `isTicketVisibleToUser()` PostgreSQL path trusts the already scoped API response and is not affected. Its file-store compatibility fallback, however, still checked only `user.role === 'Auditor'` before returning global ticket read visibility.
+- Result: an additional Auditor assignment in file-store mode was correctly read-only but saw only tickets reported by that account, rather than the global read-only Auditor ticket view. This is a confirmed behavior inconsistency, not a PostgreSQL authorization bypass.
+
+Fix is open as PR #311:
+- URL: https://github.com/inieki-lab/gabah-gas/pull/311
+- Branch: fix/auditor-secondary-role-ticket-visibility-v2-2026-11-25
+- Exact head: f4f3429866d4b76a3602720810c494e8f5e7dbdb
+- Replaces the primary-label check with `this.isAuditor(user)` and adds a source-contract regression assertion.
+- CI run 45630883977 was IN_PROGRESS at the time of this worklog update; no green result is claimed.
+
+### Related merged fixes
+- PR #308 merged to main as `0171bc6a0a0d9788627f57bcf570d8ebff1ce22d`; exact-head CI run 45630247071 SUCCESS. BAST loan status, permanent assignment document mode, owner-domain labeling, and assignment edit authority are corrected.
+- PR #306 merged to main as `42d5852d71271578cacf222834a2bd8fc34509a6`; exact-head CI run 45628963545 SUCCESS. `sanitizeUser()` no longer exposes server-only `authVersion`.
+- PR #309 merged to main as `72c4491e83a033e771db39df78a4c169a2b633ba`; exact-head CI run 45629634761 SUCCESS. Batch 6 findings are recorded in the audit worklog.
+
+### Batch 7 status
+- Additional Auditor ticket visibility fallback: defect confirmed and fix proposed in PR #311.
+- PostgreSQL ticket scope and backend authorization unchanged.
+- No ticket records or operational data modified.
+- Continue scanning remaining legacy-primary-role branches while PR #311 CI runs.
