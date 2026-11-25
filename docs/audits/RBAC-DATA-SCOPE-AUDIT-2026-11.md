@@ -301,3 +301,5 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 ### Perbaikan
 - Kedua endpoint baca kini memakai `requireRbacSuperadmin`, konsisten dengan batas otorisasi operasi tulis dan visibilitas Administration.
 - Regression checks memastikan akses baca juga mensyaratkan Superadmin aktif; akses pengguna biasa tetap ditolak oleh backend (403).
+
+- Audit lanjutan menemukan `GET /api/modules` juga hanya mewajibkan sesi login, padahal registry dan panel siklus hidup modul hanya digunakan oleh Administration Superadmin. Endpoint tersebut kini memakai `requireRbacSuperadmin`; regression test module lifecycle diperbarui agar akses baca registry tidak terbuka bagi seluruh akun.
