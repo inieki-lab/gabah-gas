@@ -2181,7 +2181,13 @@ async function startServer() {
   // data lama tanpa field baru tetap terbaca konsisten oleh UI.
   app.get('/api/taxonomy/categories', (req, res) => {
     const source = (db.categories && db.categories.length > 0) ? db.categories : CANONICAL_TAXONOMY;
-    res.json({ success: true, data: normalizeCategoryMaster(source) });
+    const retiredLocationOwnerCodes = new Set(['SC', 'PIBC']);
+    const categories = normalizeCategoryMaster(source).map(category =>
+      retiredLocationOwnerCodes.has(String(category.owner_division || '').trim().toUpperCase())
+        ? { ...category, is_active: false }
+        : category,
+    );
+    res.json({ success: true, data: categories });
   });
 
   app.post('/api/taxonomy/categories', async (req, res) => {
