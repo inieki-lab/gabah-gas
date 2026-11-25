@@ -55,6 +55,12 @@ assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'room_reser
   'Humas documentation-only capability remains a staff persona');
 assert.equal(isStaffNavigationPersona('Karyawan', ['*']), false,
   'Superadmin wildcard permissions are never classified as staff-only');
+for (const legacyLabel of ['Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC', 'IT', 'GA', 'Auditor']) {
+  assert.equal(isStaffNavigationPersona(legacyLabel as any, ['dashboard.read']), false,
+    `${legacyLabel} is not a primary employee profile`);
+}
+assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'room_reservations.override_priority']), true,
+  'a Karyawan with a special non-operational capability remains an employee persona');
 
 const sidebar = fs.readFileSync('src/components/Sidebar.tsx', 'utf8');
 assert.match(sidebar, /const isHumas = !isSuperAdmin && hasPermission/,
