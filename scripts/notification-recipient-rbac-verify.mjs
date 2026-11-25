@@ -119,6 +119,13 @@ async function liveRecipientChecks() {
 
 
 
+    const itRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.it });
+    const gaRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.ga });
+    const itRoleSeed = (itRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-001');
+    const gaRoleSeed = (gaRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-001');
+    const gaRoleSeedOwn = (gaRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-002');
+    const itRoleSeedOther = (itRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-002');
+
     const humasRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.humas });
     const humasRoleSeed = (humasRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-HUMAS-001');
     const itHumasRoleSeed = (itRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-HUMAS-001');
@@ -132,12 +139,7 @@ async function liveRecipientChecks() {
     record('IT cannot mark Humas role-only notification as read', '404', `HTTP ${wrongHumasRead.status}`, wrongHumasRead.status === 404);
     record('Humas can mark its own role-only notification as read', '200', `HTTP ${correctHumasRead.status}`, correctHumasRead.status === 200);
 
-    const itRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.it });
-    const gaRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.ga });
-    const itRoleSeed = (itRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-001');
-    const gaRoleSeed = (gaRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-001');
-    const gaRoleSeedOwn = (gaRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-002');
-    const itRoleSeedOther = (itRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-002');
+
     record('IT role receives role-targeted IT notification', 'NOTIF-001 visible to IT',
       `HTTP ${itRoleNotifications.status}, visible=${Boolean(itRoleSeed)}`, itRoleNotifications.status === 200 && Boolean(itRoleSeed));
     record('GA role does not receive role-targeted IT notification', 'NOTIF-001 hidden from GA',
