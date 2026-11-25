@@ -302,6 +302,36 @@ async function main() {
       `HTTP ${returnRechecked.status} + ${returnRechecked.json?.data?.status}`,
       returnRechecked.status === 200 && returnRechecked.json?.data?.status === 'returned');
 
+    // Two requests may wait for the same pool unit, but only one overlapping
+    // request can be approved. The losing request must remain pending and must
+    // not overwrite the reservation created by the winning approval.
+    const overlapStart = isoDatePlus(20);
+    const overlapDue = isoDatePlus(27);
+    const overlapA = await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
+      asset_id: itAsset6.id, purpose: 'Overlap approval winner fixture', start_date: overlapStart, due_date: overlapDue,
+    } });
+    const overlapB = await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
+      asset_id: itAsset6.id, purpose: 'Overlap approval loser fixture', start_date: overlapStart, due_date: overlapDue,
+    } });
+    const overlapAId = overlapA.json?.data?.id;
+    const overlapBId = overlapB.json?.data?.id;
+    const overlapApproveA = overlapAId
+      ? await req(base, 'POST', `/api/loans/${overlapAId}/approve`, { token: it.token, body: {} })
+      : { status: 0 };
+    const overlapApproveB = overlapBId
+      ? await req(base, 'POST', `/api/loans/${overlapBId}/approve`, { token: it.token, body: {} })
+      : { status: 0 };
+    const overlapLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    const overlapAStatus = overlapLoans.find(l => l.id === overlapAId)?.status;
+    const overlapBStatus = overlapLoans.find(l => l.id === overlapBId)?.status;
+    const overlapAsset = ((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || []).find(a => a.id === itAsset6.id);
+    record('Overlapping pending requests cannot both reserve one pool asset', 'first 200 + second 409 + approved/pending + reserved',
+      `request ${overlapA.status}/${overlapB.status}, approve ${overlapApproveA.status}/${overlapApproveB.status}, states ${overlapAStatus}/${overlapBStatus}, asset ${overlapAsset?.status}`,
+      overlapA.status === 201 && overlapB.status === 201
+        && overlapApproveA.status === 200 && overlapApproveB.status === 409
+        && overlapAStatus === 'approved' && overlapBStatus === 'pending_approval'
+        && overlapAsset?.status === 'reserved');
+
     const initialLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
     const invalidLoanDate = await req(base, 'POST', '/api/loans', {
       token: admin.token,
