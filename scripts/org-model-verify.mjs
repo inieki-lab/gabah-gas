@@ -167,6 +167,24 @@ async function main() {
     const itPost = await req(b, 'POST', '/api/master/job-levels', { token: it, body: { code: 'X', label: 'X' } });
     rec('extra: hanya Admin GABAH kelola master', '403', `${itPost.status}`, itPost.status === 403);
 
+
+    // Legacy facility master: malformed fields must be rejected before any mutation.
+    const locationList = await req(b, 'GET', '/api/master/locations', { token: admin });
+    const location = (locationList.json?.data || []).find(item => item.id === 'loc-1');
+    const originalLocationName = location?.name;
+    const invalidLocationPatch = await req(b, 'PATCH', '/api/master/locations/loc-1', {
+      token: admin, body: { name: 'MUST NOT APPLY', address: 42 },
+    });
+    const afterInvalidLocationPatch = await req(b, 'GET', '/api/master/locations', { token: admin });
+    const unchangedLocation = (afterInvalidLocationPatch.json?.data || []).find(item => item.id === 'loc-1');
+    rec('extra: location PATCH rejects invalid field type', '400', `${invalidLocationPatch.status}`, invalidLocationPatch.status === 400);
+    rec('extra: location PATCH is atomic on validation failure', originalLocationName, `${unchangedLocation?.name}`,
+      Boolean(originalLocationName) && unchangedLocation?.name === originalLocationName);
+    const nullLocationPatch = await req(b, 'PATCH', '/api/master/locations/loc-1', { token: admin, body: null });
+    rec('extra: location PATCH rejects null JSON payload', '400', `${nullLocationPatch.status}`, nullLocationPatch.status === 400);
+    const invalidLocationCreate = await req(b, 'POST', '/api/master/locations', { token: admin, body: { name: 42 } });
+    rec('extra: location POST rejects non-string name', '400', `${invalidLocationCreate.status}`, invalidLocationCreate.status === 400);
+
     const p = R.filter(x => x.p).length;
     console.log('\n=== ORG-MODEL VERIFY ===');
     R.forEach(x => console.log(`${x.p ? 'PASS' : 'FAIL'} | ${x.n} | expected: ${x.e} | actual: ${x.a}`));
