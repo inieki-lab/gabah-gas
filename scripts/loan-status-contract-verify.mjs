@@ -60,7 +60,7 @@ assert.ok(returnButtonStart >= 0 && returnButtonEnd > returnButtonStart, 'return
 const returnButton = ui.slice(returnButtonStart, returnButtonEnd);
 assert.ok(returnButton.indexOf('if (succeeded === false) return') < returnButton.indexOf('setReturningLoan(null)'), 'failed return must keep modal and entered notes open');
 const appReturnStart = app.indexOf('const handleReturnLoan = async');
-const appReturnEnd = app.indexOf('// Direct BAST Document Generation', appReturnStart);
+const appReturnEnd = app.indexOf('// Direct BAST generation keeps permanent asset assignment separate from a loan.', appReturnStart);
 assert.ok(appReturnStart >= 0 && appReturnEnd > appReturnStart, 'App return handler must exist');
 const appReturn = app.slice(appReturnStart, appReturnEnd);
 assert.ok(appReturn.includes('return false;') && appReturn.includes('return true;'), 'App must distinguish failed API return from committed return');
