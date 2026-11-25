@@ -17,6 +17,12 @@ assert.equal(isNavTabAllowedForRole('Karyawan', 'assets'), false);
 assert.ok(isNavTabAllowedForRole('Admin GABAH', 'reports'));
 assert.ok(isNavTabAllowedForRole('Admin GABAH', 'assets'));
 assert.equal(isNavTabAllowedForRole('Karyawan', 'assets', ['assets.update']), false);
+assert.equal(isNavTabAllowedForRole('Custom Role', 'licenses', ['licenses.read']), false,
+  'license workspace must not appear when its underlying asset collection is not readable');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'licenses', ['assets.read']), false,
+  'license workspace requires its own module permission as well as asset data access');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'licenses', ['licenses.read', 'assets.read']), true,
+  'license workspace appears only when both license capability and backing asset data are readable');
 
 // A page is visible only when its read contract is satisfied.
 assert.ok(isNavTabAllowedForRole('Any Dynamic Role', 'meeting_rooms', ['meeting_rooms.read', 'room_reservations.read']));
