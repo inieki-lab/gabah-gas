@@ -39,3 +39,10 @@ Issue #296 remained open after PR #297 because non-admin users were shown at mos
 4. Close issue #296 only after all acceptance cases pass.
 
 **Merge policy:** no merge to main until exact-head CI and owner approval.
+
+
+## CI correction note
+
+- Initial CI run `45713076046` found a TypeScript reference left behind after removing the primary-division assumption (`ownDivision`); corrected by using the selected `ownerDivision` state.
+- The same run also showed two older source-contract assertions still expected the global divisions endpoint and client-side legacy-code filter. Updated `scripts/contract-owner-filter-verify.mjs` to assert the server-authorized options endpoint and backend filtering instead.
+- Exact-head CI after these corrections: PENDING. Do not treat earlier partial source checks as a full pass.
