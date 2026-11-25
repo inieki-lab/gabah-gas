@@ -1,3 +1,8 @@
+-
+## [2026-11-25] — Preserve HTTP 403 for denied asset lifecycle mutations
+- `mutateLifecycle()` now attaches `statusCode: 403` when the actor lacks the required operation permission or owner scope, matching asset update, assignment, and movement behavior.
+- Extend the asset mutation HTTP-status regression check to cover lifecycle authorization and its route-level status propagation.
+
 
 ## [2026-11-25] — Prevent cross-account stale data after identity changes
 - Clear all role-scoped client collections before switching users, signing in as another identity, or logging out.
