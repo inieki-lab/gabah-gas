@@ -59,7 +59,7 @@ export const HeaderNavbar: React.FC<HeaderNavbarProps> = ({
   const hasEffectivePermission = (permission: string) => isSuperadmin
     || currentUser.permission_keys?.includes('*') === true
     || currentUser.permission_keys?.includes(permission) === true;
-  const hasLegacyRole = (...roles: string[]) => roles.includes(currentUser.role);
+  const hasLegacyRole = (...roles: string[]) => roles.some(role => currentUser.role === role || GabahService.hasLegacyCapability(currentUser, role));
   const isHumas = Array.isArray(currentUser.permission_keys)
     ? hasEffectivePermission('room_reservations.documentation.read')
     : currentUser.role_keys?.includes('humas') === true || hasLegacyRole('Humas');

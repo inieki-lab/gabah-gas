@@ -31,6 +31,9 @@ const gabahService = read('src/services/gabahService.ts');
 const dashboardUi = read('src/components/views/DashboardView.tsx');
 
 const checks = [
+  ['Vendor file-store controls honor secondary IT/GA capabilities', vendorUi.includes("GabahService.hasLegacyCapability(currentUser, 'it')") && vendorUi.includes("GabahService.hasLegacyCapability(currentUser, 'ga')") && !vendorUi.includes("['Admin GABAH', 'IT', 'GA'].includes(currentUser.role)")],
+  ['Knowledge file-store create/update controls honor secondary IT/GA capabilities', knowledgeUi.includes("GabahService.hasLegacyCapability(currentUser, 'it')") && knowledgeUi.includes("GabahService.hasLegacyCapability(currentUser, 'ga')") && !knowledgeUi.includes("['IT', 'GA'].includes(currentUser.role)")],
+
   ['File-store ticket visibility grants global read to any effective Auditor assignment', /static isTicketVisibleToUser\([\s\S]*?if \(this\.isAuditor\(user\)\) \{\s*return true;/.test(gabahService) && !/if \(user\.role === 'Auditor'\)/.test(gabahService)],
 
   ['Assignment BAST action is hidden when asset edit authority is absent', /onOpenBastModal && canEditThisAsset && \(asset\.assigned_to \|\| selectedUserId\)/.test(assetEditUi)],

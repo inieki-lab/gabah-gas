@@ -43,7 +43,10 @@ const checks = [
       && createModal.includes("const canCreateContract = !isReadOnly")
       && createModal.includes("currentUser.permission_keys!.includes('contracts.create')")
       && createModal.includes('if (!canCreateContract) return;')
-      && createModal.includes('disabled={saving || !canCreateContract}'),
+      && createModal.includes('disabled={saving || !canCreateContract}')
+      && createModal.includes("GabahService.hasLegacyCapability(currentUser, 'it')")
+      && createModal.includes("GabahService.hasLegacyCapability(currentUser, 'ga')")
+      && !createModal.includes("['IT', 'GA'].includes(currentUser.role)"),
   ],
   [
     'Contract creation owner choices are loaded from the configurable master, not a hard-coded role/division list',

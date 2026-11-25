@@ -58,7 +58,7 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
   const hasKnowledgePermission = (permission: string) => !isReadOnly && (isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
-      : ['IT', 'GA'].includes(currentUser.role)));
+      : GabahService.hasLegacyCapability(currentUser, 'it') || GabahService.hasLegacyCapability(currentUser, 'ga')));
   const canCreate = hasKnowledgePermission('knowledge.create');
   const canVote = !isReadOnly && (isSuperAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('knowledge.vote')
