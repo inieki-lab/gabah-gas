@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import { CORE_NAVIGATION_TABS, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed, isStaffNavigationPersona } from '../src/navigation/roleNavigation';
 
@@ -54,5 +55,11 @@ assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'room_reser
   'Humas documentation-only capability remains a staff persona');
 assert.equal(isStaffNavigationPersona('Karyawan', ['*']), false,
   'Superadmin wildcard permissions are never classified as staff-only');
+
+const sidebar = fs.readFileSync('src/components/Sidebar.tsx', 'utf8');
+assert.match(sidebar, /const isHumas = !isSuperAdmin && hasPermission/,
+  'Superadmin wildcard must not make the sidebar identify Superadmin as Humas');
+assert.match(sidebar, /const isSekdir = !isSuperAdmin && hasPermission/,
+  'Superadmin wildcard must not make the sidebar identify Superadmin as Sekdir');
 
 console.log('Dynamic navigation policy: PASS (no fixed role catalogue; permissions and landing-page checks)');
