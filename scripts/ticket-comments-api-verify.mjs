@@ -12,7 +12,7 @@ assert.ok(readStart >= 0 && writeStart > readStart && nextRoute > writeStart, 'c
 const commentRoutes = server.slice(readStart, nextRoute);
 assert.match(commentRoutes, /requireRbacPermission\(req, res, 'tickets\.read'\)/);
 assert.match(commentRoutes, /canAccessTicketRecord\(ticket, actor\)/);
-assert.match(commentRoutes, /isAuditorActor\(actor\)/);
+assert.match(commentRoutes, /isReadOnlyActor\(actor\)/);
 assert.match(commentRoutes, /hasRbacPermission\(String\(actor\.id\), 'tickets\.update'\)/);
 assert.match(commentRoutes, /body\.trim\(\)\.length > 4000/);
 assert.match(commentRoutes, /FROM ticket_comments c[\s\S]*INNER JOIN users u ON u\.id = c\.user_id/);
