@@ -365,3 +365,10 @@ Fix is open as PR #311:
 - Reconciliation write authorization and input validation: source-reviewed; input-validation correction proposed in PR #317.
 - No production DB, asset, or reconciliation records changed.
 - Continue independent source review while both code PRs await CI.
+
+### CI completion and merge update (2026-11-25)
+- PR #315 merged to main as `e376f44dc61d1616cdbbcf94478d9f3516cadd8d`; exact-head CI run `45633864278` SUCCESS (119/119).
+- PR #317 merged to main as `b34492d76ba2f72260241d1e4d0e5d4c37725f11`; exact-head CI run `45634628920` SUCCESS (119/119).
+- PR #316 documentation CI run `45634694803` was still IN_PROGRESS (79/118 at last poll); the latest documentation update will start a fresh exact-head run.
+- Main branch CI run `45634781924` on `e376f44dc61d1616cdbbcf94478d9f3516cadd8d` was IN_PROGRESS at last poll; PR #317 merge triggers a new main run.
+
