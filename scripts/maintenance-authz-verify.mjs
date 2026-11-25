@@ -203,6 +203,18 @@ async function main() {
     record('POST IT on IT asset allowed', '201', `HTTP ${itOnIt.status}`, itOnIt.status === 201);
     const createdId = itOnIt.json?.data?.id;
 
+    const nullBodyCreate = await req(base, 'POST', '/api/maintenances', { token: tokens.it, body: null });
+    record('POST rejects a JSON null payload without crashing', '400', `HTTP ${nullBodyCreate.status}`, nullBodyCreate.status === 400);
+
+    const nullBodyUpdate = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.admin, body: null });
+    record('PATCH rejects a JSON null payload without crashing', '400', `HTTP ${nullBodyUpdate.status}`, nullBodyUpdate.status === 400);
+
+    const directCompletedCreate = await req(base, 'POST', '/api/maintenances', {
+      token: tokens.it,
+      body: { asset_id: 'AST-HSV-001', title: 'Invalid direct completion', status: 'completed' },
+    });
+    record('POST cannot create an already-completed maintenance schedule', '400', `HTTP ${directCompletedCreate.status}`, directCompletedCreate.status === 400);
+
     const adminOnGa = await req(base, 'POST', '/api/maintenances', { token: tokens.admin, body: { asset_id: 'AST-KDR-001', title: 'Admin jadwal verify' } });
     record('POST admin (superadmin) on GA asset allowed', '201', `HTTP ${adminOnGa.status}`, adminOnGa.status === 201);
 
@@ -226,6 +238,23 @@ async function main() {
       ? await req(base, 'PATCH', `/api/maintenances/${createdId}`, { token: tokens.it, body: { notes: 'IT perbarui jadwalnya' } })
       : { status: 0 };
     record('PATCH IT on IT schedule allowed', '200', `HTTP ${itPatchOwn.status}`, itPatchOwn.status === 200);
+
+
+    const skipCompletion = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.admin, body: { status: 'completed' } });
+    record('PATCH cannot skip scheduled → in_progress → completed', '409; remains scheduled',
+      `HTTP ${skipCompletion.status}, status=${skipCompletion.json?.data?.status || 'unchanged'}`,
+      skipCompletion.status === 409);
+
+    const startMaintenance = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.admin, body: { status: 'in_progress' } });
+    record('PATCH scheduled → in_progress allowed', '200', `HTTP ${startMaintenance.status}`, startMaintenance.status === 200 && startMaintenance.json?.data?.status === 'in_progress');
+
+    const completeMaintenance = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.admin, body: { status: 'completed' } });
+    record('PATCH in_progress → completed allowed and timestamped', '200 + last_completed_at',
+      `HTTP ${completeMaintenance.status}, timestamp=${Boolean(completeMaintenance.json?.data?.last_completed_at)}`,
+      completeMaintenance.status === 200 && completeMaintenance.json?.data?.status === 'completed' && Boolean(completeMaintenance.json?.data?.last_completed_at));
+
+    const reopenCompleted = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.admin, body: { status: 'in_progress' } });
+    record('PATCH completed maintenance is terminal', '409', `HTTP ${reopenCompleted.status}`, reopenCompleted.status === 409);
 
     const adminPatch = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.admin, body: { notes: 'admin patch verify' } });
     record('PATCH admin (superadmin) on IT schedule allowed', '200', `HTTP ${adminPatch.status}`, adminPatch.status === 200);
