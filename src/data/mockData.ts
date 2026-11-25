@@ -693,27 +693,22 @@ export const INITIAL_ARTICLES: KnowledgeArticle[] = [
   },
   {
     id: 'kb-003',
-    title: 'Pedoman Standar Penomoran Aset {DIVISI}-{KODE}-{TAHUN}-0001 & Kaidah Kepemilikan',
+    title: 'Pedoman Penomoran Aset dan Kaidah Owner Domain',
     category: 'Policy',
-    content: `## 1. Struktur Format Nomor Aset Resmi
-Sistem GABAH menetapkan standar penomoran aktiva terpusat:
-\`{DIVISI}-{KODE_KATEGORI}-{TAHUN}-{URUTAN_4_DIGIT}\`
+    content: `## 1. Status Standar Penomoran
+Standar nomor aset korporat belum disahkan. GABAH menggunakan aturan penerbitan teknis yang dapat dikelola Superadmin melalui Administrasi > Aturan Penomoran. Contoh nomor atau prefix historis bukan standar resmi perusahaan.
 
-Contoh:
-- \`IT-HLT-2026-0001\` : Laptop Tim IT, Tahun 2026, Urutan ke-1.
-- \`GA-INV-F-2026-0001\` : Meja Kerja Kantor, Kepemilikan GA.
-- \`SC-MSN-2026-0001\` : Mesin Pengolahan Padi Gudang Sragen.
-- \`PIBC-KDR-2026-0001\` : Mobil Patroli Pasar Induk Beras Cipinang.
+## 2. Aturan Penerbitan
+1. Nomor aset baru diterbitkan oleh backend berdasarkan aturan aktif saat aset dibuat.
+2. Perubahan aturan hanya berlaku untuk nomor baru; nomor historis tidak ditulis ulang.
+3. Nomor ERP Accurate disimpan terpisah dari nomor aset GABAH.
 
-## 2. Kaidah Khusus Kepemilikan Antar-Divisi
-1. **Kaidah Perabotan / Furniture (INV-F)**:
-   Semua perabotan, meja, kursi kantor adalah milik **Divisi GA**, di manapun lokasi fisik penempatannya (kantor pusat, gudang beras, maupun pasar PIBC).
-2. **Kaidah Perangkat IT (IT-H & IT-S)**:
-   Semua laptop, PC desktop, server, switch jaringan, dan lisensi software adalah milik **Divisi IT**. Staf GA hanya berwenang melihat (read-only) dan tidak dapat memindahtangankan tanpa persetujuan IT.
-3. **Kaidah Supply Chain (SC)**:
-   Meliputi mesin penggilingan (Rice Milling Plant), jembatan timbang truk, silo penyimpanan gabah, dan truk distribusi logistik.
-4. **Kaidah Pasar Induk Cipinang (PIBC)**:
-   Meliputi timbangan komoditas, fasilitas los pasar, pos pengamanan, dan aset operasional kawasan PIBC.`,
+## 3. Owner dan Lokasi
+1. Owner aset dipilih dari master owner domain yang disahkan, bukan disimpulkan dari lokasi kantor, lokasi fisik, jabatan, atau custodian.
+2. IT mengelola aset owner IT lintas lokasi; GA mengelola aset owner GA sesuai scope yang diberikan.
+3. RPC dan PIBC adalah konteks lokasi/operasional, bukan role aplikasi atau owner aset otomatis.
+4. GA hanya dapat membaca Laptop/PC owner IT jika permission baca khusus diberikan; hak baca tidak memberikan hak mutasi.
+5. Kode owner historis dipertahankan untuk audit dan tidak boleh dipakai sebagai dasar klasifikasi aset baru tanpa persetujuan.`,
     tags: ['Standar', 'Penomoran', 'Taksonomi', 'Kaidah', 'Inventaris'],
     view_count: 640,
     helpful_votes: 112,
