@@ -10,7 +10,9 @@ const ci = fs.readFileSync('.github/workflows/ci.yml', 'utf8');
 
 assert.match(server, /const isNotificationRecipient = \(actor: ServerUser, notification: any\): boolean =>/);
 assert.match(server, /if \(notification\.recipient_user_id\) return notification\.recipient_user_id === actor\.id;/);
-assert.match(server, /hasApplicationRole\(actor, primaryRoleKey\(notification\.recipient_role\)\)/);
+assert.match(server, /const notificationRoleKey = \(label: string\): string =>/);
+assert.match(server, /hasApplicationRole\(actor, notificationRoleKey\(notification\.recipient_role\)\)/);
+assert.doesNotMatch(server, /hasApplicationRole\(actor, primaryRoleKey\(notification\.recipient_role\)\)/);
 assert.match(server, /if \(notification\.recipient_division\) return notification\.recipient_division === actor\.division;/);
 assert.match(server, /const isRecipient = notif \? isNotificationRecipient\(actor, notif\) : false;/);
 assert.match(server, /app\.patch\('\/api\/notifications\/:id\/read',[\s\S]*?requireRbacPermission\(req, res, 'notifications\.read'\)/);
@@ -113,6 +115,26 @@ async function liveRecipientChecks() {
       sessions[key] = login.cookie || '';
       record(`Login ${key}`, '200 + session cookie', `HTTP ${login.status}`, login.status === 200 && Boolean(sessions[key]));
     }
+
+
+    const itRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.it });
+    const gaRoleNotifications = await request(base, 'GET', '/api/notifications', { cookie: sessions.ga });
+    const itRoleSeed = (itRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-001');
+    const gaRoleSeed = (gaRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-001');
+    const gaRoleSeedOwn = (gaRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-002');
+    const itRoleSeedOther = (itRoleNotifications.json?.data || []).find(item => item.id === 'NOTIF-002');
+    record('IT role receives role-targeted IT notification', 'NOTIF-001 visible to IT',
+      `HTTP ${itRoleNotifications.status}, visible=${Boolean(itRoleSeed)}`, itRoleNotifications.status === 200 && Boolean(itRoleSeed));
+    record('GA role does not receive role-targeted IT notification', 'NOTIF-001 hidden from GA',
+      `HTTP ${gaRoleNotifications.status}, visible=${Boolean(gaRoleSeed)}`, gaRoleNotifications.status === 200 && !gaRoleSeed);
+    record('GA role receives role-targeted GA notification', 'NOTIF-002 visible to GA',
+      `HTTP ${gaRoleNotifications.status}, visible=${Boolean(gaRoleSeedOwn)}`, gaRoleNotifications.status === 200 && Boolean(gaRoleSeedOwn));
+    record('IT role does not receive role-targeted GA notification', 'NOTIF-002 hidden from IT',
+      `HTTP ${itRoleNotifications.status}, visible=${Boolean(itRoleSeedOther)}`, itRoleNotifications.status === 200 && !itRoleSeedOther);
+    const wrongRoleRead = await request(base, 'PATCH', '/api/notifications/NOTIF-001/read', { cookie: sessions.ga });
+    const correctRoleRead = await request(base, 'PATCH', '/api/notifications/NOTIF-001/read', { cookie: sessions.it });
+    record('GA cannot mark IT role notification as read', '404', `HTTP ${wrongRoleRead.status}`, wrongRoleRead.status === 404);
+    record('IT can mark its own role notification as read', '200', `HTTP ${correctRoleRead.status}`, correctRoleRead.status === 200);
 
     const ticket = await request(base, 'POST', '/api/tickets', {
       cookie: sessions.admin,
