@@ -66,7 +66,7 @@ const checks = [
       && /UPDATE asset_categories[\s\S]*?UPPER\(BTRIM\(owner\.code\)\) IN \('SC', 'PIBC'\)/i.test(migration)
       && !/\bDELETE\s+FROM\s+(divisions|asset_categories|assets|contracts)\b/i.test(migration)],
   ['asset and contract owner filter controls derive from server-returned records, not role labels or asset-number prefixes',
-    /assets\.map\(asset => asset\.owner_division\)/.test(assetsUi)
+    /\.map\(asset => String\(asset\.owner_division/.test(assetsUi)
       && !/asset_number.*(?:startsWith|substring|slice)/.test(assetsUi)
       && /contract\.owner_division/.test(contractsUi)],
 ];
