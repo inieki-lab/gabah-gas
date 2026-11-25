@@ -280,3 +280,17 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
 ### 4.7 Blocker Pengujian Eksternal (jujur)
 - **Pengiriman email/Telegram nyata (status `sent` pada provider eksternal) belum dapat diuji end-to-end** — tidak ada SMTP relay maupun `TELEGRAM_BOT_TOKEN` di lingkungan verifikasi. Cakupan yang terverifikasi: jalur unconfigured→skipped, jalur gagal→failed dengan alasan jelas, dan pengiriman in-app→sent. Konfigurasi produksi: set env `GABAH_SMTP_*` dan `TELEGRAM_BOT_TOKEN` lalu ulangi verifikasi manual Seksi 3 Skenario 10 poin 4.
 - **Docker build tidak dapat diverifikasi** (Docker tidak tersedia di lingkungan verifikasi).
+
+
+### Skenario 2C: Custom Dynamic RBAC Read-Only Policy (setelah integrasi PR #301)
+- **Prasyarat:** Buat role fungsi kustom non-Auditor dan tetapkan permission `security.read_only`; berikan juga satu atau lebih permission tulis untuk memastikan policy deny-write mengalahkan grant tulis. Scope baca harus eksplisit dan terbatas. Jangan gunakan akun/DB produksi.
+- **Langkah:**
+  1. Assign role tersebut kepada user uji dengan profil primer Karyawan.
+  2. Verifikasi `GET /api/auth/me` tidak menampilkan hak Superadmin dan permission efektif tidak memuat permission mutasi.
+  3. Uji GET pada modul yang memiliki permission + scope; hanya record di dalam scope yang boleh tampil.
+  4. Uji POST, PUT, PATCH, dan DELETE terhadap endpoint mutasi yang relevan, termasuk direct-ID dan approval/status transitions; seluruhnya harus menerima HTTP 403.
+  5. Uji variasi path huruf besar/kecil dan trailing slash; hasil deny-write harus tetap sama.
+  6. Verifikasi logout dan tindakan baca notifikasi yang memang dikecualikan tetap berfungsi; pengecualian tidak boleh membuka mutasi lain.
+  7. Cabut permission `security.read_only`, refresh sesi/policy sesuai kontrak, lalu verifikasi perilaku kembali mengikuti permission dan scope yang tersisa.
+- **Kriteria Lulus:** Custom role non-Auditor dengan grant tulis tetap tidak dapat melakukan mutasi selama marker read-only aktif; Superadmin tidak dapat dielevasi melalui kombinasi assignment; read visibility tetap mengikuti scope eksplisit; revoke berlaku lintas instance sesuai SLA refresh policy.
+- **Status:** NOT RUN pada baseline `main` 25 November 2026. Jalankan hanya setelah PR #301 (atau implementasi ekuivalen) terintegrasi dan CI exact-head lulus.
