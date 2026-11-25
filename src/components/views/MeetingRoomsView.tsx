@@ -93,13 +93,13 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
 
   // PostgreSQL permission metadata is authoritative. Role-name checks remain
   // only as a compatibility path for the local file-store development mode.
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true
     || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
   const hasPermission = (permission: string, legacyFallback = false) =>
-    !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    !isReadOnly && (isSuperAdmin || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes(permission)
       : legacyFallback));
 
@@ -144,9 +144,9 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
     'room_reservations.cancel',
     GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH' || currentUser.role === 'Karyawan'
   );
-  const canCreateReservations = !isAuditor && hasPermission(
+  const canCreateReservations = !isReadOnly && hasPermission(
     'room_reservations.create',
-    !isAuditor
+    !isReadOnly
   );
   const canOperateReservations = canApproveReservations || canRejectReservations;
 
