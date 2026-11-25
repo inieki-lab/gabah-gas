@@ -522,14 +522,14 @@ async function main() {
       roomClientB.on('error', e => console.error('[room concurrency B]', e.message));
       await Promise.all([roomClientA.connect(), roomClientB.connect()]);
       await roomClientA.query('BEGIN');
-      await roomClientA.query(`UPDATE room_reservations SET status = 'pending' WHERE id = $1`, [roomReservationAId]);
+      await roomClientA.query(`UPDATE room_reservations SET status = 'pending_approval' WHERE id = $1`, [roomReservationAId]);
 
       await roomClientB.query('BEGIN');
       const roomBackendB = await roomClientB.query('SELECT pg_backend_pid() AS pid');
       let roomSecondSettled = false;
       let roomSecondError = null;
       const secondReservation = roomClientB.query(
-        `UPDATE room_reservations SET status = 'pending' WHERE id = $1`,
+        `UPDATE room_reservations SET status = 'pending_approval' WHERE id = $1`,
         [roomReservationBId],
       ).then(() => { roomSecondSettled = true; }, error => { roomSecondSettled = true; roomSecondError = error; });
 
@@ -556,12 +556,12 @@ async function main() {
       const roomStatusById = Object.fromEntries(roomStatuses.rows.map(row => [row.id, row.status]));
       const roomConcurrencyPass = waitedOnRoomLock
         && Boolean(roomSecondError)
-        && roomSecondError.code === 'P0001'
-        && roomStatusById[roomReservationAId] === 'pending'
+        && ['P0001', '23P01'].includes(roomSecondError.code)
+        && roomStatusById[roomReservationAId] === 'pending_approval'
         && roomStatusById[roomReservationBId] === 'cancelled';
       record(
         'Concurrent overlapping room reservations serialize and reject the second transaction',
-        'one pending + one cancelled; second transaction waits and receives P0001',
+        'one pending_approval + one cancelled; second transaction waits and receives P0001 (trigger) or 23P01 (exclusion constraint)',
         `waited=${waitedOnRoomLock}; error=${roomSecondError?.code || 'none'}; statuses=${JSON.stringify(roomStatusById)}`,
         roomConcurrencyPass,
       );
