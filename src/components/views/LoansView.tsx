@@ -65,12 +65,12 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'poor' | 'broken' | 'damaged'>('good');
   const [returnNotes, setReturnNotes] = useState<string>('');
 
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
   const hasEffectivePermission = (permission: string, legacyRoles: string[] = []) =>
-    !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+    !isReadOnly && (isSuperAdmin || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
       : legacyRoles.some(role => currentUser.role === role || GabahService.hasLegacyCapability(currentUser, role))));
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
@@ -96,7 +96,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const canHandover = (loan: Loan) => loan.allowed_actions?.handover
     ?? hasEffectivePermission('loans.handover', ['Admin GABAH', 'IT', 'GA']);
   const canReturn = (loan: Loan) => loan.allowed_actions?.return
-    ?? (!isAuditor && (hasEffectivePermission('loans.return', ['Admin GABAH', 'IT', 'GA']) || loan.borrower_id === currentUser.id));
+    ?? (!isReadOnly && (hasEffectivePermission('loans.return', ['Admin GABAH', 'IT', 'GA']) || loan.borrower_id === currentUser.id));
 
   return (
     <div className="space-y-6">
