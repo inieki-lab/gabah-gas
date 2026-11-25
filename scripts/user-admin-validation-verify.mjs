@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 const source = fs.readFileSync(new URL('../server.ts', import.meta.url), 'utf8');
+const authSource = fs.readFileSync(new URL('../server/auth.ts', import.meta.url), 'utf8');
 const routeStart = source.indexOf("app.patch('/api/users/:id'");
 const routeEnd = source.indexOf("app.delete('/api/users/:id'", routeStart);
 if (routeStart < 0 || routeEnd < 0) throw new Error('User PATCH route not found');
@@ -27,6 +28,10 @@ checks.push(
   ['DELETE protects active loan and assigned-asset custody', /activeBorrowerLoans\.length > 0 \|\| assignedAssets\.length > 0/.test(deleteRoute)],
   ['DELETE blocks accounts referenced by non-closed tickets as reporter or assignee', /const activeTickets = \(db\.tickets \|\| \[\]\)\.filter\(ticket =>[\s\S]*ticket\.reporter_id === targetId \|\| ticket\.assigned_agent_id === targetId[\s\S]*String\(ticket\.status\)\.toLowerCase\(\) !== 'closed'/.test(deleteRoute)],
   ['DELETE returns conflict before removing a user with active ticket ownership', /activeBorrowerLoans\.length > 0 \|\| assignedAssets\.length > 0 \|\| activeTickets\.length > 0[\s\S]*res\.status\(409\)/.test(deleteRoute)],
+);
+
+checks.push(
+  ['sanitizeUser excludes server-only authVersion from API responses', /const \{[^}]*authVersion[^}]*\.\.\.safe \} = user/.test(authSource)],
 );
 
 let failed = false;
