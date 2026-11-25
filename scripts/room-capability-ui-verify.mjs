@@ -34,7 +34,7 @@ assert.match(rooms, /'room_reservations\.checkin'/);
 assert.match(rooms, /'room_reservations\.checkout'/);
 assert.match(rooms, /'room_reservations\.cancel'/);
 assert.match(rooms, /'room_reservations\.create'/);
-assert.match(rooms, /const isReadOnly = GabahService.isReadOnly(currentUser)/);
+assert.match(rooms, /const isReadOnly = GabahService\\.isReadOnly\\(currentUser\\)/);
 assert.match(rooms, /const hasPermission = \(permission: string, legacyFallback = false\) =>\s*!isReadOnly &&/);
 assert.match(rooms, /\{isHumas && \(/);
 assert.match(rooms, /\{isSekdir && \(/);
@@ -49,7 +49,7 @@ assert.doesNotMatch(rooms, /isGAOrAdmin/);
 assert.doesNotMatch(rooms, /&& !isReadOnly &&/);
 
 assert.match(form, /const isSekdir = currentUser\.role === 'Sekretaris Direksi'[\s\S]*role_keys\?\.includes\('sekretaris_direksi'\)/);
-assert.match(form, /const isReadOnly = GabahService.isReadOnly(currentUser)/);
+assert.match(form, /const isReadOnly = GabahService\\.isReadOnly\\(currentUser\\)/);
 assert.match(form, /const canCreateReservation = !isReadOnly && \(isSuperAdmin \|\| \(hasPermissionMetadata/);
 assert.match(form, /if \(isReadOnly\) return false;/);
 assert.match(form, /currentUser\.permission_keys!\.includes\('room_reservations\.create'\)/);
