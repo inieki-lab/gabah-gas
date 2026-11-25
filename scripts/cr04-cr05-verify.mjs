@@ -21,6 +21,8 @@
  *      reloaded from PostgreSQL (authoritative store).
  *   9. RBAC: reminders/run admin-only (403 for others), scheduler-status
  *      admin-only, Auditor read-only.
+ *  10. A custom non-Auditor role with security.read_only keeps scoped reads,
+ *      loses write grants, and cannot be combined with Superadmin.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -1089,6 +1091,103 @@ async function main() {
       rbacAdminDenials.every(Boolean)
         && rbacCountsBefore.rows[0].roles === rbacCountsAfter.rows[0].roles
         && rbacCountsBefore.rows[0].assignments === rbacCountsAfter.rows[0].assignments);
+
+    // ---------- Generic read-only policy on an arbitrary Dynamic RBAC role ----------
+    // This is deliberately not the Auditor role: the custom role carries normal
+    // write grants too, so a 403 proves the read-only policy takes precedence.
+    let customReadOnlyRoleId = null;
+    try {
+      const createdReadOnlyRole = await req(base, 'POST', '/api/admin/rbac/roles', {
+        token: adminToken,
+        body: {
+          name: 'CI Custom Read Only',
+          role_key: 'ci_custom_read_only',
+          description: 'Integration fixture for generic read-only policy',
+          permission_keys: ['assets.read', 'assets.create', 'assets.update', 'tickets.read', 'security.read_only'],
+        },
+      });
+      customReadOnlyRoleId = Number(createdReadOnlyRole.json?.data?.id || 0) || null;
+      record('Custom role can be created with the security.read_only policy marker', '201 + role id',
+        `HTTP ${createdReadOnlyRole.status}; roleId=${customReadOnlyRoleId || '-'}`,
+        createdReadOnlyRole.status === 201 && Boolean(customReadOnlyRoleId));
+
+      if (customReadOnlyRoleId) {
+        const scoped = await req(base, 'PUT', `/api/admin/rbac/roles/${customReadOnlyRoleId}/scopes`, {
+          token: adminToken,
+          body: { scopes: [{ module: 'tickets', type: 'all', value: null }] },
+        });
+        record('Custom read-only role can receive explicit module scope', '200',
+          `HTTP ${scoped.status}`, scoped.status === 200);
+
+        const assigned = await req(base, 'PUT', `/api/admin/rbac/users/${rbacGuardUserId}/roles`, {
+          token: adminToken,
+          body: { role_ids: [customReadOnlyRoleId] },
+        });
+        record('Custom read-only role can be assigned to a Karyawan profile', '200',
+          `HTTP ${assigned.status}`, assigned.status === 200);
+
+        karyawanToken = { cookie: '' };
+        const relogin = await req(base, 'POST', '/api/auth/login', {
+          body: { email: KARYAWAN_EMAIL, password: USER_PASS },
+          token: karyawanToken,
+        });
+        const customReadOnlyMe = await req(base, 'GET', '/api/auth/me', { token: karyawanToken });
+        const effectivePermissions = customReadOnlyMe.json?.data?.permission_keys || [];
+        const effectiveRoleKeys = customReadOnlyMe.json?.data?.role_keys || [];
+        record('Custom read-only policy is exposed without pretending the user is Auditor', '200 + custom role + marker + no auditor key',
+          `login=${relogin.status}; me=${customReadOnlyMe.status}; roles=${effectiveRoleKeys.join(',')}; permissions=${effectivePermissions.join(',')}`,
+          relogin.status === 200 && customReadOnlyMe.status === 200
+            && effectiveRoleKeys.includes('ci_custom_read_only')
+            && !effectiveRoleKeys.includes('auditor')
+            && effectivePermissions.includes('security.read_only')
+            && effectivePermissions.includes('assets.read')
+            && effectivePermissions.includes('tickets.read')
+            && !effectivePermissions.includes('assets.create')
+            && !effectivePermissions.includes('assets.update'));
+
+        const scopedAssetRead = await req(base, 'GET', '/api/assets', { token: karyawanToken });
+        const scopedTicketRead = await req(base, 'GET', '/api/tickets', { token: karyawanToken });
+        const blockedAssetWrite = await req(base, 'POST', '/api/assets', { token: karyawanToken, body: {} });
+        record('Custom read-only role retains explicit scoped reads and blocks writes despite write grants', 'GET assets 200 + GET tickets 200 + POST 403',
+          `GET assets=${scopedAssetRead.status}; GET tickets=${scopedTicketRead.status}; POST=${blockedAssetWrite.status}`,
+          scopedAssetRead.status === 200 && scopedTicketRead.status === 200 && blockedAssetWrite.status === 403);
+
+        const readOnlyCheckClient = new pg.Client({ connectionString: TEST_DB_URL });
+        await readOnlyCheckClient.connect();
+        const superadminRole = await readOnlyCheckClient.query("SELECT id FROM gabah_roles WHERE role_key = 'superadmin'");
+        await readOnlyCheckClient.end();
+        const conflictingAssignment = await req(base, 'PUT', `/api/admin/rbac/users/${rbacGuardUserId}/roles`, {
+          token: adminToken,
+          body: { role_ids: [customReadOnlyRoleId, Number(superadminRole.rows[0]?.id)] },
+        });
+        record('Read-only custom role cannot be combined with Superadmin', '409',
+          `HTTP ${conflictingAssignment.status}`, conflictingAssignment.status === 409);
+      }
+    } catch (error) {
+      record('Generic read-only Dynamic RBAC integration', 'custom role assigned, read allowed, writes denied',
+        `error: ${error.message}`, false);
+    } finally {
+      if (customReadOnlyRoleId) {
+        await req(base, 'PUT', `/api/admin/rbac/users/${rbacGuardUserId}/roles`, {
+          token: adminToken,
+          body: { role_ids: [] },
+        }).catch(() => {});
+        await req(base, 'DELETE', `/api/admin/rbac/roles/${customReadOnlyRoleId}`, { token: adminToken }).catch(() => {});
+        karyawanToken = { cookie: '' };
+        await req(base, 'POST', '/api/auth/login', {
+          body: { email: KARYAWAN_EMAIL, password: USER_PASS },
+          token: karyawanToken,
+        }).catch(() => {});
+      }
+    }
+
+    // The extra live HTTP assertions above intentionally consume API calls.
+    // Reset only the ephemeral CI database limiter buckets so later unrelated
+    // integration scenarios retain their own deterministic rate-limit budget.
+    const readOnlyRateLimitReset = new pg.Client({ connectionString: TEST_DB_URL });
+    await readOnlyRateLimitReset.connect();
+    await readOnlyRateLimitReset.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type IN ('api', 'login')");
+    await readOnlyRateLimitReset.end();
 
 
     // ---------- PostgreSQL-backed notification rule administration ----------

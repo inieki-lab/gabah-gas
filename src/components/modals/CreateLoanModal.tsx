@@ -68,11 +68,11 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     );
   }, [loanableAssets, assets, existingLoans]);
 
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
-  const canCreateLoan = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+  const canCreateLoan = !isReadOnly && (isSuperAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('loans.create')
     : ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser.role)));
 

@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from 'express';
 import { db, ServerUser, ServerSession } from './db';
 import { authenticateRequest, checkApiRateLimit } from './auth';
 import { isPostgresPersistenceActive, isPostgresFailureLatched } from './persistence';
-import { isSuperadminActor, isAuditorActor, hasRbacScope, hasRbacPermission } from './rbac-policy';
+import { isSuperadminActor, isAuditorActor, isReadOnlyActor, hasRbacScope, hasRbacPermission } from './rbac-policy';
 import { GabahDomainService } from './services';
 import { extractClientIp } from './requestContext';
 
@@ -26,7 +26,8 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   const ticket = db.tickets.find(t => t.id === ticketId);
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
-  if (isAuditorActor(actor)) return false;
+  // Read-only denies mutation, not scoped visibility. A custom read-only role
+  // must still see tickets allowed by reporter ownership or explicit RBAC scope.
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
   if (isPostgresPersistenceActive()) {
     // PostgreSQL RBAC is owner-code agnostic: custom operational functions
@@ -174,16 +175,16 @@ export async function gabahSecurityMiddleware(req: Request, res: Response, next:
     (req as any).session = authResult.session;
   }
 
-  // Auditor is strictly READ-ONLY across the entire system.
-  // SECURITY (CR-01): switch-role is no longer an auditor exemption —
-  // identity switching must never be usable to escape the read-only gate.
-  if (isAuditorActor(actor) && req.method !== 'GET') {
-    const allowedAuditorActions = ['/api/auth/logout', '/api/notifications/read-all'];
+  // Read-only policy blocks every mutation, regardless of the role name that carries it.
+  // The legacy Auditor role remains a compatible source of this policy, while
+  // custom roles can receive it through the security.read_only permission.
+  if (isReadOnlyActor(actor) && req.method !== 'GET') {
+    const allowedReadOnlyActions = ['/api/auth/logout', '/api/notifications/read-all'];
     const isNotificationRead = normalizedPath.match(/^\/api\/notifications\/[^/]+\/read$/);
-    if (!allowedAuditorActions.includes(normalizedPath) && !isNotificationRead) {
+    if (!allowedReadOnlyActions.includes(normalizedPath) && !isNotificationRead) {
       return void res.status(403).json({
         success: false,
-        message: 'Akses ditolak: Peran Auditor memiliki hak akses Read-Only dan dilarang membuat atau mengubah data.',
+        message: 'Akses ditolak: akun ini memiliki kebijakan read-only.',
       });
     }
   }

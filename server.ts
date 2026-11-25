@@ -14,7 +14,7 @@ import { ContractDomainService, canSeeContract, canEditContract } from './server
 import { isEmailConfigured } from './server/notifications/emailProvider';
 import { isTelegramConfigured } from './server/notifications/telegramProvider';
 import { initializePersistence, persistDataStore, isPostgresPersistenceActive, isPostgresFailureLatched, queryRbac, withRbacTransaction, withLastSuperadminGuard } from './server/persistence';
-import { refreshRbacPolicy, startRbacPolicyRefresh, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor, isAuditorReadPermissionKey } from './server/rbac-policy';
+import { refreshRbacPolicy, startRbacPolicyRefresh, isRbacSuperadmin, isSuperadminActor, countRbacSuperadmins, hasRbacPermission, hasRbacScope, getEffectivePermissionKeys, getEffectiveRoleKeys, isAuditorActor, isReadOnlyActor, isReadOnlyPermissionKey } from './server/rbac-policy';
 import { startReminderScheduler, runManualOnce as runReminderManualOnce, getSchedulerStatus } from './server/notifications/reminderScheduler';
 import { gabahSecurityMiddleware, actorFor } from './server/runtime-hardening';
 import { requestContext, extractClientIp } from './server/requestContext';
@@ -416,10 +416,10 @@ async function startServer() {
   // production; JSON/file-store development retains legacy behavior during migration.
   const requireRbacPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
     const actor = (req as any).user as ServerUser | undefined;
-    // Auditor deny-write applies in both PostgreSQL and file-store modes and
-    // takes precedence over any other assigned role or permission.
-    if (actor && isAuditorActor(actor) && !isAuditorReadPermissionKey(permissionKey)) {
-      res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+    // Generic read-only policy applies in both PostgreSQL and file-store modes
+    // and takes precedence over every other assigned role or permission.
+    if (actor && isReadOnlyActor(actor) && !isReadOnlyPermissionKey(permissionKey)) {
+      res.status(403).json({ success: false, message: 'Akses ditolak: akun ini memiliki kebijakan read-only.' });
       return false;
     }
     if (!isPostgresPersistenceActive()) return true;
@@ -507,7 +507,7 @@ async function startServer() {
     if (message === 'RBAC_USER_NOT_FOUND') return res.status(404).json({ success: false, message: 'User target tidak ditemukan.' });
     if (message === 'RBAC_ROLE_INVALID') return res.status(400).json({ success: false, message: 'Satu atau lebih role tidak terdaftar atau sudah nonaktif.' });
     if (message === 'RBAC_LAST_SUPERADMIN') return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh kehilangan role Superadmin.' });
-    if (message === 'RBAC_AUDITOR_SUPERADMIN_CONFLICT') return res.status(409).json({ success: false, message: 'Role Auditor read-only tidak dapat digabung dengan role Superadmin pada satu akun.' });
+    if (message === 'RBAC_READONLY_SUPERADMIN_CONFLICT') return res.status(409).json({ success: false, message: 'Role dengan kebijakan read-only tidak dapat digabung dengan role Superadmin pada satu akun.' });
     return res.status(400).json({ success: false, message: 'Permintaan Dynamic RBAC tidak valid atau gagal diproses.' });
   };
 
@@ -737,8 +737,13 @@ async function startServer() {
         const assignmentIds = [...new Set([...uniqueIds, primaryRoleId])];
         const valid = await client.query('SELECT id, name, role_key, is_superadmin FROM gabah_roles WHERE is_active = TRUE AND id = ANY($1::bigint[])', [assignmentIds]);
         if (valid.rowCount !== assignmentIds.length) throw new Error('RBAC_ROLE_INVALID');
-        if (valid.rows.some(row => row.role_key === 'auditor') && valid.rows.some(row => row.is_superadmin)) {
-          throw new Error('RBAC_AUDITOR_SUPERADMIN_CONFLICT');
+        const readOnlyRole = await client.query(
+          "SELECT 1 FROM gabah_role_permissions WHERE role_id = ANY($1::bigint[]) AND permission_key = 'security.read_only' LIMIT 1",
+          [assignmentIds],
+        );
+        const hasReadOnlyPolicy = valid.rows.some(row => row.role_key === 'auditor') || readOnlyRole.rowCount > 0;
+        if (hasReadOnlyPolicy && valid.rows.some(row => row.is_superadmin)) {
+          throw new Error('RBAC_READONLY_SUPERADMIN_CONFLICT');
         }
         // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
         // target must keep a superadmin-capable role if it is the only holder.
@@ -748,7 +753,9 @@ async function startServer() {
             'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id ' +
             'JOIN users active_user ON active_user.id::text = ur.user_id AND active_user.is_active = TRUE ' +
             'WHERE r.is_superadmin = TRUE AND ur.user_id <> $1 ' +
-            'AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id WHERE aur.user_id = ur.user_id AND ar.role_key = \'auditor\')',
+            'AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id ' +
+            'LEFT JOIN gabah_role_permissions arp ON arp.role_id = ar.id AND arp.permission_key = \'security.read_only\' ' +
+            'WHERE aur.user_id = ur.user_id AND (ar.role_key = \'auditor\' OR arp.permission_key IS NOT NULL))',
             [userId],
           );
           if (Number(remaining.rows[0]?.count || 0) === 0) throw new Error('RBAC_LAST_SUPERADMIN');
@@ -2988,7 +2995,7 @@ async function startServer() {
           }
           // Bulk UPDATE uses the same owner-domain authorization as PATCH.
           // No role-name or physical-location shortcut grants mutation rights.
-          if (isAuditorActor(actor) || !canMutateAssetOwner(actor, existing.owner_division, 'assets.update')) {
+          if (isReadOnlyActor(actor) || !canMutateAssetOwner(actor, existing.owner_division, 'assets.update')) {
             errors.push(`Baris ${rowNo}: ${existing.asset_number} ditolak. Permission assets.update dan scope owner "${existing.owner_division}" wajib dimiliki.`);
             continue;
           }
@@ -3121,8 +3128,8 @@ async function startServer() {
     // Auditor remains strictly read-only. Every other user, including a
     // Karyawan with an explicitly assigned additional capability, is judged
     // by the same permission + owner-scope policy used by domain mutations.
-    if (isAuditorActor(actor)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+    if (isReadOnlyActor(actor)) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: akun ini memiliki kebijakan read-only.' });
     }
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.update')) {
       return res.status(403).json({
@@ -3398,7 +3405,7 @@ async function startServer() {
         handover: loan.status === 'approved'
           && GabahDomainService.canOperateLoan(loan, actor, 'loans.handover'),
         return: loan.status === 'borrowed'
-          && !isAuditorActor(actor)
+          && !isReadOnlyActor(actor)
           && (loan.borrower_id === actor.id
             || GabahDomainService.canOperateLoan(loan, actor, 'loans.return')),
       },
@@ -3535,8 +3542,8 @@ async function startServer() {
   app.post('/api/loans/:id/return', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (isAuditorActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+      if (isReadOnlyActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: akun ini memiliki kebijakan read-only.' });
       }
       const requestedLoan = db.loans.find(loan => loan.id === req.params.id);
       if (!requestedLoan) return res.status(404).json({ success: false, message: 'Data pinjaman tidak ditemukan.' });
@@ -3577,7 +3584,7 @@ async function startServer() {
         || canReadTicketUnit(ticket.assigned_unit_id)
       );
       const isReporterOfTicket = isReporter(ticket);
-      const canMutate = !isAuditorActor(actor);
+      const canMutate = !isReadOnlyActor(actor);
       return {
         ...ticket,
         allowed_actions: {
@@ -3605,7 +3612,7 @@ async function startServer() {
   // Manual assignment is permission + object-scope driven. Job titles and
   // display labels never qualify an operator for a ticket queue.
   const canManageTicketAssignment = (ticket: any, actor: ServerUser): boolean => {
-    if (isAuditorActor(actor)) return false;
+    if (isReadOnlyActor(actor)) return false;
     if (isSuperadminActor(actor)) return true;
     if (isPostgresPersistenceActive()) {
       return hasRbacPermission(String(actor.id), 'tickets.assign')
@@ -3616,7 +3623,7 @@ async function startServer() {
   };
 
   const getEligibleTicketAssignees = (ticket: any): ServerUser[] => db.users.filter(user => {
-    if (user.is_active === false || isAuditorActor(user) || isSuperadminActor(user)) return false;
+    if (user.is_active === false || isReadOnlyActor(user) || isSuperadminActor(user)) return false;
     if (!isPostgresPersistenceActive()) return user.role === ticket.category || hasApplicationRole(user, String(ticket.category || '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '_'));
     if (!hasRbacPermission(String(user.id), 'tickets.update')) return false;
     if (ticket.assigned_unit_id) {
@@ -3645,8 +3652,8 @@ async function startServer() {
     try {
       if (!requireRbacPermission(req, res, 'tickets.assign')) return;
       const actor = getActor(req);
-      if (isAuditorActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
+      if (isReadOnlyActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Akun ini memiliki kebijakan read-only.' });
       }
       const ticket = db.tickets.find(item => item.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
@@ -3764,8 +3771,8 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'tickets.read')) return;
     try {
       const actor = getActor(req);
-      if (isAuditorActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
+      if (isReadOnlyActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Akun ini memiliki kebijakan read-only.' });
       }
       const ticket = db.tickets.find(item => item.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
@@ -3851,8 +3858,8 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
-      if (isAuditorActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+      if (isReadOnlyActor(actor)) {
+        return res.status(403).json({ success: false, message: 'Akses ditolak: akun ini memiliki kebijakan read-only.' });
       }
       const ticket = db.tickets.find(t => t.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });

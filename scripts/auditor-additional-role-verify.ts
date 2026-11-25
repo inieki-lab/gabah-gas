@@ -68,4 +68,22 @@ assert.equal(GabahService.canEditAsset(canonicalGaEmployee, asset), false,
 assert.equal(GabahService.canManageTickets(canonicalGaEmployee), true,
   'file-store UI fallback must expose GA ticket actions to Karyawan with GA capability');
 
-console.log('Auditor additional-role deny-write and secondary-capability regression: PASS');
+const customReadOnlyRole = {
+  ...canonicalItEmployee,
+  id: 'USR-CUSTOM-READONLY',
+  role: 'Karyawan',
+  role_keys: ['custom_facilities_operator'],
+  permission_keys: ['security.read_only', 'assets.update', 'loans.approve', 'tickets.update'],
+} as UserProfile;
+assert.equal(GabahService.isAuditor(customReadOnlyRole), false,
+  'custom read-only roles must not be misidentified as the Auditor function');
+assert.equal(GabahService.isReadOnly(customReadOnlyRole), true,
+  'security.read_only must apply to any custom Dynamic RBAC role');
+assert.equal(GabahService.canEditAsset(customReadOnlyRole, asset), false,
+  'generic read-only policy must deny asset edits even when another role grants assets.update');
+assert.equal(GabahService.canApproveLoan(customReadOnlyRole), false,
+  'generic read-only policy must deny loan approval even when another role grants loans.approve');
+assert.equal(GabahService.canManageTickets(customReadOnlyRole), false,
+  'generic read-only policy must deny ticket mutations even when another role grants tickets.update');
+
+console.log('Read-only policy and Auditor additional-role deny-write regression: PASS');

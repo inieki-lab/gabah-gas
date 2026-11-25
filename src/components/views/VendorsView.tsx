@@ -51,12 +51,12 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
     });
     return () => { active = false; };
   }, []);
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
   const legacyVendorManager = !hasPermissionMetadata && ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const hasPermission = (permission: string) => !isAuditor && (isSuperAdmin
+  const hasPermission = (permission: string) => !isReadOnly && (isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
       : legacyVendorManager));

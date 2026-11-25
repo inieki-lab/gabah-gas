@@ -1,4 +1,10 @@
 import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const contractsService = fs.readFileSync(new URL('../server/contracts.ts', import.meta.url), 'utf8');
+const notificationLogMethod = contractsService.slice(contractsService.indexOf('getNotificationLogs('));
+assert.ok(notificationLogMethod.includes('isSuperadminActor(user) || isAuditorActor(user)'), 'contract notification logs must use effective Superadmin, not stored Admin GABAH label');
+assert.ok(!notificationLogMethod.includes("user.role === 'Admin GABAH'"), 'stored primary profile label must not grant global contract log visibility');
 
 const source = fs.readFileSync(new URL('../src/components/views/ContractsView.tsx', import.meta.url), 'utf8');
 const createModal = fs.readFileSync(new URL('../src/components/modals/CreateContractModal.tsx', import.meta.url), 'utf8');
@@ -33,8 +39,8 @@ const checks = [
   ],
   [
     'Contract creation form independently enforces contracts.create and Auditor deny-write',
-    createModal.includes("const isAuditor = GabahService.isAuditor(currentUser)")
-      && createModal.includes("const canCreateContract = !isAuditor")
+    createModal.includes("const isReadOnly = GabahService.isReadOnly(currentUser)")
+      && createModal.includes("const canCreateContract = !isReadOnly")
       && createModal.includes("currentUser.permission_keys!.includes('contracts.create')")
       && createModal.includes('if (!canCreateContract) return;')
       && createModal.includes('disabled={saving || !canCreateContract}'),
@@ -54,7 +60,7 @@ const checks = [
   ],
   [
     'Creating a linked helpdesk ticket is gated by tickets.create, not contract renewal decision',
-    source.includes("const canCreateLinkedTicket = !isAuditor && hasPermission('tickets.create'")
+    source.includes("const canCreateLinkedTicket = !isReadOnly && hasPermission('tickets.create'")
       && linkedTicketButton >= 0
       && linkedTicketAction > linkedTicketButton
       && (renewalDecisionButton < 0 || linkedTicketButton < renewalDecisionButton),

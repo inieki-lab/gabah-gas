@@ -40,14 +40,14 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   linkedContract,
   onCreateTicket,
 }) => {
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
-  const canCreateStandard = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+  const canCreateStandard = !isReadOnly && (isSuperAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('tickets.create') || currentUser.permission_keys!.includes('*')
     : ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser.role)));
-  const canRequestMe = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+  const canRequestMe = !isReadOnly && (isSuperAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('tickets.create.me') || currentUser.permission_keys!.includes('*')
     : false));
   const initialCategory: TicketCategory = canCreateStandard ? 'IT' : canRequestMe ? 'ME' : 'IT';
@@ -427,10 +427,10 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           </div>
 
           {/* Auditor Warning */}
-          {isAuditor && (
+          {isReadOnly && (
             <div className="p-3 bg-amber-50 rounded-xl border border-amber-300 text-amber-900 text-xs flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <span>Akun Auditor berstatus <strong>Read-Only</strong> untuk kepatuhan SPI. Anda tidak dapat membuat tiket baru.</span>
+              <span>Akun ini memiliki kebijakan <strong>Read-Only</strong>. Anda tidak dapat membuat tiket baru.</span>
             </div>
           )}
 

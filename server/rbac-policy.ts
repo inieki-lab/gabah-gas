@@ -114,35 +114,57 @@ export function startRbacPolicyRefresh(intervalMs = 5000): void {
   refreshTimer.unref?.();
 }
 
+const READ_ONLY_POLICY_PERMISSION = 'security.read_only';
+
 function isAuditorUserId(userId: string): boolean {
   return (policiesByUser.get(String(userId)) || []).some(policy => policy.roleKey === 'auditor');
 }
 
+function isReadOnlyUserId(userId: string): boolean {
+  return (policiesByUser.get(String(userId)) || []).some(policy =>
+    policy.roleKey === 'auditor' || policy.permissions.has(READ_ONLY_POLICY_PERMISSION)
+  );
+}
+
 /**
- * Auditors may receive explicitly assigned read capabilities, but any other
+ * Read-only users retain only explicitly granted read capabilities. Any other
  * permission is denied even when another assigned role (including Superadmin)
- * also carries it. New permission keys default to deny for Auditor.
+ * also carries it. New permission keys default to deny unless they match this
+ * narrow read-only allowlist.
  */
-export function isAuditorReadPermissionKey(permissionKey: string): boolean {
+export function isReadOnlyPermissionKey(permissionKey: string): boolean {
   const key = String(permissionKey || '').trim().toLowerCase();
   const segments = key.split('.');
-  return segments.some(segment =>
+  return key === READ_ONLY_POLICY_PERMISSION || segments.some(segment =>
     segment === 'read' || segment.startsWith('read_') || segment === 'view' || segment === 'list'
   ) || key === 'reports.export' || key === 'tickets.queue.me';
 }
 
+/** Backward-compatible name retained for existing Auditor policy callers/tests. */
+export const isAuditorReadPermissionKey = isReadOnlyPermissionKey;
+
 export function isRbacSuperadmin(userId: string): boolean {
   const policies = policiesByUser.get(String(userId)) || [];
-  return !policies.some(policy => policy.roleKey === 'auditor')
+  return !isReadOnlyUserId(userId)
     && policies.some(policy => policy.isSuperadmin);
 }
 
 /** Preserve local file-store development while making PostgreSQL role identity authoritative. */
-export function isSuperadminActor(actor: { id: string; role?: string; role_keys?: string[] }): boolean {
-  return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : actor.role === 'Admin GABAH' || actor.role_keys?.includes('superadmin') === true;
+export function isSuperadminActor(actor: { id: string; role?: string; role_keys?: string[]; permission_keys?: string[] }): boolean {
+  if (isPostgresPersistenceActive()) return isRbacSuperadmin(actor.id);
+  return !isReadOnlyActor(actor)
+    && (actor.role === 'Admin GABAH' || actor.role_keys?.includes('superadmin') === true);
 }
 
-/** Auditor is a deny-write capability: assigning it as an additional role must not bypass read-only enforcement. */
+/** Generic read-only policy; the legacy Auditor role remains a compatible source of this policy. */
+export function isReadOnlyActor(actor: { id: string; role?: string; role_keys?: string[]; permission_keys?: string[] }): boolean {
+  if (isPostgresPersistenceActive()) return isReadOnlyUserId(actor.id);
+  return actor.role === 'Auditor'
+    || actor.role_keys?.includes('auditor') === true
+    || actor.permission_keys?.includes(READ_ONLY_POLICY_PERMISSION) === true;
+}
+
+/** Auditor identity remains distinct because its read visibility is broader than a generic scoped read-only role. */
 export function isAuditorActor(actor: { id: string; role?: string; role_keys?: string[] }): boolean {
   if (isPostgresPersistenceActive()) return isAuditorUserId(actor.id);
   return actor.role === 'Auditor' || actor.role_keys?.includes('auditor') === true;
@@ -154,7 +176,7 @@ export function countRbacSuperadmins(activeUserIds?: string[]): number {
   for (const [userId, policies] of policiesByUser.entries()) {
     if (active && !active.has(userId)) continue;
     if (!policies.some(policy => policy.isSuperadmin)) continue;
-    if (policies.some(policy => policy.roleKey === 'auditor')) continue;
+    if (isReadOnlyUserId(userId)) continue;
     count++;
   }
   return count;
@@ -162,8 +184,8 @@ export function countRbacSuperadmins(activeUserIds?: string[]): number {
 
 export function hasRbacPermission(userId: string, permissionKey: string): boolean {
   const policies = policiesByUser.get(String(userId)) || [];
-  if (policies.some(policy => policy.roleKey === 'auditor')) {
-    return isAuditorReadPermissionKey(permissionKey)
+  if (isReadOnlyUserId(userId)) {
+    return isReadOnlyPermissionKey(permissionKey)
       && policies.some(policy => policy.permissions.has(permissionKey));
   }
   return isRbacSuperadmin(userId) || policies.some(policy => policy.permissions.has(permissionKey));
@@ -171,9 +193,9 @@ export function hasRbacPermission(userId: string, permissionKey: string): boolea
 
 export function getEffectiveRoleKeys(userId: string): string[] {
   const policies = policiesByUser.get(String(userId)) || [];
-  if (policies.some(policy => policy.roleKey === 'auditor')) {
-    // Do not expose a Superadmin role key to the UI while Auditor read-only
-    // precedence is active. Other assigned function roles remain visible.
+  if (isReadOnlyUserId(userId)) {
+    // A read-only policy suppresses Superadmin elevation but preserves other
+    // assigned function-role labels for scoped, read-only presentation.
     return [...new Set(policies.filter(policy => !policy.isSuperadmin).map(policy => policy.roleKey))];
   }
   if (isRbacSuperadmin(userId)) return ['superadmin'];
@@ -183,11 +205,11 @@ export function getEffectiveRoleKeys(userId: string): string[] {
 export function getEffectivePermissionKeys(userId: string): string[] {
   const policies = policiesByUser.get(String(userId)) || [];
   if (isRbacSuperadmin(userId)) return ['*'];
-  const auditor = policies.some(policy => policy.roleKey === 'auditor');
+  const readOnly = isReadOnlyUserId(userId);
   const keys = new Set<string>();
   for (const policy of policies) {
     for (const key of policy.permissions) {
-      if (!auditor || isAuditorReadPermissionKey(key)) keys.add(key);
+      if (!readOnly || isReadOnlyPermissionKey(key)) keys.add(key);
     }
   }
   return [...keys].sort();

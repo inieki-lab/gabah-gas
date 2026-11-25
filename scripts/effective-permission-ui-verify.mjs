@@ -10,7 +10,7 @@ assert.ok(source.includes("this.hasEffectivePermission(user, 'assets.update')"))
 assert.ok(source.includes("this.hasEffectivePermission(user, 'loans.approve')"));
 assert.ok(source.includes("this.hasEffectivePermission(user, key)"));
 const auditor = source.indexOf('static canApproveLoan(');
-assert.ok(source.slice(auditor, auditor + 220).includes('this.isAuditor(user)'), 'Auditor remains deny-write');
+assert.ok(source.slice(auditor, auditor + 220).includes('this.isReadOnly(user)'), 'Auditor remains deny-write');
 assert.match(header, /isSuperadmin \? \(/, 'Account directory must only render for Superadmin');
 assert.match(header, /Direktori akun hanya dapat diakses Superadmin/, 'Non-Superadmin receives a privacy-safe account menu state');
 assert.match(header, /\{\(allUsers \|\| \[\]\)\.map\(user =>/, 'Registered account list remains available inside the Superadmin-only branch');

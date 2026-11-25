@@ -15,7 +15,7 @@ assert.ok(route.includes('isOperationalHandler'), 'actions must use object-level
 assert.ok(route.includes("hasRbacPermission(String(actor.id), 'tickets.update')"), 'operator actions must require tickets.update');
 assert.ok(route.includes('close: canMutate && (isOperationalHandler || isReporterOfTicket)'), 'reporter confirmation must not require operator permission');
 assert.ok(route.includes('isReporterOfTicket'), 'reporter-only close/reopen actions must be represented');
-assert.ok(route.includes('canMutate = !isAuditorActor(actor)'), 'Auditor must receive no mutation actions');
+assert.ok(route.includes('canMutate = !isReadOnlyActor(actor)'), 'Auditor must receive no mutation actions');
 assert.ok(route.includes('data: db.tickets.map(withAllowedActions)'), 'Superadmin/Auditor response must include action metadata');
 assert.ok(route.includes('.map(withAllowedActions)'), 'scoped ticket response must include action metadata');
 assert.ok(types.includes('allowed_actions?:'), 'Ticket type must model API action metadata');

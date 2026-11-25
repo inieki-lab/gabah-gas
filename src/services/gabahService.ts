@@ -644,21 +644,28 @@ export class GabahService {
     return this.hasLegacyCapability(user, 'auditor');
   }
 
+  /** Read-only is a policy that may be assigned to any Dynamic RBAC role. */
+  static isReadOnly(user?: UserProfile): boolean {
+    return this.isAuditor(user)
+      || user?.permission_keys?.includes('security.read_only') === true;
+  }
+
   static isSuperAdmin(user?: UserProfile): boolean {
-    if (!user) return false;
+    if (!user || this.isReadOnly(user)) return false;
     return user.is_superadmin === true
       || user.role_keys?.includes('superadmin') === true
       || (!Array.isArray(user.permission_keys) && user.role === 'Admin GABAH');
   }
 
   static hasEffectivePermission(user: UserProfile, permission: string): boolean {
+    if (this.isReadOnly(user)) return false;
     if (this.isSuperAdmin(user)) return true;
     return Array.isArray(user.permission_keys)
       && (user.permission_keys.includes('*') || user.permission_keys.includes(permission));
   }
 
   static canEditAsset(user?: UserProfile, asset?: Asset | null): boolean {
-    if (!user || !asset || this.isAuditor(user)) return false;
+    if (!user || !asset || this.isReadOnly(user)) return false;
     // PostgreSQL/Dynamic RBAC: the API has already applied the object's owner
     // scope. The client checks the effective operation permission only.
     if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
@@ -673,7 +680,7 @@ export class GabahService {
   }
 
   static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
-    if (!user || this.isAuditor(user)) return false;
+    if (!user || this.isReadOnly(user)) return false;
     if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
       return this.hasEffectivePermission(user, 'loans.approve');
     }
@@ -686,7 +693,7 @@ export class GabahService {
   }
 
   static canAssignTickets(user?: UserProfile): boolean {
-    if (!user || this.isAuditor(user)) return false;
+    if (!user || this.isReadOnly(user)) return false;
     if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
       return this.hasEffectivePermission(user, 'tickets.assign');
     }
@@ -694,7 +701,7 @@ export class GabahService {
   }
 
   static canManageTickets(user?: UserProfile): boolean {
-    if (!user || this.isAuditor(user)) return false;
+    if (!user || this.isReadOnly(user)) return false;
     if (Array.isArray(user.permission_keys) || this.isSuperAdmin(user)) {
       return ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => this.hasEffectivePermission(user, key));
     }

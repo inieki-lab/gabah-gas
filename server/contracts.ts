@@ -3,7 +3,7 @@ import { db, ServerUser, ServerContract, ServerContractDocument, ServerContractM
 import { AssetNumberingEngine } from './numbering';
 import { queueNotification, summarize, SCHEDULER_ACTOR } from './notifications/notificationService';
 import { persistDataStore, isPostgresPersistenceActive, isPostgresFailureLatched, reserveContractNumberSequence } from './persistence';
-import { hasRbacPermission, hasRbacScope, isSuperadminActor, isAuditorActor } from './rbac-policy';
+import { hasRbacPermission, hasRbacScope, isSuperadminActor, isAuditorActor, isReadOnlyActor } from './rbac-policy';
 
 /**
  * CONTRACT MANAGEMENT — separate business domain.
@@ -103,7 +103,7 @@ export function canSeeContract(user: ServerUser, contract: ServerContract): bool
 }
 
 export function canManageContracts(user: ServerUser): boolean {
-  if (isAuditorActor(user)) return false;
+  if (isReadOnlyActor(user)) return false;
   if (isSuperadminActor(user)) return true;
   if (isPostgresPersistenceActive()) {
     return hasRbacPermission(String(user.id), 'contracts.create')
@@ -114,7 +114,7 @@ export function canManageContracts(user: ServerUser): boolean {
 
 /** Creation is a distinct capability; update-only users must not create records. */
 export function canCreateContract(user: ServerUser): boolean {
-  if (isAuditorActor(user)) return false;
+  if (isReadOnlyActor(user)) return false;
   if (isSuperadminActor(user)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(user.id), 'contracts.create');
   return hasLegacyContractCapability(user, 'IT') || hasLegacyContractCapability(user, 'GA');
@@ -122,7 +122,7 @@ export function canCreateContract(user: ServerUser): boolean {
 
 // SEC-08: Expose canEditContract for server.ts file upload validation
 export function canEditContract(user: ServerUser, contract: ServerContract): boolean {
-  if (isAuditorActor(user)) return false;
+  if (isReadOnlyActor(user)) return false;
   if (isSuperadminActor(user)) return true;
   const owner = String(contract.owner_division || '').trim().toUpperCase();
   if (!owner) return false;
@@ -561,7 +561,7 @@ export const ContractDomainService = {
 
   getNotificationLogs(user: ServerUser, contractId?: string): ServerContractNotificationLog[] {
     const logs = contractId ? db.contractNotificationLogs.filter(l => l.contract_id === contractId) : db.contractNotificationLogs;
-    if (user.role === 'Admin GABAH' || isAuditorActor(user)) return logs;
+    if (isSuperadminActor(user) || isAuditorActor(user)) return logs;
     const visibleContracts = new Set(this.listContracts(user).map(c => c.id));
     return logs.filter(l => visibleContracts.has(l.contract_id));
   },

@@ -7,7 +7,7 @@ import { validateAssetLocation, resolveAssetLocationIdByText } from './asset-loc
 import { persistDataStore, reserveAssetNumberSequence, isPostgresPersistenceActive, isPostgresFailureLatched } from './persistence';
 import { requestContext } from './requestContext';
 import { canSeeContract } from './contracts';
-import { isSuperadminActor, isAuditorActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
+import { isSuperadminActor, isAuditorActor, isReadOnlyActor, getUserRbacPolicies, hasRbacPermission, hasRbacScope } from './rbac-policy';
 import { parseLoanDateTimestamp } from '../shared/loan-datetime';
 
 /**
@@ -35,7 +35,7 @@ export function isNonLoanableInfrastructureAsset(asset: Partial<ServerAsset> & R
 interface AssetScopeSpec { type: string; value: string | null }
 
 function hasRoomPermission(actor: ServerUser, permissionKey: string, legacyRole?: string | string[]): boolean {
-  if (isAuditorActor(actor)) return false;
+  if (isReadOnlyActor(actor)) return false;
   if (isSuperadminActor(actor)) return true;
   if (isPostgresPersistenceActive()) return hasRbacPermission(String(actor.id), permissionKey);
 
@@ -816,8 +816,8 @@ export class GabahDomainService {
     due_date: string;
     borrower_phone?: string;
   }, actor: ServerUser): ServerLoan {
-    if (isAuditorActor(actor)) {
-      throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
+    if (isReadOnlyActor(actor)) {
+      throw Object.assign(new Error('Akses ditolak: akun ini memiliki kebijakan read-only.'), { statusCode: 403 });
     }
     // Self-service requests may only be created for the authenticated borrower.
     // Creating on behalf of another employee is a separate delegated capability;
@@ -1091,7 +1091,7 @@ export class GabahDomainService {
    * scope for the Loans module. Physical site and employee office do not grant access.
    */
   static canOperateLoan(loan: ServerLoan, actor: ServerUser, permissionKey: 'loans.approve' | 'loans.reject' | 'loans.handover' | 'loans.return' = 'loans.handover'): boolean {
-    if (isAuditorActor(actor)) return false;
+    if (isReadOnlyActor(actor)) return false;
     if (isSuperadminActor(actor)) return true;
 
     // Loan authority follows the asset's actual owner domain, not its
@@ -1167,8 +1167,8 @@ export class GabahDomainService {
     if (returnNotes !== undefined && (typeof returnNotes !== 'string' || returnNotes.includes('\u0000') || returnNotes.length > 2000)) {
       throw Object.assign(new Error('Catatan pengembalian harus berupa teks tanpa NUL dan maksimal 2.000 karakter.'), { statusCode: 400 });
     }
-    if (isAuditorActor(actor)) {
-      throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
+    if (isReadOnlyActor(actor)) {
+      throw Object.assign(new Error('Akses ditolak: akun ini memiliki kebijakan read-only.'), { statusCode: 403 });
     }
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
@@ -1226,8 +1226,8 @@ export class GabahDomainService {
     related_asset_id?: string;
     contract_id?: string;
   }, actor: ServerUser, persistAudit = true): ServerTicket {
-    if (isAuditorActor(actor)) {
-      throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
+    if (isReadOnlyActor(actor)) {
+      throw Object.assign(new Error('Akses ditolak: akun ini memiliki kebijakan read-only.'), { statusCode: 403 });
     }
 
     // Match the normalized PostgreSQL schema before mutating in-memory state.
@@ -1555,7 +1555,7 @@ export class GabahDomainService {
   }, actor: ServerUser): Promise<ServerRoomReservation> {
     const canCreateReservation = isPostgresPersistenceActive()
       ? hasRoomPermission(actor, 'room_reservations.create')
-      : !isAuditorActor(actor);
+      : !isReadOnlyActor(actor);
     if (!canCreateReservation) {
       throw Object.assign(new Error('Akses ditolak: Anda tidak memiliki izin membuat reservasi.'), { statusCode: 403 });
     }

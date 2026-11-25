@@ -44,11 +44,11 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
   onReturnLoan,
 }) => {
   const [filterType, setFilterType] = useState<'all' | 'assigned' | 'loaned'>('all');
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
-  const hasEffectivePermission = (permission: string, legacyRoles: string[]): boolean => !isAuditor && (
+  const hasEffectivePermission = (permission: string, legacyRoles: string[]): boolean => !isReadOnly && (
     isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
@@ -464,7 +464,7 @@ export const MyAssetsView: React.FC<MyAssetsViewProps> = ({
                           </button>
                         )}
 
-                        {!isAuditor && (loan.status === 'borrowed' || loan.status === 'active') && (
+                        {!isReadOnly && (loan.status === 'borrowed' || loan.status === 'active') && (
                           <button
                             onClick={() => {
                               if (onReturnLoan) {

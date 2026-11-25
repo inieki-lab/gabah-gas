@@ -100,12 +100,12 @@ export const AssetDetailModal: React.FC<AssetDetailModalProps> = ({
   const isGA = ownerDivision === 'GA' || (!isSC && !isPIBC && !isIT);
   const isLicense = asset.category_type === 'License' || asset.category_code === 'SLIC' || asset.asset_number?.includes('-SLIC-');
   const canEdit = currentUser ? GabahService.canEditAsset(currentUser, asset) : false;
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser?.permission_keys);
   const isSuperAdmin = currentUser?.is_superadmin === true
     || currentUser?.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser?.role === 'Admin GABAH');
-  const hasEffectivePermission = (permission: string, legacyRoles: string[]): boolean => !isAuditor && (
+  const hasEffectivePermission = (permission: string, legacyRoles: string[]): boolean => !isReadOnly && (
     isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser?.permission_keys?.includes('*') === true || currentUser?.permission_keys?.includes(permission) === true
