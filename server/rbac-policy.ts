@@ -127,9 +127,10 @@ function isReadOnlyUserId(userId: string): boolean {
 }
 
 /**
- * Auditors may receive explicitly assigned read capabilities, but any other
+ * Read-only users retain only explicitly granted read capabilities. Any other
  * permission is denied even when another assigned role (including Superadmin)
- * also carries it. New permission keys default to deny for Auditor.
+ * also carries it. New permission keys default to deny unless they match this
+ * narrow read-only allowlist.
  */
 export function isReadOnlyPermissionKey(permissionKey: string): boolean {
   const key = String(permissionKey || '').trim().toLowerCase();
