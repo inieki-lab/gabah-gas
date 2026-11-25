@@ -61,16 +61,16 @@ export function isSuperadminNavigationAllowed(
  * navigation labels and queue badges.
  */
 const OPERATIONAL_NAVIGATION_PERMISSIONS: readonly string[] = [
-  'assets.create', 'assets.update', 'assets.assign', 'assets.move', 'assets.lifecycle',
+  'assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign', 'assets.move', 'assets.lifecycle',
   'loans.approve', 'loans.reject', 'loans.handover', 'loans.return',
-  'tickets.update', 'tickets.assign',
+  'tickets.assign', 'tickets.update',
   'maintenances.create', 'maintenances.update',
-  'meeting_rooms.update', 'meeting_facilities.manage',
   'room_reservations.approve', 'room_reservations.reject',
+  'meeting_rooms.update', 'meeting_types.manage', 'meeting_facilities.manage',
   'room_reservations.checkin', 'room_reservations.checkout',
-  'vendors.create', 'vendors.update',
-  'contracts.create', 'contracts.update',
-  'licenses.update',
+  'licenses.manage', 'knowledge.create', 'knowledge.update',
+  'contracts.create', 'contracts.update', 'contracts.documents.upload',
+  'vendors.create', 'vendors.update', 'organization.manage', 'master_data.manage',
 ];
 
 /** True only for employee-facing personas without operational management grants. */
