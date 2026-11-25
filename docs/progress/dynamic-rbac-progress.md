@@ -1650,3 +1650,10 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added an end-to-end HTTP regression that creates two overlapping pending requests for one IT pool asset, approves the first, and verifies the second is rejected with 409 while remaining pending.
 - The test also verifies the physical asset remains reserved for the winning approval; no request or asset state is silently overwritten.
 - Exact-head CI is required before merge.
+
+
+### Loan regression fixture isolation — 2026-11-25 (PR #284)
+- Exact-head CI confirmed the overlapping pending-request test itself passes: both requests are created, first approval returns 200, second returns 409, and the asset remains reserved.
+- The same test had reserved `itAsset6` before the existing self-approval regression reused it. That fixture collision caused the self-approval setup to fail before the authorization assertion could run.
+- Added a dedicated `itAsset7` fixture for self-approval and expanded the fixture-count assertion. This changes test isolation only; application authorization and reservation behavior are unchanged.
+- Full exact-head CI must pass before merge.
