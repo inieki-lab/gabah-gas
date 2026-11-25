@@ -1716,3 +1716,5 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Added an isolated runtime regression for two overlapping pending requests against the same loan-pool asset.
 - The first owner-domain approval must reserve the asset; the second approval must return HTTP 409, leave its request pending, and preserve the first reservation.
 - This specifically protects the reported loan-pool collision path without blocking multiple employees from submitting requests while an asset is still available.
+
+- CI PR #284 caught test-fixture interference: the overlapping-request regression reserved the same asset later used by the self-approval checks. Added a dedicated ninth IT loanable fixture for self-approval so the two regressions remain isolated; no application behavior changed.
