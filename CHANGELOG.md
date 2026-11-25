@@ -1,4 +1,5 @@
 ## [2026-11-25] — Preserve loan request form on API failure and forward borrower contact
+- Disable the submit action while the asynchronous request is in flight to prevent duplicate submissions from repeated taps.
 - Keep the loan request modal open until the parent receives a successful API response; validation, network, or persistence errors no longer discard the user's form context.
 - Forward the entered borrower phone through both single-asset and batch-asset request paths, and extend API payload types plus loanable-pool UI regression checks.
 
