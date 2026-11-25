@@ -37,7 +37,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
   const isReadOnly = GabahService.isReadOnly(currentUser);
   const canCreateContract = !isReadOnly && (isAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('contracts.create')
-    : GabahService.hasLegacyCapability(currentUser, 'it') || GabahService.hasLegacyCapability(currentUser, 'ga'));
+    : GabahService.hasLegacyCapability(currentUser, 'it') || GabahService.hasLegacyCapability(currentUser, 'ga')));
   const ownDivision = (currentUser.division || 'GA').toUpperCase();
 
   const [contractType, setContractType] = useState('Umum');
