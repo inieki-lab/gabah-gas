@@ -184,6 +184,7 @@ async function main() {
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
     const itAsset5 = await mkAsset('HLT', 'IT', 'LoanAuthz unavailable request fixture');
     const itAsset6 = await mkAsset('HLT', 'IT', 'LoanAuthz approval recheck fixture');
+    const itAsset7 = await mkAsset('HLT', 'IT', 'LoanAuthz self-approval fixture');
 
     // Asset creation must never silently ignore a missing or inactive custodian.
     const inactiveCustodian = await req(base, 'POST', '/api/users', {
@@ -216,9 +217,9 @@ async function main() {
     record('Asset creation rejects inactive initial custodian without creating an orphan asset', '404 + no asset created',
       `deactivate ${deactivateInitialCustodian.status}, create ${rejectedInitialAssignment.status}, absent ${noOrphanedInitialAsset}`,
       deactivateInitialCustodian.status === 200 && rejectedInitialAssignment.status === 404 && noOrphanedInitialAsset);
-    record('Setup: 8 loanable fixtures created (6 IT + 2 GA)', 'ids issued',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].filter(a => a.id).length + ' ids',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].every(a => a.id));
+    record('Setup: 9 loanable fixtures created (7 IT + 2 GA)', 'ids issued',
+      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6, itAsset7].filter(a => a.id).length + ' ids',
+      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6, itAsset7].every(a => a.id));
 
     const patchAsset = (assetId, body) => req(base, 'PATCH', `/api/assets/${assetId}`, { token: admin.token, body });
     const protectedInfrastructure = await req(base, 'POST', '/api/assets', {
@@ -412,7 +413,7 @@ async function main() {
     const appr = async (loanId, token) => req(base, 'POST', `/api/loans/${loanId}/approve`, { token, body: {} });
     // Separation of duties: an IT custodian may request an asset, but cannot
     // approve that same request. Superadmin is the explicit break-glass exception.
-    const selfApprovalLoan = await mkLoan(it.token, itAsset6.id);
+    const selfApprovalLoan = await mkLoan(it.token, itAsset7.id);
     const selfApprovalAttempt = selfApprovalLoan.id
       ? await appr(selfApprovalLoan.id, it.token)
       : { status: 0 };
