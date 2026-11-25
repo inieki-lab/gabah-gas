@@ -533,6 +533,6 @@ export function authenticateRequest(req: Request): {
  * Sanitize user object to never leak password hashes or internal secrets to client
  */
 export function sanitizeUser(user: ServerUser, options: { includeTelegramChatId?: boolean } = {}): Record<string, any> {
-  const { password_hash, password_salt, temp_password, telegram_chat_id, ...safe } = user;
+  const { password_hash, password_salt, temp_password, telegram_chat_id, authVersion, ...safe } = user;
   return options.includeTelegramChatId && telegram_chat_id ? { ...safe, telegram_chat_id } : safe;
 }
