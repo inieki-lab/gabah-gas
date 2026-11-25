@@ -38,6 +38,7 @@ const checks = [
   ['Single and batch loan API payloads accept the optional borrower phone', /requestLoan\(payload: \{[\s\S]*?borrower_phone\?: string/.test(apiClient) && /requestBatchLoans\(payload: \{[\s\S]*?borrower_phone\?: string/.test(apiClient)],
   ['Loan form forwards the entered borrower phone through both single and batch request paths', /requestBatchLoans\([\s\S]*?borrower_phone: data\.borrower_phone/.test(app) && /requestLoan\([\s\S]*?borrower_phone: data\.borrower_phone/.test(app)],
   ['Loan request form remains open until the parent confirms API success', /onRequestLoan\(\{[\s\S]*?borrower_phone: borrowerPhone\.trim\(\),\s*\}\);\s*\/\/ The parent closes this modal only after the API confirms success\./.test(source) && !/onRequestLoan\(\{[\s\S]*?\}\);\s*onClose\(\);/.test(source)],
+  ['Loan form prevents duplicate submissions while the API request is pending', /if \(isSubmitting\) return/.test(source) && /disabled=\{isSubmitting \|\| !canCreateLoan/.test(source) && /isSubmitting \? 'Mengirim Permohonan\.\.\.'/i.test(source)],
 ];
 
 for (const [name, pass] of checks) console.log(`${pass ? 'PASS' : 'FAIL'} | ${name}`);
