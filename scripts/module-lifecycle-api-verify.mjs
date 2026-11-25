@@ -10,7 +10,7 @@ const checks = [
   ['Auth, health, and administration endpoints bypass module gating', /isModuleManagedPath = \(req: express\.Request\)/.test(server) && /!isModuleManagedPath\(req\)/.test(server)],
   ['Disabled modules block before business route handlers', /app\.use\(async \(req, res, next\)/.test(server) && /code: 'MODULE_DISABLED'/.test(server)],
   ['Registry failures fail closed', /code: 'MODULE_STATUS_UNAVAILABLE'/.test(server)],
-  ['Only Superadmin can read the module registry', /app\.get\('\/api\/modules'[\s\S]*?requireRbacSuperadmin\(req, res\)/.test(server)],
+  ['Authenticated users can read global module availability for navigation', /app\.get\('\/api\/modules'[\s\S]*?getActor\(req\)[\s\S]*?SELECT module_key, name, description, is_active/.test(server)],
   ['Only Superadmin can update module status', /app\.patch\('\/api\/modules\/:moduleKey'[\s\S]*!isSuperadminActor\(actor\)/.test(server)],
   ['Only Superadmin can read module audit', /app\.get\('\/api\/modules\/:moduleKey\/audit'[\s\S]*!isSuperadminActor\(actor\)/.test(server)],
   ['Status is a strict boolean', /typeof is_active !== 'boolean'/.test(server)],
