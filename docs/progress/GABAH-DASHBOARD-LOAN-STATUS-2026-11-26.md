@@ -20,8 +20,8 @@ Impact: dashboard tiles could under-report pending approvals and loans currently
 - Added shared pure status classifiers in `src/utils/dashboardLoanStatus.ts`.
 - Pending states: `pending` (legacy compatibility) and `pending_approval`.
 - Active/reservation states: `active` (legacy), `approved`, `borrowed`, and `overdue`.
-- Updated global and employee dashboard counts to use the same classifiers.
-- Added a regression test for positive and terminal states, registered in npm and CI.
+- Updated global and employee dashboard counts, sidebar pending-loan badge, and dashboard loan status badges to use the same classifiers.
+- Added a regression test for positive and terminal states and asserted App/sidebar + DashboardView both use the shared classifiers; registered in npm and CI.
 
 ## Validation
 
