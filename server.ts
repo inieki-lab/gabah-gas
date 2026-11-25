@@ -737,7 +737,12 @@ async function startServer() {
         const assignmentIds = [...new Set([...uniqueIds, primaryRoleId])];
         const valid = await client.query('SELECT id, name, role_key, is_superadmin FROM gabah_roles WHERE is_active = TRUE AND id = ANY($1::bigint[])', [assignmentIds]);
         if (valid.rowCount !== assignmentIds.length) throw new Error('RBAC_ROLE_INVALID');
-        if (valid.rows.some(row => row.role_key === 'auditor') && valid.rows.some(row => row.is_superadmin)) {
+        const readOnlyRole = await client.query(
+          "SELECT 1 FROM gabah_role_permissions WHERE role_id = ANY($1::bigint[]) AND permission_key = 'security.read_only' LIMIT 1",
+          [assignmentIds],
+        );
+        const hasReadOnlyPolicy = valid.rows.some(row => row.role_key === 'auditor') || readOnlyRole.rowCount > 0;
+        if (hasReadOnlyPolicy && valid.rows.some(row => row.is_superadmin)) {
           throw new Error('RBAC_AUDITOR_SUPERADMIN_CONFLICT');
         }
         // Last-superadmin protection mirrors PATCH/DELETE /api/users/:id: the
@@ -748,7 +753,9 @@ async function startServer() {
             'SELECT COUNT(*)::int AS count FROM gabah_user_roles ur JOIN gabah_roles r ON r.id = ur.role_id ' +
             'JOIN users active_user ON active_user.id::text = ur.user_id AND active_user.is_active = TRUE ' +
             'WHERE r.is_superadmin = TRUE AND ur.user_id <> $1 ' +
-            'AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id WHERE aur.user_id = ur.user_id AND ar.role_key = \'auditor\')',
+            'AND NOT EXISTS (SELECT 1 FROM gabah_user_roles aur JOIN gabah_roles ar ON ar.id = aur.role_id ' +
+            'LEFT JOIN gabah_role_permissions arp ON arp.role_id = ar.id AND arp.permission_key = \'security.read_only\' ' +
+            'WHERE aur.user_id = ur.user_id AND (ar.role_key = \'auditor\' OR arp.permission_key IS NOT NULL))',
             [userId],
           );
           if (Number(remaining.rows[0]?.count || 0) === 0) throw new Error('RBAC_LAST_SUPERADMIN');
