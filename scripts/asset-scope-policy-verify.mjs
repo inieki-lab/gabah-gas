@@ -31,6 +31,8 @@ const gabahService = read('src/services/gabahService.ts');
 const dashboardUi = read('src/components/views/DashboardView.tsx');
 
 const checks = [
+  ['File-store ticket visibility grants global read to any effective Auditor assignment', /static isTicketVisibleToUser\([\s\S]*?if \(this\.isAuditor\(user\)\) \{\s*return true;/.test(gabahService) && !/if \(user\.role === 'Auditor'\)/.test(gabahService)],
+
   ['Assignment BAST action is hidden when asset edit authority is absent', /onOpenBastModal && canEditThisAsset && \(asset\.assigned_to \|\| selectedUserId\)/.test(assetEditUi)],
   ['Current office master keeps HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(dbSeed) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(dbSeed) && /id: 'OFF-RPC', name: 'RPC', is_active: true/.test(dbSeed) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(dbSeed) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(dbSeed)],
   ['Persistence fallback keeps all five approved office locations active', /id: 'OFF-KP', name: 'HO', is_active: true/.test(persistence) && /id: 'OFF-PIBC', name: 'PIBC', is_active: true/.test(persistence) && /id: 'OFF-RPC', name: 'RPC', is_active: true/.test(persistence) && /id: 'OFF-PANGSUB', name: 'Pangsub', is_active: true/.test(persistence) && /id: 'OFF-PERAWATAN', name: 'Kantor Perawatan', is_active: true/.test(persistence)],
