@@ -13,5 +13,5 @@ assert.ok(routeStart >= 0 && routeEnd > routeStart);
 const route = source.slice(routeStart, routeEnd);
 assert.ok(route.includes('requestedLoan.borrower_id === actor.id'));
 assert.ok(route.includes("!requireRbacPermission(req, res, 'loans.return')"));
-assert.ok(route.includes('if (isAuditorActor(actor))'));
+assert.ok(route.includes('if (isReadOnlyActor(actor))'));
 console.log('PASS: Borrowers can return only their own loans; custodian returns remain RBAC+scope controlled.');
