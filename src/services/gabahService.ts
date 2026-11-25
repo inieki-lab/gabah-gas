@@ -583,6 +583,8 @@ export class GabahService {
         return { label: 'Kode owner legacy (RPC)', color: 'bg-slate-50 text-slate-600 border-slate-200' };
       case 'PIBC':
         return { label: 'Kode owner legacy PIBC', color: 'bg-slate-50 text-slate-600 border-slate-200' };
+      case 'RPC':
+        return { label: 'Lokasi RPC (bukan owner domain)', color: 'bg-slate-50 text-slate-600 border-slate-200' };
       default:
         return { label: division, color: 'bg-gray-50 text-gray-700 border-gray-200' };
     }
