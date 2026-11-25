@@ -70,11 +70,11 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   onSuccess,
   onSubmit,
 }) => {
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
-  const canCreateReservation = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+  const canCreateReservation = !isReadOnly && (isSuperAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('room_reservations.create')
     : true));
 
@@ -124,7 +124,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
   const isSekdir = currentUser.role === 'Sekretaris Direksi'
     || currentUser.role_keys?.includes('sekretaris_direksi') === true;
   const canOverride = useMemo(() => {
-    if (isAuditor) return false;
+    if (isReadOnly) return false;
     if (Array.isArray(currentUser.permission_keys)) {
       return currentUser.is_superadmin === true
         || currentUser.permission_keys.includes('*')
@@ -132,7 +132,7 @@ export const CreateRoomReservationModal: React.FC<CreateRoomReservationModalProp
     }
     // File-store compatibility only; PostgreSQL uses explicit capability grants.
     return isSekdir || GabahService.hasLegacyCapability(currentUser, 'ga') || currentUser.role === 'Admin GABAH';
-  }, [currentUser.permission_keys, currentUser.is_superadmin, currentUser.role, currentUser.role_keys, isSekdir, isAuditor]);
+  }, [currentUser.permission_keys, currentUser.is_superadmin, currentUser.role, currentUser.role_keys, isSekdir, isReadOnly]);
 
   // Load master types and facilities
   useEffect(() => {
