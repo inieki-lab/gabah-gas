@@ -18,7 +18,7 @@ Sebelum mengubah kode atau dokumen, baca [docs/GABAH-DOCUMENTATION-CONTROL.md](.
 1. **Frontend**: React 19, TypeScript (~5.8), Vite 6, Tailwind CSS v4, Lucide React icons, Motion.
 2. **Backend**: Node.js 20+, Express 4.21+, TSX (untuk runtime development), esbuild (untuk bundling server produksi).
 3. **Database**: PostgreSQL 17 (driver `pg`), skema ternormalisasi relasional (11 tabel inti + 2 tabel auth & trigger).
-4. **Development/Test File Store**: Snapshot JSON (`server/data/gabah_state.json`) hanya untuk standalone development/test atau fallback saat PostgreSQL tidak tersedia pada startup di lingkungan non-production. Production wajib fail-fast jika PostgreSQL tidak tersedia; setelah PostgreSQL authoritative, kegagalan runtime dilatch dan operasi ditolak sampai layanan dipulihkan serta aplikasi direstart. Ini bukan mekanisme production failover otomatis.
+4. **PostgreSQL Authoritative + Recovery Snapshot**: PostgreSQL adalah sumber data otoritatif pada runtime yang dikonfigurasi. Setelah transaksi PostgreSQL berhasil commit, aplikasi menulis payload persis yang sudah commit ke `server/data/gabah_state.json` sebagai snapshot pemulihan; snapshot tidak berisi sesi. Snapshot bukan sumber otoritas dan bukan fallback setelah PostgreSQL pernah aktif lalu gagal. File-store development hanya boleh dipakai bila PostgreSQL tidak tersedia sejak startup pada lingkungan non-production. Production wajib fail-fast bila PostgreSQL/migrasi gagal; runtime outage setelah PostgreSQL authoritative melatch penolakan operasi sampai layanan pulih dan aplikasi direstart.
 5. **Containerization**: Docker Compose (`gabah_database` + `gabah_app`).
 
 ### Aturan Bebas PHP / Laravel:
