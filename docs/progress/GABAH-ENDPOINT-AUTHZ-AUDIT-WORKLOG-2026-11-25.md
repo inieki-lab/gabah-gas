@@ -508,3 +508,47 @@ The scripts assert permission/scope checks, active-user eligibility, read-only h
 1. Continue direct-ID endpoint review for user administration, master data, knowledge records, and download handlers.
 2. Add runtime negative tests where source-only assertions are still the only evidence.
 3. Keep the production release gates open until per-persona browser UAT, legacy database upgrade rehearsal, backup/restore, staging deploy/rollback, and owner sign-off are recorded.
+
+
+## 20. Batch 14 — direct-ID administration and master-data authorization (2026-11-25)
+
+**Review basis:** source review of `server.ts`, RBAC helpers, domain services, and current CI regression inventory. No production records were modified.
+
+### User and Dynamic RBAC administration
+
+- No `GET /api/users/:id` endpoint exists. `GET /api/users` requires `users.read` in PostgreSQL; file-store compatibility limits it to Superadmin, IT, and GA. Returned records pass through `sanitizeUser`, excluding password material, server-only authVersion, and Telegram chat ID except for Superadmin.
+- `POST/PATCH/DELETE /api/users/:id` and password reset are Superadmin-only. The update/delete paths validate primary profile values and preserve last-active-Superadmin protections.
+- Dynamic role/permission/scope mutations require effective Superadmin, validate active role IDs and scope values, and persist through the RBAC transaction layer.
+- Module audit history and module activation changes are Superadmin-only; module keys and change reasons are validated and changes are audited.
+
+### Master data and taxonomy
+
+- Authenticated users can read reference masters (divisions, job levels, organizational units, office/asset locations, facility locations, and taxonomy lookups). These endpoints return reference data only; no account secrets or operational records were found in the reviewed responses.
+- Master-data mutations are Superadmin-only. Direct-ID updates first resolve the target and return 404 when the ID is absent.
+- Organization-unit updates validate the referenced division and strict boolean `is_active`; office/asset-location updates validate active flags and asset-location parent/cycle rules.
+- Taxonomy deletion is guarded when categories are referenced; asset-location hierarchy uses disable rather than hard delete.
+- `PATCH /api/knowledge/:id` requires `knowledge.update`, resolves the article ID, and uses an explicit field allowlist; vote/view counters have dedicated endpoints and permissions. Knowledge articles are global internal guidance, so no per-owner object scope is expected.
+
+### Direct operational IDs
+
+- Asset detail uses the same `getScopedAssets(actor)` resolver as the list; out-of-scope direct reads return 404.
+- Asset update/assign/move/lifecycle routes require the corresponding operation permission and shared owner-scope policy. The mutation routes currently return 403 for a known but out-of-scope asset; this is consistent with existing regression expectations, while read detail conceals it with 404. This is a response-code consistency/privacy consideration, not a demonstrated data disclosure of asset fields.
+- Loan, ticket, maintenance, vendor, contract-document, room-reservation, and module direct-ID routes were previously reviewed in their respective batches; no new bypass was found in this pass.
+- Meeting type/facility updates require their dedicated manage permissions and domain-service ID/reference checks.
+
+### Existing regression evidence
+
+- `test:user-admin-validation`, `test:primary-role-policy`, `test:module-lifecycle-api`, `test:numbering-rules`, `test:org-master-active`, `test:division-reference-integrity`, `test:t2b1`, `test:t2b2`, `test:t2b3`, `test:asset-scope-policy`, and `test:asset-mutation-http-status` cover the reviewed areas.
+- PR #322 documentation update merged as `9d2873972d3b541990fc521556cec1b1d972fef0`; exact-head CI run `45642438601`: **SUCCESS, 119/119**.
+
+### Remaining caveats
+
+- The legacy facility `PATCH /api/master/locations/:id` path has weaker field-type validation than the newer organization/asset-location masters. Malformed non-string fields can yield a 500; no authorization bypass was found. Track as input-hardening work, not an access-control defect.
+- Several master-data read endpoints intentionally rely on global session authentication rather than per-role read permissions. Revisit only if master data becomes confidential or contains operational personal data.
+- No full browser UAT by each operational persona was performed.
+
+### Next batch
+
+1. Review direct-ID mutation response consistency and object-level scope across assets/loans/tickets/contracts/rooms.
+2. Add negative tests for any remaining source-only scope checks.
+3. Keep production release blocked on browser UAT, database upgrade rehearsal, backup/restore, staging deployment/rollback, and business-owner sign-off.
