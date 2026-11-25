@@ -38,12 +38,11 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
   const canCreateContract = !isReadOnly && (isAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('contracts.create')
     : GabahService.hasLegacyCapability(currentUser, 'it') || GabahService.hasLegacyCapability(currentUser, 'ga')));
-  const ownDivision = (currentUser.division || 'GA').toUpperCase();
 
   const [contractType, setContractType] = useState('Umum');
   const [title, setTitle] = useState('');
   const [vendorName, setVendorName] = useState('');
-  const [ownerDivision, setOwnerDivision] = useState(ownDivision);
+  const [ownerDivision, setOwnerDivision] = useState('');
   const [ownerDomains, setOwnerDomains] = useState<Array<{ code: string; name: string }>>([]);
   const [ownerDomainsLoading, setOwnerDomainsLoading] = useState(false);
   const [ownerDomainsError, setOwnerDomainsError] = useState('');
@@ -67,26 +66,15 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
     let active = true;
     setOwnerDomainsLoading(true);
     setOwnerDomainsError('');
-    gabahApi.getDivisions()
+    gabahApi.getContractCreateOwnerOptions()
       .then(rows => {
         if (!active) return;
-        const locationOnlyLegacyCodes = new Set(['SC', 'SUPPLY CHAIN', 'PIBC', 'RPC']);
         const options = (Array.isArray(rows) ? rows : [])
-          .filter((row: any) => row && row.is_active !== false)
-          .map((row: any) => ({
-            code: String(row.code || '').trim().toUpperCase(),
-            name: String(row.name || row.code || '').trim(),
-          }))
-          .filter((row: { code: string; name: string }) => row.code && !locationOnlyLegacyCodes.has(row.code))
-          .sort((left: { code: string; name: string }, right: { code: string; name: string }) => left.name.localeCompare(right.name));
+          .filter(row => row && row.code && row.name);
         setOwnerDomains(options);
-        const currentOwner = ownDivision.trim().toUpperCase();
-        const selectedOwner = isAdmin
-          ? (options.some(option => option.code === currentOwner) ? currentOwner : options[0]?.code || '')
-          : (options.some(option => option.code === currentOwner) ? currentOwner : '');
+        const selectedOwner = options.length === 1 ? options[0].code : '';
         setOwnerDivision(selectedOwner);
-        if (options.length === 0) setOwnerDomainsError('Belum ada owner domain aktif. Hubungi Superadmin untuk mengelola master owner.');
-        else if (!isAdmin && !selectedOwner) setOwnerDomainsError('Akun Anda belum memiliki owner domain aktif. Hubungi Superadmin; lokasi kantor tidak otomatis menjadi owner kontrak.');
+        if (options.length === 0) setOwnerDomainsError('Tidak ada owner domain yang diizinkan untuk akun Anda. Hubungi Superadmin untuk memeriksa permission dan scope kontrak.');
       })
       .catch(() => {
         if (!active) return;
@@ -98,7 +86,7 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
         if (active) setOwnerDomainsLoading(false);
       });
     return () => { active = false; };
-  }, [isOpen, isAdmin, ownDivision]);
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
