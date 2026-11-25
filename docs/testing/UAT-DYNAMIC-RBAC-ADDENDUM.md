@@ -57,13 +57,13 @@ For every mutation workflow, test valid input, invalid input, wrong owner, missi
 1. Provision only one of the two primary profiles: Admin GABAH or Karyawan. Never create IT, GA, Auditor, Humas, Sekretariat Direksi, RPC/SC, or PIBC as a primary profile.
 2. Create a new custom function role with a name/key not present in the source code, grant one test permission and one explicit scope, assign it to a Karyawan, and verify the expected access works without code changes. Verify the same user is denied outside that scope.
 3. Assign a primary Karyawan profile plus one approved additional role through the administration UI/API.
-2. Confirm the assignment is transactional and auditable; invalid role IDs or inactive roles are rejected.
-3. Confirm the additional role does not change the employee ID, job level, organizational unit, or office location.
-4. Update an unrelated user profile field, restart the application, and re-read the role assignments and effective permissions.
-5. Confirm all intended additional roles remain assigned and the primary role remains singular.
-6. Remove an additional role and confirm only the permissions/scopes contributed by that role disappear.
-7. Attempt to remove/deactivate the last active Super Admin; the operation must be rejected.
-8. Test a user with no valid active role and a user with an invalid/inactive scope; both must fail closed.
+4. Confirm the assignment is transactional and auditable; invalid role IDs or inactive roles are rejected.
+5. Confirm the additional role does not change the employee ID, job level, organizational unit, or office location.
+6. Update an unrelated user profile field, restart the application, and re-read the role assignments and effective permissions.
+7. Confirm all intended additional roles remain assigned and the primary role remains singular.
+8. Remove an additional role and confirm only the permissions/scopes contributed by that role disappear.
+9. Attempt to remove/deactivate the last active Super Admin; the operation must be rejected.
+10. Test a user with no valid active role and a user with an invalid/inactive scope; both must fail closed.
 
 ## 5. Asset owner and location scenarios
 
