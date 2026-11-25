@@ -3,7 +3,8 @@
 
 - Audit found `CreateLoanModal` called `onClose()` immediately after starting the async request. This closed the form before the server response, so a rejected request left the user without their entered context. The parent `handleRequestLoan` already closes the modal only after a successful response; removed the premature child close.
 - The form collected `borrower_phone`, and the domain service validated/persisted it, but `App.tsx` omitted it from both single and batch API payloads. Added the optional field to both API client types and forwarded it in both paths.
-- Extended `test:loanable-pool-ui` with regression checks for API types, single/batch forwarding, and modal close ownership. No schema, permission, approval, or collision policy changes.
+- Prevent duplicate submissions while the asynchronous request is pending; show an in-progress label and disable the submit control. The callback is now explicitly async and awaited.
+- Extended `test:loanable-pool-ui` with regression checks for API types, single/batch forwarding, modal close ownership, and duplicate-submit prevention. No schema, permission, approval, or collision policy changes.
 
 > **Historical-progress note:** This file is a chronological log of work at the PR/commit stated in each entry. Older recommendations and role/owner assumptions may have been superseded. Do not use an old PASS or old status as current-head evidence. Current owner intent and source behavior are summarized in `docs/PROJECT-CONTEXT.md` and `docs/IMPLEMENTATION-TRUTH-REGISTER.md`.
 
