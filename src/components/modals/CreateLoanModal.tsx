@@ -31,7 +31,7 @@ interface CreateLoanModalProps {
     start_date: string;
     due_date: string;
     borrower_phone: string;
-  }) => void;
+  }) => Promise<void>;
 }
 
 export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
@@ -109,6 +109,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   const [dueDate, setDueDate] = useState<string>(`${tomorrowStr}T17:00`);
   const [purpose, setPurpose] = useState<string>('');
   const [borrowerPhone, setBorrowerPhone] = useState<string>(currentUser?.phone || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Toggle selection for an asset
   const handleToggleAsset = (id: string) => {
@@ -159,22 +160,27 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const selectionIsValid = selectedAssetIds.length > 0
       && selectedAssetIds.every(id => availablePool.some(asset => asset.id === id));
     if (!canCreateLoan || hasAnyConflict || !selectionIsValid) return;
     if (!purpose.trim()) return;
 
-    onRequestLoan({
-      asset_id: selectedAssetIds[0],
-      asset_ids: selectedAssetIds,
-      purpose: purpose.trim(),
-      start_date: startDate,
-      due_date: dueDate,
-      borrower_phone: borrowerPhone.trim(),
-    });
-    onClose();
+    setIsSubmitting(true);
+    try {
+      await onRequestLoan({
+        asset_id: selectedAssetIds[0],
+        asset_ids: selectedAssetIds,
+        purpose: purpose.trim(),
+        start_date: startDate,
+        due_date: dueDate,
+        borrower_phone: borrowerPhone.trim(),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -440,14 +446,14 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={!canCreateLoan || hasAnyConflict || selectedAssetIds.length === 0 || selectedAssetIds.some(id => !availablePool.some(asset => asset.id === id))}
+              disabled={isSubmitting || !canCreateLoan || hasAnyConflict || selectedAssetIds.length === 0 || selectedAssetIds.some(id => !availablePool.some(asset => asset.id === id))}
               className={`px-5 py-2 rounded-xl font-bold transition-all ${
                 !canCreateLoan || hasAnyConflict || selectedAssetIds.length === 0
                   ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
                   : 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs'
               }`}
             >
-              {selectedAssetIds.length > 1
+              {isSubmitting ? 'Mengirim Permohonan...' : selectedAssetIds.length > 1
                 ? `Ajukan Peminjaman (${selectedAssetIds.length} Barang Sekaligus)`
                 : 'Ajukan Permohonan Peminjaman'}
             </button>

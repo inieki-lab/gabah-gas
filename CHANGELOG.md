@@ -1,3 +1,8 @@
+## [2026-11-25] — Preserve loan request form on API failure and forward borrower contact
+- Keep the loan request modal open until the parent receives a successful API response; validation, network, or persistence errors no longer discard the user's form context.
+- Disable repeated submission while the asynchronous request is pending to prevent duplicate requests.
+- Forward the entered borrower phone through single-asset and batch-asset request paths; extend API payload types and regression checks.
+
 ## [2026-11-25] — Guard session revocation on Dynamic RBAC assignment
 - Add a regression check requiring successful per-user role-set changes to revoke the target user's existing sessions before the process refreshes effective RBAC policy.
 - Preserve the existing atomic assignment transaction, last-Superadmin guard, and audit event; this change adds regression coverage only.

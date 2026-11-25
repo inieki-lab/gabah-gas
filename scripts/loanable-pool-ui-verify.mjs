@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync('src/components/modals/CreateLoanModal.tsx', 'utf8');
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
 const loansView = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
 const services = fs.readFileSync('server/services.ts', 'utf8');
 const taxonomy = fs.readFileSync('server/taxonomy.ts', 'utf8');
@@ -28,11 +30,15 @@ const checks = [
   ['Loans view uses effective Auditor and loans.create permissions', /const isAuditor = GabahService\.isAuditor\(currentUser\)/.test(loansView) && /hasEffectivePermission\('loans\.create'/.test(loansView) && /\{canCreateLoan && \(/.test(loansView)],
   ['Loans view trusts backend owner/unit-scoped results instead of primary-role self-only filtering', /const baseLoans = safeLoans/.test(loansView) && !/const isEmployee = \['Karyawan', 'Sekretaris Direksi', 'Humas'\]/.test(loansView) && !/safeLoans\.filter\(l =>/.test(loansView)],
   ['Submit handler rejects stale or ineligible selected IDs', /selectedAssetIds\.every\(id => availablePool\.some\(asset => asset\.id === id\)\)/.test(source)],
-  ['Submit control and handler both enforce loans.create and selected-asset eligibility', /disabled=\{!canCreateLoan \|\| hasAnyConflict \|\| selectedAssetIds\.length === 0 \|\| selectedAssetIds\.some\(id => !availablePool\.some\(asset => asset\.id === id\)\)\}/.test(source) && /if \(!canCreateLoan \|\| hasAnyConflict \|\| !selectionIsValid\) return;/.test(source)],
+  ['Submit control and handler both enforce loans.create, pending-submit lock, conflicts, and selected-asset eligibility', /disabled=\{isSubmitting \|\| !canCreateLoan \|\| hasAnyConflict \|\| selectedAssetIds\.length === 0 \|\| selectedAssetIds\.some\(id => !availablePool\.some\(asset => asset\.id === id\)\)\}/.test(source) && /if \(!canCreateLoan \|\| hasAnyConflict \|\| !selectionIsValid\) return;/.test(source)],
   ['Historical seeded MacBook loan is returned and its pool asset remains available', /loan_number: 'LOAN-2026-0001'[\s\S]{0,1200}status: 'returned'[\s\S]{0,500}actual_returned_at: '2026-01-26T16:30:00.000Z'/.test(database) && !/loan_number: 'LOAN-2026-0001'[\s\S]{0,1200}status: 'borrowed'/.test(database) && /asset_number: 'IT-HLT-2026-0002'[\s\S]{0,500}status: 'available'[\s\S]{0,300}is_loanable: true/.test(database)],
   ['Borrower phone defaults to the employee profile instead of a fabricated sample number', /useState<string>\(currentUser\?\.phone \|\| ''\)/.test(source) && !source.includes('0812-3456-7890')],
   ['Loan request accepts and validates a supplied borrower phone number', /borrower_phone\?: string/.test(services) && /typeof payload\.borrower_phone !== 'string'/.test(services) && services.includes("payload.borrower_phone.includes('\\u0000')") && /payload\.borrower_phone\.trim\(\)\.length > 40/.test(services)],
   ['Loan record stores the validated supplied phone with profile fallback', /const borrowerPhone = typeof payload\.borrower_phone === 'string'[\s\S]*?\(borrower\.phone \|\| '-'\)/.test(services) && /borrower_phone: borrowerPhone/.test(services)],
+  ['Single and batch loan API payloads accept the optional borrower phone', /requestLoan\(payload: \{[\s\S]*?borrower_phone\?: string/.test(apiClient) && /requestBatchLoans\(payload: \{[\s\S]*?borrower_phone\?: string/.test(apiClient)],
+  ['Loan form forwards the entered borrower phone through both single and batch request paths', /requestBatchLoans\([\s\S]*?borrower_phone: data\.borrower_phone/.test(app) && /requestLoan\([\s\S]*?borrower_phone: data\.borrower_phone/.test(app)],
+  ['Loan request form remains open on failed requests and is closed only by parent after API success', /await onRequestLoan\(\{[\s\S]*?borrower_phone: borrowerPhone\.trim\(\),[\s\S]*?\}\);/.test(source) && !/onRequestLoan\(\{[\s\S]*?\}\);\s*onClose\(\);/.test(source)],
+  ['Loan form prevents duplicate submissions while the API request is pending', /if \(isSubmitting\) return/.test(source) && /disabled=\{isSubmitting \|\| !canCreateLoan/.test(source) && /isSubmitting \? 'Mengirim Permohonan\.\.\.'/i.test(source)],
 ];
 
 for (const [name, pass] of checks) console.log(`${pass ? 'PASS' : 'FAIL'} | ${name}`);
