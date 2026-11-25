@@ -648,13 +648,14 @@ export class GabahService {
   }
 
   static isSuperAdmin(user?: UserProfile): boolean {
-    if (!user) return false;
+    if (!user || this.isReadOnly(user)) return false;
     return user.is_superadmin === true
       || user.role_keys?.includes('superadmin') === true
       || (!Array.isArray(user.permission_keys) && user.role === 'Admin GABAH');
   }
 
   static hasEffectivePermission(user: UserProfile, permission: string): boolean {
+    if (this.isReadOnly(user)) return false;
     if (this.isSuperAdmin(user)) return true;
     return Array.isArray(user.permission_keys)
       && (user.permission_keys.includes('*') || user.permission_keys.includes(permission));
