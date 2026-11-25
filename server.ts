@@ -2401,11 +2401,11 @@ async function startServer() {
         return res.status(400).json({ success: false, message: 'Payload lokasi harus berupa objek JSON.' });
       }
       const { name, address, capacity } = body;
-      if (typeof name !== 'string' || !name.trim() || name.includes('\\u0000') || name.length > 160) {
+      if (typeof name !== 'string' || !name.trim() || name.includes('\u0000') || name.length > 160) {
         return res.status(400).json({ success: false, message: 'Nama lokasi wajib berupa teks 1–160 karakter.' });
       }
       for (const [field, value, maxLength] of [['address', address, 500], ['capacity', capacity, 120]] as const) {
-        if (value !== undefined && (typeof value !== 'string' || value.includes('\\u0000') || value.length > maxLength)) {
+        if (value !== undefined && (typeof value !== 'string' || value.includes('\u0000') || value.length > maxLength)) {
           return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
         }
       }
@@ -2445,7 +2445,7 @@ async function startServer() {
         ['address', body.address, 500],
         ['capacity', body.capacity, 120],
       ] as const) {
-        if (value !== undefined && (typeof value !== 'string' || value.includes('\\u0000') || value.length > maxLength)) {
+        if (value !== undefined && (typeof value !== 'string' || value.includes('\u0000') || value.length > maxLength)) {
           return res.status(400).json({ success: false, message: field + ' harus berupa teks maksimal ' + maxLength + ' karakter.' });
         }
       }
