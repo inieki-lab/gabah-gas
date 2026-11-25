@@ -416,8 +416,8 @@ async function startServer() {
   // production; JSON/file-store development retains legacy behavior during migration.
   const requireRbacPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
     const actor = (req as any).user as ServerUser | undefined;
-    // Auditor deny-write applies in both PostgreSQL and file-store modes and
-    // takes precedence over any other assigned role or permission.
+    // Generic read-only policy applies in both PostgreSQL and file-store modes
+    // and takes precedence over every other assigned role or permission.
     if (actor && isReadOnlyActor(actor) && !isReadOnlyPermissionKey(permissionKey)) {
       res.status(403).json({ success: false, message: 'Akses ditolak: akun ini memiliki kebijakan read-only.' });
       return false;
@@ -3129,7 +3129,7 @@ async function startServer() {
     // Karyawan with an explicitly assigned additional capability, is judged
     // by the same permission + owner-scope policy used by domain mutations.
     if (isReadOnlyActor(actor)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+      return res.status(403).json({ success: false, message: 'Akses ditolak: akun ini memiliki kebijakan read-only.' });
     }
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.update')) {
       return res.status(403).json({
@@ -3543,7 +3543,7 @@ async function startServer() {
     try {
       const actor = getActor(req);
       if (isReadOnlyActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+        return res.status(403).json({ success: false, message: 'Akses ditolak: akun ini memiliki kebijakan read-only.' });
       }
       const requestedLoan = db.loans.find(loan => loan.id === req.params.id);
       if (!requestedLoan) return res.status(404).json({ success: false, message: 'Data pinjaman tidak ditemukan.' });
@@ -3653,7 +3653,7 @@ async function startServer() {
       if (!requireRbacPermission(req, res, 'tickets.assign')) return;
       const actor = getActor(req);
       if (isReadOnlyActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
+        return res.status(403).json({ success: false, message: 'Akun ini memiliki kebijakan read-only.' });
       }
       const ticket = db.tickets.find(item => item.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
@@ -3772,7 +3772,7 @@ async function startServer() {
     try {
       const actor = getActor(req);
       if (isReadOnlyActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
+        return res.status(403).json({ success: false, message: 'Akun ini memiliki kebijakan read-only.' });
       }
       const ticket = db.tickets.find(item => item.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan.' });
@@ -3859,7 +3859,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
       if (isReadOnlyActor(actor)) {
-        return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
+        return res.status(403).json({ success: false, message: 'Akses ditolak: akun ini memiliki kebijakan read-only.' });
       }
       const ticket = db.tickets.find(t => t.id === req.params.id);
       if (!ticket) return res.status(404).json({ success: false, message: 'Tiket tidak ditemukan' });
