@@ -5,6 +5,7 @@ const helperStart = source.indexOf('const validateMaintenanceInput');
 const helperEnd = source.indexOf('// Maintenance & Calibration Schedules', helperStart);
 assert.ok(helperStart >= 0 && helperEnd > helperStart);
 const helper = source.slice(helperStart, helperEnd);
+assert.match(helper, /!body \|\| typeof body !== 'object' \|\| Array\.isArray\(body\)/, 'maintenance input must reject null, arrays, and non-object JSON payloads');
 for (const value of ['weekly', 'monthly', 'quarterly', 'biannual', 'annual', 'one_time', 'scheduled', 'in_progress', 'completed', 'overdue', 'cancelled']) assert.ok(helper.includes(value), 'missing allowed value: ' + value);
 assert.match(helper, /Number\.isFinite\(parsedDate\.getTime\(\)\)/);
 assert.match(helper, /body\[field\] < 0/);
@@ -24,7 +25,7 @@ assert.match(create, /else if \(!isSuperadminActor\(actor\) && !hasApplicationRo
 assert.match(update, /else if \(!isSuperadminActor\(actor\) && !hasApplicationRole\(actor, 'it'\) && !hasApplicationRole\(actor, 'ga'\)\)[\s\S]*validateMaintenanceInput/);
 assert.match(update, /requireRbacPermission\(req, res, 'maintenances\.update'\)[\s\S]*validateMaintenanceInput/);
 assert.match(update, /canMutateAssetOwner\(actor, schedule\.owner_division, 'maintenances\.update'\)[\s\S]*validateMaintenanceInput/);
-assert.equal((source.match(/validateMaintenanceInput\(req\.body \|\| \{\}\)/g) || []).length, 2);
+assert.equal((source.match(/validateMaintenanceInput\(req\.body\)/g) || []).length, 2);
 console.log('Maintenance input validation: 12 checks passed');
 
 
