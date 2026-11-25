@@ -11,6 +11,7 @@ const hardeningSource = read('server/runtime-hardening.ts');
 const persistence = read('server/persistence.ts');
 const dbSeed = read('server/db.ts');
 const contracts = read('server/contracts.ts');
+const legacyOwnerMigration = read('server/migrations/106_retire_legacy_owner_domains.sql');
 const vendorUi = read('src/components/views/VendorsView.tsx');
 const licenseUi = read('src/components/views/LicensesView.tsx');
 const contractUi = read('src/components/views/ContractsView.tsx');
@@ -44,6 +45,10 @@ const checks = [
   ['Fresh schema seeds Umum and Audit divisions before their org-unit foreign keys', /INSERT INTO divisions \(code, name\)[\s\S]*'Umum'[\s\S]*'Audit'[\s\S]*CREATE TABLE IF NOT EXISTS org_units/.test(orgMasterMigration)],
 
   ['Owner domains are synchronized from the configurable division master before PostgreSQL FK-backed data', /for \(const division of db\.divisions \|\| \[\]\)/.test(persistence) && /INSERT INTO divisions \(code,name,is_active\)/.test(persistence)],
+  ['Legacy RPC/SC and PIBC owner masters are inactive in seed and cannot be reactivated by old snapshots', /code: 'SC',[^}]*is_active: false/.test(dbSeed) && /code: 'PIBC',[^}]*is_active: false/.test(dbSeed) && /retiredLocationOwnerCodes\.has\(String\(division\?\.code/.test(persistence) && /is_active: false/.test(persistence)],
+  ['Legacy-owned asset categories are retired for new selection while historical asset records remain untouched', /normalizeCategoryMaster\(db\.categories\)\.map/.test(persistence) && /retiredLocationOwnerCodes\.has\(String\(category\.owner_division/.test(persistence) && /is_active: false/.test(persistence)],
+  ['Migration 106 retires SC/PIBC owner and category choices without deleting historical rows', /UPDATE divisions[\s\S]*UPPER\(code\) IN \('SC', 'PIBC'\)/i.test(legacyOwnerMigration) && /UPDATE asset_categories[\s\S]*UPPER\(d\.code\) IN \('SC', 'PIBC'\)/i.test(legacyOwnerMigration) && !/\bDELETE\s+FROM\s+(divisions|asset_categories|assets|contracts)\b/i.test(legacyOwnerMigration)],
+  ['Contract creation rejects retired location aliases even if stale owner scope exists', /ownerDivision === 'SC' \|\| ownerDivision === 'PIBC'[\s\S]*statusCode: 409/.test(contracts)],
   ['Asset categories and new assets require active owner codes from the configured master', server.includes("if (!(db.divisions || []).some(d => String(d.code || '').trim().toUpperCase() === normalizedOwnerCode && d.is_active !== false))") && /const configuredOwner = \(db\.divisions \|\| \[\]\)\.some/.test(services)],
   ['Contract visibility and edits follow any explicit owner scope, not IT/GA whitelist', /if \(!owner\) return false;/.test(contracts) && !/owner !== 'IT' && owner !== 'GA'/.test(contracts) && /hasRbacScope\(String\(user\.id\), 'division', owner, 'contracts'\)/.test(contracts)],
   ['Vendor ownership is explicit and independent from category', /owner_division\?: string \| null/.test(read('server/db.ts')) && /owner_division\?: string \| null/.test(vendorTypes) && !/\['IT', 'License'\]\.includes\(String\(v\.category\)\)/.test(server)],
