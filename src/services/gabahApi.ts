@@ -467,6 +467,7 @@ class GabahApiClient {
     purpose: string;
     start_date: string;
     due_date: string;
+    borrower_phone?: string;
   }): Promise<Loan> {
     return this.request<Loan>('/api/loans', {
       method: 'POST',
@@ -480,6 +481,7 @@ class GabahApiClient {
     purpose: string;
     start_date: string;
     due_date: string;
+    borrower_phone?: string;
   }): Promise<{ success: boolean; data: Loan; loans: Loan[]; count: number; message: string }> {
     return this.request<{ success: boolean; data: Loan; loans: Loan[]; count: number; message: string }>('/api/loans', {
       method: 'POST',
