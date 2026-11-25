@@ -51,3 +51,11 @@ The CI workflow already registers both:
 4. Browser UAT per persona, legacy DB upgrade rehearsal, backup/restore, staging deploy/rollback, and business-owner sign-off remain release gates.
 
 **Merge policy:** Keep this PR unmerged until exact-head CI and review pass. Do not merge to `main` without explicit owner approval.
+
+
+## CI correction and verification update
+
+- Earlier live CR-04/CR-05 run `45711348504` exposed that `GET /api/taxonomy/categories` re-normalized the category catalog but did not apply the retired-owner filter at the API boundary; 193/194 checks passed. Added explicit SC/PIBC category deactivation to the response and a source regression assertion for that endpoint.
+- Corrected migration-source assertions to match `UPPER(BTRIM(...))` in migration 106.
+- Exact code/test head `3ee9cfd7fc05f0ad5945692624e6335ec59467da`: CI run `45713396569` (#3619) completed SUCCESS.
+- The following worklog-only commit will create a newer PR head; recheck its CI before treating the PR as fully green.
