@@ -17,6 +17,18 @@ assert.equal(isNavTabAllowedForRole('Karyawan', 'assets'), false);
 assert.ok(isNavTabAllowedForRole('Admin GABAH', 'reports'));
 assert.ok(isNavTabAllowedForRole('Admin GABAH', 'assets'));
 assert.equal(isNavTabAllowedForRole('Karyawan', 'assets', ['assets.update']), false);
+assert.equal(isNavTabAllowedForRole('Custom Role', 'licenses', ['licenses.read']), false,
+  'license workspace must not appear when its underlying asset collection is not readable');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'licenses', ['assets.read']), false,
+  'license workspace requires its own module permission as well as asset data access');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'licenses', ['licenses.read', 'assets.read']), true,
+  'license workspace appears only when both license capability and backing asset data are readable');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'reports', ['reports.read']), false,
+  'reports workspace must not appear without permission to read any underlying report data');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'reports', ['reports.read', 'tickets.read']), true,
+  'reports workspace may show a partial report when at least one source collection is readable');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'reports', ['tickets.read']), false,
+  'source data permission alone does not grant the reports workspace');
 
 // A page is visible only when its read contract is satisfied.
 assert.ok(isNavTabAllowedForRole('Any Dynamic Role', 'meeting_rooms', ['meeting_rooms.read', 'room_reservations.read']));
@@ -26,7 +38,8 @@ assert.equal(isNavTabAllowedForRole('Any Dynamic Role', 'assets', ['assets.read'
 assert.equal(isNavTabAllowedForRole('Any Dynamic Role', 'assets', ['assets.catalog.read']), false);
 
 // Landing page selection follows effective permissions and active module state.
-assert.equal(getDefaultNavTabForRole('Custom Role', ['reports.read']), 'reports');
+assert.equal(getDefaultNavTabForRole('Custom Role', ['reports.read', 'assets.read']), 'my_assets',
+  'default landing prefers the earlier employee workspace when reports and asset data are both readable');
 assert.equal(getDefaultNavTabForRole('Custom Role', ['tickets.read', 'loans.read']), 'tickets');
 assert.equal(getDefaultNavTabForRole('Custom Role', ['*']), 'dashboard');
 assert.equal(getDefaultNavTabForRole('Custom Role', []), null);
