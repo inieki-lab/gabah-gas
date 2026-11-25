@@ -208,7 +208,7 @@ The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, curre
 - PostgreSQL asset-number issuance uses `reserveAssetNumberSequence()` with a transaction and atomic UPSERT. The in-memory counter is only the development file-store path. Corporate numbering format remains pending company approval; browser preview must not fabricate a next number.
 
 ### Corrections made on this pass
-- Updated PROJECT-RULES, API Design, Architecture, Database Design, Requirements, Asset Numbering, UAT, Documentation Control, and Implementation Truth Register to match the source-observed contracts.
+- Updated README, PROJECT-RULES, API Design, Architecture, Database Design, Requirements, Asset Numbering, UAT, Documentation Control, and Implementation Truth Register to match the source-observed contracts.
 - Corrected stale Bearer-only/browser-token-storage statements and the unused `user_sessions` table description.
 - Corrected stale claims that asset numbering still uses an in-memory Map in PostgreSQL mode.
 - Corrected UAT scenario numbering and refreshed implementation evidence after PR #285, #287, and #290.
