@@ -173,6 +173,24 @@ export const ContractDomainService = {
     return contract;
   },
 
+  listCreatableOwnerDomains(actor: ServerUser): Array<{ code: string; name: string }> {
+    if (!canCreateContract(actor)) return [];
+    return (db.divisions || [])
+      .filter(division => {
+        const code = String(division.code || '').trim().toUpperCase();
+        if (!code || division.is_active === false || ['SC', 'SUPPLY CHAIN', 'PIBC', 'RPC'].includes(code)) return false;
+        if (isSuperadminActor(actor)) return true;
+        return isPostgresPersistenceActive()
+          ? hasRbacScope(String(actor.id), 'division', code, 'contracts')
+          : hasLegacyContractDivisionScope(actor, code);
+      })
+      .map(division => ({
+        code: String(division.code).trim().toUpperCase(),
+        name: String(division.name || division.code).trim(),
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  },
+
   async createContract(payload: Partial<ServerContract> & { end_date: string; start_date: string; title: string; vendor_name: string; owner_division: string; pic_user_id: string }, actor: ServerUser): Promise<ServerContract> {
     if (!canCreateContract(actor)) {
       throw new Error('Akses ditolak: permission contracts.create tidak diberikan.');
