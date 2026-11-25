@@ -544,7 +544,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
               <div className="flex items-center justify-between text-slate-300 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
                   <Tag className="w-3.5 h-3.5 text-emerald-400" />
-                  Pratinjau Nomor Aset (Aturan Aktif)
+                  Penerbitan Nomor Aset (Server)
                 </span>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
                   Otomatis
