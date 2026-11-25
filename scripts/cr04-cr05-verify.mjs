@@ -1100,8 +1100,8 @@ async function main() {
         && notificationRows.every(row => typeof row.is_active === 'boolean'));
 
     const employeeNotificationRead = await req(base, 'GET', '/api/admin/notification-rules', { token: karyawanToken });
-    record('Authenticated employee can read notification rule status', '200',
-      `HTTP ${employeeNotificationRead.status}`, employeeNotificationRead.status === 200);
+    record('Authenticated employee cannot read administrative notification rule settings', '403',
+      `HTTP ${employeeNotificationRead.status}`, employeeNotificationRead.status === 403);
 
     const anonymousNotificationRead = await req(base, 'GET', '/api/admin/notification-rules');
     record('Anonymous notification rule read is denied', '401',
@@ -1199,8 +1199,8 @@ async function main() {
         && typeof companySettings?.fiscalYear === 'string');
 
     const employeeCompanySettingsRead = await req(base, 'GET', '/api/admin/system-settings', { token: karyawanToken });
-    record('Authenticated employee can read company profile settings', '200',
-      `HTTP ${employeeCompanySettingsRead.status}`, employeeCompanySettingsRead.status === 200);
+    record('Authenticated employee cannot read administrative company profile settings', '403',
+      `HTTP ${employeeCompanySettingsRead.status}`, employeeCompanySettingsRead.status === 403);
 
     const anonymousCompanySettingsRead = await req(base, 'GET', '/api/admin/system-settings');
     record('Anonymous company profile read is denied', '401',
