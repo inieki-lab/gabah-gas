@@ -158,8 +158,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   const isMEOperator = Array.isArray(currentUser?.permission_keys)
     ? currentUser.permission_keys.includes('tickets.queue.me')
     : hasAssignedRole('admin_tiket_me');
-  const isAuditor = GabahService.isAuditor(currentUser);
-  const canCreateTicket = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+  const isReadOnly = GabahService.isReadOnly(currentUser);
+  const canCreateTicket = !isReadOnly && (isSuperAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('tickets.create') || currentUser.permission_keys!.includes('tickets.create.me')
     : ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi'].includes(currentUser.role)));
   // Self-service roles see their own submissions; operating divisions see the
@@ -204,7 +204,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
   });
 
   const canManage = GabahService.canManageTickets(currentUser);
-  const canCommentOnTicket = (ticket: Ticket) => !isAuditor && (
+  const canCommentOnTicket = (ticket: Ticket) => !isReadOnly && (
     ticket.reporter_id === currentUser.id
     || GabahService.hasEffectivePermission(currentUser, 'tickets.update')
   );
@@ -233,7 +233,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Helpdesk & Tiket ME'
               : isPIBC
               ? 'Helpdesk & Tiket (Legacy PIBC)'
-              : isAuditor
+              : isReadOnly
               ? 'Pemantauan Tiket Helpdesk (Read-Only)'
               : 'Helpdesk & Tiket Layanan Internal'}
           </h2>
@@ -248,7 +248,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
               ? 'Daftar antrean Mechanical, Electrical, dan Perawatan unit ME.'
               : isPIBC
               ? 'Daftar tiket historis PIBC dan tiket yang Anda ajukan.'
-              : isAuditor
+              : isReadOnly
               ? 'Pemantauan read-only tiket helpdesk lintas divisi untuk kebutuhan audit.'
               : 'Laporan insiden, kerusakan perangkat IT, pemeliharaan fasilitas GA, dan permintaan lisensi software.'}
           </p>
