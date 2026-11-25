@@ -22,7 +22,7 @@ import {
 import { Asset, Loan, Ticket, UserProfile, AuditLog, RoomReservation } from '../../types';
 import { GabahService, formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
-import { isActiveLoanStatus, isPendingLoanStatus } from '../../utils/dashboardLoanStatus';
+import { getDashboardLoanStatusLabel, isActiveLoanStatus, isPendingLoanStatus } from '../../utils/dashboardLoanStatus';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -634,7 +634,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                           'bg-slate-200 text-slate-700'
                         }`}>
-                          {loan.status}
+                          {getDashboardLoanStatusLabel(loan.status)}
                         </span>
                         {loan.approver_name && (
                           <span className="text-[10px] text-slate-500 mt-1">Disetujui: {loan.approver_name}</span>
@@ -775,7 +775,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                         'bg-slate-200 text-slate-700'
                       }`}>
-                        {loan.status}
+                        {getDashboardLoanStatusLabel(loan.status)}
                       </span>
                       {loan.approver_name && (
                         <span className="text-[10px] text-slate-500 mt-1">Disetujui: {loan.approver_name}</span>
