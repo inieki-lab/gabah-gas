@@ -8,6 +8,8 @@ const server = fs.readFileSync('server.ts', 'utf8');
 const readme = fs.readFileSync('README.md', 'utf8');
 const prd = fs.readFileSync('PRD.md', 'utf8');
 const businessRules = fs.readFileSync('docs/product/BUSINESS-RULES.md', 'utf8');
+const batchQrUi = fs.readFileSync('src/components/modals/BatchQRPrintModal.tsx', 'utf8');
+const gabahServiceUi = fs.readFileSync('src/services/gabahService.ts', 'utf8');
 const checks = [
   ['Office location OFF-RPC is displayed as RPC in migration and defaults', migration.includes("name = 'RPC'") && migration.includes("WHERE id = 'OFF-RPC'") && db.includes("id: 'OFF-RPC', name: 'RPC'") && persistence.includes("id: 'OFF-RPC', name: 'RPC'")],
   ['Legacy unit ID remains stable while its display label becomes RPC', migration.includes("WHERE id = 'UNIT-SC'") && db.includes("id: 'UNIT-SC', name: 'RPC'") && persistence.includes("id: 'UNIT-SC', name: 'RPC'")],
@@ -17,6 +19,9 @@ const checks = [
   ['Migration does not rewrite existing assets or user role assignments', !/UPDATE (assets|users|gabah_user_roles)|DELETE FROM (assets|users|gabah_user_roles)/i.test(migration)],
   ['README and PRD distinguish RPC/PIBC locations from asset ownership', readme.includes('RPC dan PIBC adalah konteks lokasi, bukan owner aset otomatis.') && prd.includes('RPC dan PIBC dalam konteks pembahasan ini adalah nama kantor/unit lokasi operasional')],
   ['Business rules preserve legacy owner records pending per-asset review', businessRules.includes('owner code') && businessRules.includes('SC/PIBC') && businessRules.includes('ditinjau satu per satu')],
+  ['Batch QR owner filters are derived from actual owner domains, not a fixed division list', batchQrUi.includes('ownerOptions = Array.from(new Set(') && batchQrUi.includes('filterOwnerDomain') && !/option value="Supply Chain"|option value="PIBC"/.test(batchQrUi)],
+  ['Legacy SC/PIBC values are grouped as review-only labels in QR output', batchQrUi.includes('LEGACY_LOCATION_OWNER') && batchQrUi.includes('Legacy owner code (RPC)') && batchQrUi.includes('Legacy owner code PIBC')],
+  ['Legacy owner badges no longer call SC/PIBC active divisions', gabahServiceUi.includes('Kode owner legacy (RPC)') && gabahServiceUi.includes('Kode owner legacy PIBC') && !gabahServiceUi.includes('Divisi Supply Chain') && !gabahServiceUi.includes('Divisi Pasar PIBC')],
 ];
 
 for (const [name, pass] of checks) console.log(`${pass ? 'PASS' : 'FAIL'} | ${name}`);
