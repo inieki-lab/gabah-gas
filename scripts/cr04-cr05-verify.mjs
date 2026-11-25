@@ -21,6 +21,8 @@
  *      reloaded from PostgreSQL (authoritative store).
  *   9. RBAC: reminders/run admin-only (403 for others), scheduler-status
  *      admin-only, Auditor read-only.
+ *  10. A custom non-Auditor role with security.read_only keeps scoped reads,
+ *      loses write grants, and cannot be combined with Superadmin.
  */
 import fs from 'node:fs';
 import path from 'node:path';
