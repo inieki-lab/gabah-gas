@@ -42,9 +42,9 @@ GABAH tidak menggunakan sembilan label role lama sebagai daftar role permanen. R
 
 ### 1.3 Model lokasi dan owner
 
-Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC/SC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
+Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC (OFF-RPC; legacy code SC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
 
-Owner domain adalah master fleksibel (misalnya IT, GA, dan domain fungsi lain yang secara eksplisit disahkan). RPC/SC dan PIBC adalah lokasi/operasional context, bukan owner domain otomatis. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
+Owner domain adalah master fleksibel (misalnya IT, GA, dan domain fungsi lain yang secara eksplisit disahkan). RPC dan PIBC adalah lokasi/operasional context, bukan owner domain otomatis. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
 
 ### 1.4 Legacy role labels
 
