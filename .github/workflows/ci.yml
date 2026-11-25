@@ -68,6 +68,9 @@ jobs:
       - name: UAT shared credential mode safety regression
         run: npm run test:uat-credential-mode
 
+      - name: Retired destructive UAT user reset safety regression
+        run: npm run test:uat-reset-script-safety
+
       - name: PostgreSQL least-privilege role configuration regression
         run: npm run test:postgres-role-config
 
