@@ -7,6 +7,20 @@ const services = fs.readFileSync('server/services.ts', 'utf8');
 assert.ok(ui.includes("status === 'pending_approval'"));
 assert.ok(ui.includes("status === 'borrowed'"));
 assert.ok(ui.includes('normalizeLoanStatus(loan.status)'));
+assert.ok(ui.includes("const canPrintBast = ['approved', 'active', 'returned'].includes(loanStatus)"),
+  'loan BAST must only be printable after approval / active handover / return');
+assert.ok(ui.includes('{canPrintBast && ('), 'pending approval and rejected loans must not expose BAST printing');
+assert.ok(!ui.includes("loanStatus !== 'rejected'"), 'BAST must not be shown for every non-rejected state');
+assert.ok(app.includes('const [selectedAssetForBast, setSelectedAssetForBast] = useState<Asset | null>(null)'),
+  'permanent assignment BAST must use asset state, not a fabricated loan');
+assert.ok(app.includes("['active', 'borrowed', 'approved', 'overdue', 'returned'].includes(String(l.status).toLowerCase())"),
+  'existing borrowed/overdue loan records must be recognized before generating assignment BAST');
+assert.ok(app.includes('setSelectedAssetForBast(ast);') && app.includes('asset={selectedAssetForBast ||'),
+  'assignment BAST must pass the real asset directly to the document modal');
+assert.ok(!app.includes("borrower_phone: '021-5000-888'"),
+  'BAST must not fabricate a borrower phone number');
+assert.ok(app.includes('currentUser={currentUser}'), 'BAST assignment document must receive the authenticated actor');
+
 assert.ok(ui.includes("hasEffectivePermission('loans.approve'"), 'Superadmin/effective permission must control approval UI');
 assert.ok(types.includes("'pending_approval'") && types.includes("'borrowed'"));
 const start = services.indexOf('static approveLoan(');
