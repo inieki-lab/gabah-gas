@@ -14,7 +14,7 @@ export const BatchQRPrintModal: React.FC<BatchQRPrintModalProps> = ({
   assets = [],
 }) => {
   const [filterOwnerDomain, setFilterOwnerDomain] = useState<string>('ALL');
-  const legacyLocationOwnerCodes = new Set(['SC', 'PIBC']);
+  const legacyLocationOwnerCodes = new Set(['SC', 'SUPPLY CHAIN', 'PIBC']);
   const ownerCodeOf = (asset: Asset) => String(asset.owner_division || '').trim().toUpperCase();
   const ownerOptions = Array.from(new Set(
     assets.map(ownerCodeOf).filter(code => code && !legacyLocationOwnerCodes.has(code)),
@@ -22,7 +22,7 @@ export const BatchQRPrintModal: React.FC<BatchQRPrintModalProps> = ({
   const hasLegacyLocationOwners = assets.some(asset => legacyLocationOwnerCodes.has(ownerCodeOf(asset)));
   const ownerLabel = (value?: string | null) => {
     const code = String(value || '').trim().toUpperCase();
-    if (code === 'SC') return 'Legacy owner code SC (RPC)';
+    if (code === 'SC' || code === 'SUPPLY CHAIN') return 'Legacy owner code (RPC)';
     if (code === 'PIBC') return 'Legacy owner code PIBC';
     return code || 'Owner belum ditetapkan';
   };
