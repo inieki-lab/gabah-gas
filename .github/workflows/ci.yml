@@ -158,6 +158,9 @@ jobs:
       - name: Role dashboard scope checks
         run: npm run test:dashboard-scope
 
+      - name: Dashboard loan status counts match backend lifecycle states
+        run: npm run test:dashboard-loan-status
+
       - name: Dashboard attention data-scope checks
         run: npm run test:dashboard-attention-scope
 

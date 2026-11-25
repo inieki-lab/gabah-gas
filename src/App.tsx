@@ -20,6 +20,7 @@ import {
 import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
 import { gabahApi } from './services/gabahApi';
 import { GabahService } from './services/gabahService';
+import { isPendingLoanStatus } from './utils/dashboardLoanStatus';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
@@ -631,7 +632,7 @@ export default function App() {
   // These API collections are already filtered by the backend's effective
   // permission + module-specific data scope. Do not apply a second, stale
   // role-name filter in the browser: a Karyawan may hold additional job roles.
-  const pendingLoans = loans.filter(l => l.status === 'pending');
+  const pendingLoans = loans.filter(l => isPendingLoanStatus(l.status));
   const visibleTickets = currentUser ? tickets : [];
   const visibleAssets = currentUser ? assets : [];
   const visibleLoans = currentUser ? loans : [];

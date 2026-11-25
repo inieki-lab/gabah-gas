@@ -22,6 +22,7 @@ import {
 import { Asset, Loan, Ticket, UserProfile, AuditLog, RoomReservation } from '../../types';
 import { GabahService, formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
+import { getDashboardLoanStatusLabel, isActiveLoanStatus, isPendingLoanStatus } from '../../utils/dashboardLoanStatus';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -149,8 +150,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
-  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending');
-  const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
+  const pendingLoans = dashboardLoans.filter(l => isPendingLoanStatus(l.status));
+  const activeLoans = dashboardLoans.filter(l => isActiveLoanStatus(l.status));
 
   const openTickets = dashboardTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
   const urgentTickets = dashboardTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
@@ -163,8 +164,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       l.borrower_id === currentUserId
     );
   });
-  const myActiveLoans = myLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
-  const myPendingLoans = myLoans.filter(l => l.status === 'pending_approval');
+  const myActiveLoans = myLoans.filter(l => isActiveLoanStatus(l.status));
+  const myPendingLoans = myLoans.filter(l => isPendingLoanStatus(l.status));
 
   const myTickets = safeTickets.filter(t => {
     return (
@@ -629,11 +630,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
                         <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                           loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                          loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                          isPendingLoanStatus(loan.status) ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                           loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                           'bg-slate-200 text-slate-700'
                         }`}>
-                          {loan.status}
+                          {getDashboardLoanStatusLabel(loan.status)}
                         </span>
                         {loan.approver_name && (
                           <span className="text-[10px] text-slate-500 mt-1">Disetujui: {loan.approver_name}</span>
@@ -770,11 +771,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <div className="flex sm:flex-col items-center sm:items-end justify-between shrink-0">
                       <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${
                         loan.status === 'approved' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' :
-                        loan.status === 'pending' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                        isPendingLoanStatus(loan.status) ? 'bg-amber-100 text-amber-800 border border-amber-300' :
                         loan.status === 'returned' ? 'bg-blue-100 text-blue-800 border border-blue-300' :
                         'bg-slate-200 text-slate-700'
                       }`}>
-                        {loan.status}
+                        {getDashboardLoanStatusLabel(loan.status)}
                       </span>
                       {loan.approver_name && (
                         <span className="text-[10px] text-slate-500 mt-1">Disetujui: {loan.approver_name}</span>
