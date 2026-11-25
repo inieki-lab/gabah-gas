@@ -64,6 +64,8 @@ For every mutation workflow, test valid input, invalid input, wrong owner, missi
 8. Remove an additional role and confirm only the permissions/scopes contributed by that role disappear.
 9. Attempt to remove/deactivate the last active Super Admin; the operation must be rejected.
 10. Test a user with no valid active role and a user with an invalid/inactive scope; both must fail closed.
+11. Edit the custom role's display name/description and permission set; verify effective permissions refresh and removed grants stop working immediately.
+12. Attempt to delete the custom role while assigned (must be rejected); remove its assignments, delete it, and verify the deleted role can no longer be assigned.
 
 ## 5. Asset owner and location scenarios
 
