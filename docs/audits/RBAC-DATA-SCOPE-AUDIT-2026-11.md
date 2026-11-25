@@ -301,3 +301,16 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 ### Perbaikan
 - Route mempertahankan `statusCode` numerik yang diberikan domain; HTTP 400 tetap menjadi fallback untuk input/transisi yang tidak valid tanpa status khusus.
 - Regression test reporter-transition memastikan route tidak meratakan seluruh exception menjadi HTTP 400.
+
+
+## 25 November 2026 — Pembatasan baca konfigurasi administrasi
+
+### Temuan
+- Endpoint `GET /api/admin/notification-rules` dan `GET /api/admin/system-settings` hanya memeriksa keberadaan sesi melalui `getActor(req)`, sementara endpoint `PATCH` masing-masing sudah mensyaratkan assignment Superadmin Dynamic RBAC.
+- Akibatnya, setiap pengguna terautentikasi dapat membaca konfigurasi administratif yang tidak ditampilkan untuk role non-admin di UI.
+
+### Perbaikan
+- Kedua endpoint baca kini memakai `requireRbacSuperadmin`, konsisten dengan batas otorisasi operasi tulis dan visibilitas Administration.
+- Regression checks memastikan akses baca juga mensyaratkan Superadmin aktif; akses pengguna biasa tetap ditolak oleh backend (403).
+
+Catatan: `GET /api/modules` tetap dapat dibaca oleh semua pengguna terautentikasi karena status modul global digunakan untuk membangun navigasi; operasi perubahan status dan histori tetap dibatasi untuk Superadmin.
