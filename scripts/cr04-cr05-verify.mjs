@@ -1170,6 +1170,14 @@ async function main() {
       }
     }
 
+    // The extra live HTTP assertions above intentionally consume API calls.
+    // Reset only the ephemeral CI database limiter buckets so later unrelated
+    // integration scenarios retain their own deterministic rate-limit budget.
+    const readOnlyRateLimitReset = new pg.Client({ connectionString: TEST_DB_URL });
+    await readOnlyRateLimitReset.connect();
+    await readOnlyRateLimitReset.query("DELETE FROM gabah_rate_limit_buckets WHERE bucket_type IN ('api', 'login')");
+    await readOnlyRateLimitReset.end();
+
 
     // ---------- PostgreSQL-backed notification rule administration ----------
     const notificationSettings = await req(base, 'GET', '/api/admin/notification-rules', { token: adminToken });
