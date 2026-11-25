@@ -55,17 +55,11 @@ Menyimpan identitas pegawai, peran RBAC, kredensial hash, dan divisi.
 - `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 - `updated_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
 
-### 2.4 Tabel `user_sessions` (Sesi Token Otentikasi — baseline historis)
-Menyimpan sesi autentikasi server-side. Kolom/transport di bawah adalah baseline Bearer yang harus diverifikasi terhadap migration dan auth middleware pada exact commit; PR cookie-auth yang belum merge tidak mengubah kondisi main.
-- `id` (VARCHAR(64), PRIMARY KEY)
-- `token` (VARCHAR(128), NOT NULL, UNIQUE)
-- `user_id` (VARCHAR(64), NOT NULL, REFERENCES users(id) ON DELETE CASCADE)
-- `created_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
-- `expires_at` (TIMESTAMPTZ, NOT NULL) — Masa aktif 7 hari
-- `last_active_at` (TIMESTAMPTZ, NOT NULL, DEFAULT NOW())
-- `ip_address` (INET)
-- `user_agent` (TEXT)
-- **Indeks Penting**: `idx_user_sessions_token`, `idx_user_sessions_user_id`, `idx_user_sessions_expires_at`
+### 2.4 Tabel `user_sessions` (Legacy schema; tidak dipakai runtime saat ini)
+Migration `002_gabah_auth_hardening.sql` pernah membuat tabel `user_sessions` untuk penyimpanan sesi persisten. **Runtime saat ini tidak membaca atau menulis tabel tersebut.** Registry sesi aktif berada di memori proses (`db.sessions`); sesi tidak ditulis ke PostgreSQL, JSON snapshot, maupun blob `gabah_state`. Restart aplikasi mengharuskan pengguna login kembali. Browser menggunakan cookie `gabah_session` HttpOnly; server juga menerima Bearer token untuk klien API.
+- Struktur kolom historis tabel tetap tercantum pada migration 002; jangan menganggap tabel ini sebagai sumber sesi aktif.
+- Baris legacy yang mungkin masih tertinggal pada database existing belum dinyatakan telah dibersihkan. Inventarisasi/pembersihan harus dilakukan melalui backup dan pemeriksaan terkontrol; jangan menghidupkan kembali token lama.
+- Indeks historis: `idx_user_sessions_token`, `idx_user_sessions_user_id`, `idx_user_sessions_expires_at` (jika masih ada pada database existing).
 
 ### 2.5 Tabel `asset_categories` (Kategori Aset & Taksonomi PSAK 16)
 Menyimpan taksonomi master aset.
@@ -81,7 +75,7 @@ Menyimpan taksonomi master aset.
 ### 2.6 Tabel `assets` (Katalog Aset Tetap & Inventaris)
 Tabel master pencatatan seluruh unit aset BUMD.
 - `id` (VARCHAR(64), PRIMARY KEY) — Contoh: `'AST-1718000000-123'`
-- `asset_number` (VARCHAR(100), NOT NULL, UNIQUE) — Format: `{OWNER_DIV}-{CODE}-{YEAR}-{SEQ}`
+- `asset_number` (VARCHAR(100), NOT NULL, UNIQUE) — Nomor yang diterbitkan backend menurut aturan aktif; contoh pola teknis bukan standar korporat yang telah disahkan.
 - `corporate_asset_number` (VARCHAR(100)) — Nomor Aset Accurate ERP
 - `name` (VARCHAR(255), NOT NULL)
 - `category_id` (BIGINT, REFERENCES asset_categories(id))
@@ -134,7 +128,7 @@ Mencatat histori relokasi fisik dan alih tangan pemegang aset.
 - **Indeks Penting**: `idx_movements_asset` ON asset_movements(asset_id, created_at DESC)
 
 ### 2.9 Tabel `asset_number_sequences` (Sequence Penomoran Aset)
-Menyimpan struktur sequence aset pada skema. Keberadaan tabel ini **tidak** berarti generator saat ini memakai transaksi/UPSERT PostgreSQL; `AssetNumberingEngine` masih menggunakan counter in-memory yang disinkronkan saat boot (lihat `docs/asset/ASSET-NUMBERING.md`).
+Menyimpan counter durable untuk alokasi nomor aset lintas instance. Pada PostgreSQL mode, `reserveAssetNumberSequence()` menjalankan transaksi dan `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`; counter historis direkonsiliasi saat boot tanpa menurunkan nilai yang sudah direservasi. File-store development saja yang memakai counter in-memory. Pola nomor tetap aturan teknis konfigurasi, bukan standar korporat final.
 - `id` (BIGSERIAL, PRIMARY KEY)
 - `owner_division_id` (BIGINT, NOT NULL, REFERENCES divisions(id))
 - `asset_code` (VARCHAR(30), NOT NULL)

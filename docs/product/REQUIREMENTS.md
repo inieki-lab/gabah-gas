@@ -11,8 +11,8 @@
 
 ### FR-01: Autentikasi Pengguna & Manajemen Sesi
 - **FR-01.1**: Sistem harus menyediakan mekanisme login berbasis email/alias dan kata sandi dengan verifikasi hash PBKDF2/SHA-256 dan salt kriptografis.
-- **FR-01.2**: Sistem harus menerbitkan sesi autentikasi unik dengan masa aktif yang dikonfigurasi dan menyimpan status sesi secara server-side pada `user_sessions`.
-- **FR-01.3**: Sistem harus menyediakan endpoint `/api/auth/me` untuk memverifikasi profil akun aktif melalui mekanisme sesi yang benar-benar diterapkan pada versi aplikasi. **Baseline `main` yang diperiksa 23 November 2026 menggunakan Bearer token**; perubahan ke HttpOnly cookie pada PR terpisah belum dianggap berlaku sebelum merge dan verifikasi.
+- **FR-01.2**: Sistem harus menerbitkan sesi autentikasi unik dengan masa aktif 7 hari dan memvalidasinya di server. Pada implementasi saat ini, registry sesi bersifat ephemeral di memori proses; sesi tidak ditulis ke tabel legacy `user_sessions`, JSON snapshot, atau blob PostgreSQL. Restart aplikasi mengharuskan autentikasi ulang.
+- **FR-01.3**: Sistem harus menyediakan endpoint `/api/auth/me` untuk memverifikasi profil akun aktif melalui sesi server yang valid. Browser menggunakan cookie `gabah_session` HttpOnly, SameSite=Strict, Secure pada production, dan `credentials: 'same-origin'`; klien API non-browser dapat menggunakan Bearer token. Mutasi berbasis cookie wajib lolos pemeriksaan Origin same-origin.
 - **FR-01.4**: Fasilitas simulasi/alih identitas hanya boleh tersedia pada konteks yang diotorisasi dan tidak boleh menjadi jalur publik, fallback autentikasi, atau cara menaikkan hak akses. Perilaku dan ketersediaannya harus diverifikasi terhadap implementasi aktif; jangan menganggap simulasi lintas user sebagai fitur produksi.
 - **FR-01.5**: Sistem harus menerapkan rate limiting login (maksimal 5 kali percobaan gagal sebelum lockout 5 menit pada lingkungan produksi) dan API rate limiting (maksimal 200 req/menit per client IP).
 
@@ -101,13 +101,13 @@
 ## 2. Kebutuhan Non-Fungsional (Non-Functional Requirements)
 
 1. **NFR-01: Keamanan (Security)**
-   - Proteksi otentikasi via HTTP Bearer token.
-   - Deteksi dan blokir ID spoofing via manipulasi header `x-user-id` (HTTP 403).
+   - Browser menggunakan sesi cookie HttpOnly/SameSite=Strict (Secure pada production); klien API non-browser dapat menggunakan Bearer token. Mutasi berbasis cookie wajib lolos pemeriksaan Origin same-origin.
+   - Deteksi dan blokir ID spoofing via manipulasi header `x-user-id` (HTTP 403); identitas hanya berasal dari sesi server yang valid.
    - Password hashing menggunakan algoritma aman dengan per-user salt.
-   - Proteksi read-only mutlak untuk akun Auditor.
+   - Policy read-only harus menolak seluruh mutasi untuk assignment read-only. Implementasi saat ini masih mengikat enforcement pada role key `auditor`; dukungan read-only generik untuk custom role tracked pada issue #289.
 2. **NFR-02: Integritas Data & Persistensi (Data Integrity)**
    - Database PostgreSQL 17 dengan skema ternormalisasi, foreign key cascade/restrict, unique constraints, dan trigger PL/pgSQL.
-   - Dual-persistence bridge: sinkronisasi asinkron ke database relasional dengan fail-safe persistent file store.
+   - PostgreSQL adalah authoritative store; recovery snapshot JSON ditulis hanya setelah commit berhasil dan tidak memuat sesi. File-store development hanya boleh menjadi fallback saat PostgreSQL tidak tersedia sejak startup; tidak ada failover otomatis setelah runtime failure.
 3. **NFR-03: Kinerja & Skalabilitas (Performance)**
    - Respons API di bawah 200ms untuk query katalog aset dan dashboard.
    - Dukungan koneksi pool hingga 5 concurrent pool clients dengan idle timeout 10 detik.

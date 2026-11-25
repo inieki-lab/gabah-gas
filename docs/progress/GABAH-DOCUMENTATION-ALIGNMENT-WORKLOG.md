@@ -196,3 +196,28 @@ The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, curre
 - 45-file inventory now includes new shared context, documentation control, and implementation truth register. Not all 45 files have been individually reconciled in this pass; historical audit/log documents intentionally retain old facts with explicit historical warnings.
 - Full Markdown link validation remains NOT RUN. Several documents contain external links and historical file references that need a dedicated link checker.
 - Current exact-head CI is still required after the latest commits; no status from an older head may be reused.
+
+
+## Pass 4 — Reconcile current authentication, persistence, and numbering claims (25 November 2026)
+
+### Verified source facts
+- Browser API client uses `credentials: 'same-origin'`; login sets HttpOnly `gabah_session` (SameSite=Strict, Secure in production, 7-day max age).
+- Server authentication accepts the browser cookie and also Bearer tokens for non-browser clients; `x-auth-token` remains a compatibility header. Cookie-based mutations require same-origin Origin validation.
+- Active sessions live in process memory only. The legacy `user_sessions` table was created by migration 002 but is not read/written by the current runtime. Session data is excluded from JSON snapshots and the PostgreSQL `gabah_state` payload.
+- PostgreSQL is authoritative. After a successful commit, the exact committed payload is written to `gabah_state.json` as a recovery snapshot. It is not an automatic failover store after a PostgreSQL runtime failure.
+- PostgreSQL asset-number issuance uses `reserveAssetNumberSequence()` with a transaction and atomic UPSERT. The in-memory counter is only the development file-store path. Corporate numbering format remains pending company approval; browser preview must not fabricate a next number.
+
+### Corrections made on this pass
+- Updated README, PROJECT-RULES, API Design, Architecture, Database Design, Requirements, Asset Numbering, UAT, Documentation Control, and Implementation Truth Register to match the source-observed contracts.
+- Corrected stale Bearer-only/browser-token-storage statements and the unused `user_sessions` table description.
+- Corrected stale claims that asset numbering still uses an in-memory Map in PostgreSQL mode.
+- Corrected UAT scenario numbering and refreshed implementation evidence after PR #285, #287, and #290.
+- PR #285 merged: two primary profiles and Dynamic RBAC documentation alignment.
+- PR #287 merged: SC/PIBC removed from Administration fallback division choices and static legacy permission matrix options; exact-head CI #45564612013 passed 119/119.
+- PR #290 merged: removed fabricated client-side asset number preview and unapproved “official format” claims; exact-head CI #45565766684 passed 119/119.
+
+### Remaining implementation gaps — do not call the audit complete
+- Issue #289: read-only enforcement is still hard-coded to the `auditor` role key; make it a generic configurable policy/capability for custom roles.
+- Issue #291: legacy SC/PIBC codes remain in the shared owner/division master as active-looking compatibility records and are still returned by `GET /api/master/divisions`; retire them for new owner/contract choices without deleting historical references.
+- Issue #293: inventory and safely retire any stale rows/table from legacy `user_sessions`; current runtime ignores the table, but existing database contents have not been audited.
+- Full endpoint-by-endpoint RBAC audit, UAT per custom role/scope, legacy database upgrade rehearsal, and production browser/proxy validation remain open.

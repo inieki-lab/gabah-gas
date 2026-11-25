@@ -18,7 +18,7 @@ Sebelum mengubah kode atau dokumen, baca [docs/GABAH-DOCUMENTATION-CONTROL.md](.
 1. **Frontend**: React 19, TypeScript (~5.8), Vite 6, Tailwind CSS v4, Lucide React icons, Motion.
 2. **Backend**: Node.js 20+, Express 4.21+, TSX (untuk runtime development), esbuild (untuk bundling server produksi).
 3. **Database**: PostgreSQL 17 (driver `pg`), skema ternormalisasi relasional (11 tabel inti + 2 tabel auth & trigger).
-4. **Development/Test File Store**: Snapshot JSON (`server/data/gabah_state.json`) hanya untuk standalone development/test atau fallback saat PostgreSQL tidak tersedia pada startup di lingkungan non-production. Production wajib fail-fast jika PostgreSQL tidak tersedia; setelah PostgreSQL authoritative, kegagalan runtime dilatch dan operasi ditolak sampai layanan dipulihkan serta aplikasi direstart. Ini bukan mekanisme production failover otomatis.
+4. **PostgreSQL Authoritative + Recovery Snapshot**: PostgreSQL adalah sumber data otoritatif pada runtime yang dikonfigurasi. Setelah transaksi PostgreSQL berhasil commit, aplikasi menulis payload persis yang sudah commit ke `server/data/gabah_state.json` sebagai snapshot pemulihan; snapshot tidak berisi sesi. Snapshot bukan sumber otoritas dan bukan fallback setelah PostgreSQL pernah aktif lalu gagal. File-store development hanya boleh dipakai bila PostgreSQL tidak tersedia sejak startup pada lingkungan non-production. Production wajib fail-fast bila PostgreSQL/migrasi gagal; runtime outage setelah PostgreSQL authoritative melatch penolakan operasi sampai layanan pulih dan aplikasi direstart.
 5. **Containerization**: Docker Compose (`gabah_database` + `gabah_app`).
 
 ### Aturan Bebas PHP / Laravel:
@@ -49,7 +49,7 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 - Owner aset adalah domain/master pemilik yang dapat dikonfigurasi; bukan enum permanen yang diturunkan dari nama role, divisi, unit, atau lokasi.
 - IT mengelola aset dengan owner domain IT di seluruh lokasi. GA mengelola aset dengan owner domain GA di seluruh lokasi.
 - GA hanya boleh membaca Laptop/PC owner IT jika permission baca khusus diaktifkan; permission tersebut tidak memberi hak create/update/delete/approve/move atas aset IT.
-- RPC/SC dan PIBC adalah lokasi/unit operasional, bukan role aplikasi dan bukan owner aset otomatis. Kode owner historis SC/PIBC dipertahankan sampai review per aset disetujui; jangan mengubah owner historis hanya berdasarkan lokasi.
+- RPC dan PIBC adalah lokasi/unit operasional, bukan role aplikasi dan bukan owner aset otomatis. Kode historis SC/PIBC dipertahankan hanya untuk referensi data lama sampai review per aset disetujui; jangan mengubah owner historis hanya berdasarkan lokasi.
 - Owner domain tambahan hanya dibuat melalui master/policy yang disetujui. Lokasi fisik, lokasi kerja pegawai, jabatan, unit organisasi, kategori, dan custodian tidak otomatis menentukan owner atau hak akses.
 - Backend wajib memeriksa permission tindakan dan data scope efektif untuk list, detail-by-ID, dashboard, pencarian, export, dan mutasi. Visibility tidak sama dengan authority to mutate.
 

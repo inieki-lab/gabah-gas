@@ -11,20 +11,20 @@
 - **Frontend**: React 19, TypeScript (~5.8), Vite 6, Tailwind CSS v4, Lucide React, Motion.
 - **Backend / API**: Node.js 20, Express 4.21, TSX (development runtime), esbuild (production bundler).
 - **Authoritative Database**: PostgreSQL 17 (driver `pg`), normalized relational schema (16 tabel/model) dengan migrasi SQL otomatis dan trigger anti-bentrok.
-- **Resilience Layer**: Dual-persistence engine dengan fail-safe snapshot store (`server/data/gabah_state.json`).
+- **Resilience Layer**: PostgreSQL authoritative; snapshot `server/data/gabah_state.json` ditulis setelah commit sebagai recovery copy. File-store fallback hanya untuk development saat PostgreSQL tidak tersedia sejak startup.
 - **Containerization**: Docker Compose (`gabah_database` + `gabah_app`).
 
 ---
 
 ## 🌾 Fitur Utama (Core Modules)
 
-1. **Katalog Aset Multi-Divisi**: Pencatatan hardware IT, lisensi SaaS, furniture GA, kendaraan dinas, mesin pabrik beras SC, dan jembatan timbang PIBC dengan standar akuntansi PSAK 16 BUMD.
-2. **Penomoran Aset Otomatis**: Generator kanonikal `{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}` dan rekonsiliasi Accurate ERP.
+1. **Katalog Aset Multi-Divisi**: Pencatatan aset berdasarkan owner domain yang disahkan (antara lain IT dan GA), kategori PSAK 16, serta lokasi fisik operasional. RPC dan PIBC adalah konteks lokasi, bukan owner aset otomatis.
+2. **Penomoran Aset Otomatis**: Nomor diterbitkan backend berdasarkan aturan aktif dan direkonsiliasi dengan Accurate ERP. Standar nomor aset korporat masih menunggu pengesahan.
 3. **Peminjaman Barang Anti-Bentrok**: Validasi ketersediaan aset per tanggal berbasis server, alur persetujuan divisi pemilik, dan cetak BAST digital.
 4. **Helpdesk & Tiket SLA**: Pelaporan kendala operasional dengan kalkulasi tenggat waktu SLA otomatis (Urgent 4h, High 8h, Medium 24h, Low 48h).
 5. **Preventive Maintenance**: Penjadwalan servis rutin armada logistik, AC ruang server, serta kalibrasi tera berkala jembatan timbang 60 ton PIBC.
-6. **Reservasi Ruang Rapat VIP**: Reservasi representatif dengan prioritas VIP auto-approval untuk Sekretariat Direksi, serta notifikasi otomatis ke IT Support (alat vicon/proyektor), GA Sarpras (sarana fisik), GA Pantry (konsumsi), dan Humas (dokumentasi liputan).
-7. **Dynamic Role-Based Access Control**: role aplikasi, permission, dan data scope dikelola terpisah; pegawai dapat memiliki role primer dan role tambahan. RPC/PIBC adalah lokasi atau unit operasional, bukan role aplikasi atau owner aset otomatis. Backend PostgreSQL menjadi otoritas permission dan scope.
+6. **Reservasi Ruang Rapat VIP**: Prioritas dan auto-approval mengikuti capability sekretariat yang dikonfigurasi; notifikasi diarahkan ke fungsi IT Support, GA Sarpras, GA Pantry, dan Humas sesuai jenis kebutuhan.
+7. **Dynamic Role-Based Access Control**: hanya ada dua profil utama (Admin GABAH dan Karyawan); role fungsi dapat dibuat dan dikelola dinamis. Permission dan data scope terpisah dari jabatan, unit organisasi, dan lokasi. Backend PostgreSQL menjadi otoritas permission dan scope.
 8. **Label & Scanner QR Code**: Pembuatan label aset untuk inventaris fisik dan pemindai kamera web terintegrasi.
 9. **Omnibox Quick Search (`Ctrl + K` / `Cmd + K`)**: Pencarian instan lintas aset, tiket kendala, peminjaman, dan nama pegawai.
 
@@ -87,25 +87,25 @@ Server Linux menggunakan Docker Compose yang sama. Jalankan `chmod +x deploy.sh 
 /
 ├── server.ts                    # Server Express terpadu (Vite middleware dev / Static prod)
 ├── server/                      # Modul backend & business logic
-│   ├── auth.ts                  # Autentikasi sesi token Bearer, rate limiting, hashing
+│   ├── auth.ts                  # Autentikasi sesi cookie/Bearer, rate limiting, hashing
 │   ├── crypto.ts                # SHA-256 + salt password hashing & token generation
 │   ├── db.ts                    # In-memory store, seeder, legacy-compatible users normalized by Dynamic RBAC
 │   ├── migrations/              # Skema SQL PostgreSQL (DDL, Auth, Trigger)
-│   ├── numbering.ts             # Generator nomor kanonikal aset, tiket, pinjaman
-│   ├── persistence.ts           # PostgreSQL pool & dual-persistence resilience
-│   ├── runtime-hardening.ts     # Middleware keamanan API, anti-spoofing, auditor guard
+│   ├── numbering.ts             # Generator nomor aset server-side berdasarkan aturan aktif
+│   ├── persistence.ts           # PostgreSQL authoritative, recovery snapshot, dev file-store
+│   ├── runtime-hardening.ts     # Middleware keamanan API, anti-spoofing, legacy Auditor deny-write guard
 │   ├── services.ts              # GabahDomainService (logika aset, pinjam, tiket, ruang rapat)
 │   └── taxonomy.ts              # Master taksonomi aset PSAK 16 BUMD
 ├── src/                         # Frontend React 19 SPA
 │   ├── components/
-│   │   ├── auth/                # Halaman login & 1-click persona switch
+│   │   ├── auth/                # Halaman autentikasi dan pemulihan sesi
 │   │   ├── landing/             # Halaman publik profil sistem
 │   │   ├── modals/              # 14 modal dialog (CreateAsset, BAST, Reservation, dll)
 │   │   ├── views/               # 11 tampilan modul utama
-│   │   ├── HeaderNavbar.tsx     # Top bar, switcher persona, notifikasi
+│   │   ├── HeaderNavbar.tsx     # Top bar, menu profil pengguna, notifikasi
 │   │   └── Sidebar.tsx          # Navigasi tab & Administration Control Panel
 │   ├── data/mockData.ts         # Data inisial sinkron
-│   ├── services/gabahApi.ts     # Klien API fetch dengan Bearer token
+│   ├── services/gabahApi.ts     # Klien API browser dengan cookie same-origin; Bearer untuk API clients
 │   ├── types.ts                 # Definisi tipe data & antarmuka TypeScript
 │   ├── App.tsx                  # Root controller aplikasi
 │   └── main.tsx                 # Bootstrap entry point React DOM

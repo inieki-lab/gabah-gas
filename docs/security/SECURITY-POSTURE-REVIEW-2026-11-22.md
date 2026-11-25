@@ -3,7 +3,9 @@
 **Repository:** `inieki-lab/gabah-gas`  
 **Reviewed branch:** `main`  
 **Reviewed commit:** `e9635788e27f9499b06ed3d814714b9f713290ee`  
-**Latest exact-main CI:** run [45038378777](https://github.com/inieki-lab/gabah-gas/actions/runs/45038378777) — SUCCESS  
+**Latest exact-main CI:** run [45038378777](https://github.com/inieki-lab/gabah-gas/actions/runs/45038378777) — SUCCESS
+
+> **Historical-source qualification (25 November 2026):** This review describes source at commit `e9635788e27f9499b06ed3d814714b9f713290ee`. Its Bearer-only/browser-token-storage assessment is no longer current. The browser now uses an HttpOnly `gabah_session` cookie with same-origin credentials; the server still accepts Bearer tokens for non-browser clients. See `docs/architecture/API-DESIGN.md` and `docs/IMPLEMENTATION-TRUTH-REGISTER.md` for the current source-observed contract. Do not treat the table below as a current security status without revalidation.  
 **Scope:** source-level review of Express security middleware, authentication transport, HTTP headers, Docker runtime, and deployment topology.
 
 > This is a source review, not a penetration test or production-environment certification. CI success proves the checks in that workflow passed; it does not prove TLS, browser behavior, proxy configuration, backup recovery, or production secrets are correct.

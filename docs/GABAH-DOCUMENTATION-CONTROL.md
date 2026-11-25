@@ -3,7 +3,7 @@
 **Purpose:** Shared operating context for every developer and AI agent working on this repository.
 **Applies to:** Dyad, ChatGPT, Codex, Gemini, and human contributors.
 **Status:** Active documentation governance; it does not certify that every feature is complete or production-ready.
-**Last reviewed:** 23 November 2026
+**Last reviewed:** 25 November 2026
 
 > Start here before changing code or documentation. This file defines how repository documents relate to one another; it does not replace product requirements, business decisions, source code, migrations, or test evidence.
 
@@ -26,10 +26,10 @@ Before any task:
 1. Read this guide and `README.md`.
 2. Read `PROJECT-RULES.md` and `docs/PROJECT-CONTEXT.md`.
 3. Read `docs/IMPLEMENTATION-TRUTH-REGISTER.md` to distinguish source-observed behavior from owner-approved intent and test evidence.
-3. Read the relevant product/business rule and architecture documents.
-4. Inspect the relevant frontend, API route, domain service, authorization/scope policy, DB migration and tests.
-5. Check recent WORKLOG/UAT and open PRs to avoid repeating or overwriting work.
-6. State the target branch, current commit, task scope, known constraints and evidence available.
+4. Read the relevant product/business rule and architecture documents.
+5. Inspect the relevant frontend, API route, domain service, authorization/scope policy, DB migration and tests.
+6. Check recent WORKLOG/UAT and open PRs to avoid repeating or overwriting work.
+7. State the target branch, current commit, task scope, known constraints and evidence available.
 
 Never assume that a document is current because its title says “Authoritative”, “Canonical”, or “100% synchronized”.
 
