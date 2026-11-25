@@ -4,6 +4,7 @@ const ui = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
 const app = fs.readFileSync('src/App.tsx', 'utf8');
 const types = fs.readFileSync('src/types.ts', 'utf8');
 const services = fs.readFileSync('server/services.ts', 'utf8');
+const bastModal = fs.readFileSync('src/components/modals/BastDocumentModal.tsx', 'utf8');
 assert.ok(ui.includes("status === 'pending_approval'"));
 assert.ok(ui.includes("status === 'borrowed'"));
 assert.ok(ui.includes('normalizeLoanStatus(loan.status)'));
@@ -20,6 +21,13 @@ assert.ok(app.includes('setSelectedAssetForBast(ast);') && app.includes('asset={
 assert.ok(!app.includes("borrower_phone: '021-5000-888'"),
   'BAST must not fabricate a borrower phone number');
 assert.ok(app.includes('currentUser={currentUser}'), 'BAST assignment document must receive the authenticated actor');
+assert.ok(bastModal.includes('formatOwnerDivision(isAssignmentMode ? asset?.owner_division : loan!.owner_division)'),
+  'BAST responsible division must follow owner_division, not service category');
+assert.ok(!bastModal.includes("loan!.category_type === 'IT'"),
+  'BAST must not infer asset owner from category_type');
+assert.ok(bastModal.includes("loan!.owner_division || 'UNASSIGNED'"),
+  'loan BAST number must not invent an owner when owner_division is missing');
+
 
 assert.ok(ui.includes("hasEffectivePermission('loans.approve'"), 'Superadmin/effective permission must control approval UI');
 assert.ok(types.includes("'pending_approval'") && types.includes("'borrowed'"));
