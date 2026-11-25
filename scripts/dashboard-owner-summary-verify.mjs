@@ -14,6 +14,7 @@ const checks = [
   ['Dashboard Superadmin status uses stable metadata and limits legacy Admin GABAH fallback to file-store', source.includes('const hasPermissionMetadata = Array.isArray(currentUser.permission_keys)') && source.includes("!hasPermissionMetadata && currentUser.role === 'Admin GABAH'") && source.includes('const isGlobalDashboard = isSuperAdmin || isAuditor')],
   ['Humas and Sekdir dashboard indicators use effective reservation capabilities without overriding Superadmin persona', source.includes("hasEffectivePermission('room_reservations.documentation.read', ['Humas'])") && source.includes("hasEffectivePermission('room_reservations.override_priority', ['Sekretaris Direksi'])") && source.includes('const isHumas = !isSuperAdmin && hasEffectivePermission') && source.includes('const isSekdir = !isSuperAdmin && hasEffectivePermission')],
   ['Dashboard ticket heading does not infer IT queue access from primary role name', !source.includes("currentUser.role === 'IT' ? 'Antrean Helpdesk TI'")],
+  ['Header reservation badges recognize secondary IT/GA/Humas capabilities in file-store mode', header.includes('roles.some(role => currentUser.role === role || GabahService.hasLegacyCapability(currentUser, role))')],
 ];
 
 let failed = 0;
