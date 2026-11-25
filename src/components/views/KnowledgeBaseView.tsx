@@ -51,16 +51,16 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
   // Dynamic RBAC is authoritative when permission_keys are present; Auditor is always read-only.
-  const isAuditor = GabahService.isAuditor(currentUser);
+  const isReadOnly = GabahService.isReadOnly(currentUser);
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
-  const hasKnowledgePermission = (permission: string) => !isAuditor && (isSuperAdmin
+  const hasKnowledgePermission = (permission: string) => !isReadOnly && (isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
       : ['IT', 'GA'].includes(currentUser.role)));
   const canCreate = hasKnowledgePermission('knowledge.create');
-  const canVote = !isAuditor && (isSuperAdmin || (hasPermissionMetadata
+  const canVote = !isReadOnly && (isSuperAdmin || (hasPermissionMetadata
     ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes('knowledge.vote')
     : true));
   const canUpdate = hasKnowledgePermission('knowledge.update');
