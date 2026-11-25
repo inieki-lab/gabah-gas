@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Ikuti [Documentation Authority & AI Handoff Guide](../GABAH-DOCUMENTATION-CONTROL.md) dan [Master Test Strategy](./MASTER-TEST-STRATEGY.md) untuk menjaga istilah, status, dan bukti tetap konsisten.  
-**Terakhir Diperbarui:** 25 November 2026
+**Terakhir Diperbarui:** 26 November 2026
 
 > **Batas bukti:** Bagian hasil PASS/angka total pengujian yang tercatat dari siklus terdahulu adalah HISTORICAL dan hanya berlaku pada commit/run yang disebutkan di catatan asal. Jangan menganggapnya sebagai hasil UAT pada HEAD saat ini. Setiap siklus baru harus mengisi bukti dan SHA aktual.
 
@@ -348,3 +348,10 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
 | Business-owner sign-off | PENDING | Wajib sebelum go-live |
 
 **Keputusan:** GABAH belum boleh dinyatakan production-ready hanya berdasarkan CI. Selesaikan seluruh aktivitas NOT RUN/PENDING, rekam tanggal, pelaksana, exact SHA, dan bukti hasil pada tabel ini sebelum persetujuan go-live.
+
+
+### Addendum verifikasi branch — legacy owner retirement (26 November 2026)
+
+- **Perubahan yang menunggu CI:** migration 106, normalisasi seed/hydration, penolakan create contract owner SC/PIBC, serta live PostgreSQL assertions untuk master dan kategori legacy.
+- **Status:** NOT VERIFIED sampai workflow pada exact branch head selesai. Jangan mengubah status menjadi PASS berdasarkan pemeriksaan source saja.
+- **Browser UAT:** NOT RUN. Jalankan Skenario 2E pada database UAT hasil backup/clone setelah migration 106 lulus CI.
