@@ -789,7 +789,7 @@ async function startServer() {
   const NOTIFICATION_RULE_IDS = new Set(['rule-warranty', 'rule-loan', 'rule-sla', 'rule-bast']);
   app.get('/api/admin/notification-rules', async (req, res) => {
     try {
-      getActor(req);
+      if (!requireRbacSuperadmin(req, res)) return;
       if (!isPostgresPersistenceActive()) {
         return res.status(503).json({ success: false, code: 'NOTIFICATION_RULE_SETTINGS_UNAVAILABLE', message: 'Konfigurasi aturan notifikasi memerlukan PostgreSQL aktif.' });
       }
@@ -848,7 +848,7 @@ async function startServer() {
   const SYSTEM_SETTING_KEYS = ['companyName', 'accountingStandard', 'baseCurrency', 'fiscalYear'] as const;
   app.get('/api/admin/system-settings', async (req, res) => {
     try {
-      getActor(req);
+      if (!requireRbacSuperadmin(req, res)) return;
       if (!isPostgresPersistenceActive()) {
         return res.status(503).json({ success: false, code: 'SYSTEM_SETTINGS_UNAVAILABLE', message: 'Pengaturan sistem memerlukan PostgreSQL aktif.' });
       }
