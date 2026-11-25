@@ -40,3 +40,10 @@ This parallel lane covers only the code-level part of issue #293: prove that the
 4. Drop the legacy table only after backup, restore verification, rollback/deployment dependency review, and explicit owner approval.
 
 **Do not close issue #293 based on this source-only PR.**
+
+
+## CI evidence update
+
+- Exact implementation/test head `3977d85e054b67e7dae9eb2317b6c32d87bf6bb0`: CI run `45711399023` (#3615) completed SUCCESS, including the new legacy session-store source guard.
+- This verifies the runtime source contract only. It does not prove whether an existing database contains legacy rows or whether rollback deployments depend on the table.
+- The following worklog-only commit creates a newer PR head; recheck CI before treating the PR as fully green.
