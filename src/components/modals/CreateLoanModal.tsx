@@ -174,7 +174,8 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
       due_date: dueDate,
       borrower_phone: borrowerPhone.trim(),
     });
-    onClose();
+    // The parent closes this modal only after the API confirms success.
+    // Keep the form mounted when validation/network/persistence fails.
   };
 
   return (
