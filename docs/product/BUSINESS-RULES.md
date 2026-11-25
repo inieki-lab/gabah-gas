@@ -141,7 +141,8 @@
 
 ### BR-07.1: Strict Read-Only Capability
 - **Aturan**: Pegawai dengan capability audit/read-only yang ditetapkan secara eksplisit memperoleh akses inspeksi hanya pada data sesuai scope audit, tetapi **diblokir dari segala bentuk mutasi data**. Capability ini dapat menjadi assignment tambahan pada profil Karyawan; Auditor bukan profil utama dan bukan alasan membuat katalog role primer terpisah.
-- **Enforcement yang ditemukan**: `server/runtime-hardening.ts` memanggil `isAuditorActor(actor)`; PostgreSQL policy saat ini mengenali role key `auditor` secara khusus. Ini adalah implementasi khusus yang masih perlu dievaluasi terhadap target role/capability sepenuhnya dinamis; jangan menyimpulkan bahwa role custom lain otomatis mendapat perilaku read-only yang sama.
+- **Enforcement**: permission marker `security.read_only` dapat dipasang pada role Dynamic RBAC apa pun. Role template Auditor lama menerima marker yang sama melalui migrasi kompatibilitas. Backend memfilter permission efektif menjadi read-only, menolak seluruh mutasi (selain logout dan penandaan notifikasi terbaca), meniadakan elevasi Superadmin, dan mencegah kombinasi read-only + Superadmin.
+- **Pemisahan visibilitas**: marker read-only tidak otomatis memberi akses global. Role custom tetap melihat data sesuai scope eksplisitnya. Assignment Auditor lama tetap menjadi global observer read-only; identitas Auditor dipisahkan dari kebijakan read-only generik.
 - **Pengecualian runtime saat ini**: Middleware mengizinkan `/api/auth/logout`, `/api/notifications/read-all`, dan `/api/notifications/:id/read` untuk tindakan non-GET yang terbatas. `/api/auth/switch-role` bukan pengecualian. Verifikasi ulang setelah perubahan auth.
 
 ---
