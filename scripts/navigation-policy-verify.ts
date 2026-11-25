@@ -23,6 +23,12 @@ assert.equal(isNavTabAllowedForRole('Custom Role', 'licenses', ['assets.read']),
   'license workspace requires its own module permission as well as asset data access');
 assert.equal(isNavTabAllowedForRole('Custom Role', 'licenses', ['licenses.read', 'assets.read']), true,
   'license workspace appears only when both license capability and backing asset data are readable');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'reports', ['reports.read']), false,
+  'reports workspace must not appear without permission to read any underlying report data');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'reports', ['reports.read', 'tickets.read']), true,
+  'reports workspace may show a partial report when at least one source collection is readable');
+assert.equal(isNavTabAllowedForRole('Custom Role', 'reports', ['tickets.read']), false,
+  'source data permission alone does not grant the reports workspace');
 
 // A page is visible only when its read contract is satisfied.
 assert.ok(isNavTabAllowedForRole('Any Dynamic Role', 'meeting_rooms', ['meeting_rooms.read', 'room_reservations.read']));
