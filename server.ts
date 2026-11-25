@@ -507,7 +507,7 @@ async function startServer() {
     if (message === 'RBAC_USER_NOT_FOUND') return res.status(404).json({ success: false, message: 'User target tidak ditemukan.' });
     if (message === 'RBAC_ROLE_INVALID') return res.status(400).json({ success: false, message: 'Satu atau lebih role tidak terdaftar atau sudah nonaktif.' });
     if (message === 'RBAC_LAST_SUPERADMIN') return res.status(409).json({ success: false, message: 'Superadmin aktif terakhir tidak boleh kehilangan role Superadmin.' });
-    if (message === 'RBAC_AUDITOR_SUPERADMIN_CONFLICT') return res.status(409).json({ success: false, message: 'Role Auditor read-only tidak dapat digabung dengan role Superadmin pada satu akun.' });
+    if (message === 'RBAC_AUDITOR_SUPERADMIN_CONFLICT') return res.status(409).json({ success: false, message: 'Role dengan kebijakan read-only tidak dapat digabung dengan role Superadmin pada satu akun.' });
     return res.status(400).json({ success: false, message: 'Permintaan Dynamic RBAC tidak valid atau gagal diproses.' });
   };
 
