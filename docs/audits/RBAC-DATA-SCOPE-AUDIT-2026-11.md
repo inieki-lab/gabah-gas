@@ -290,3 +290,14 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 - Domain service kini menandai penolakan lifecycle dengan `statusCode: 403`.
 - Regression test mutasi aset mencakup `assign`, `move`, dan `lifecycle`, termasuk propagasi status HTTP dari route.
 
+
+
+## 25 November 2026 — Konsistensi status error pada route perubahan status tiket
+
+### Temuan
+- Route `PATCH /api/tickets/:id/status` selalu mengubah exception menjadi HTTP 400.
+- Jika domain/service melempar penolakan otorisasi atau konflik state dengan `statusCode` eksplisit, informasi tersebut hilang dan klien menerima status yang keliru.
+
+### Perbaikan
+- Route mempertahankan `statusCode` numerik yang diberikan domain; HTTP 400 tetap menjadi fallback untuk input/transisi yang tidak valid tanpa status khusus.
+- Regression test reporter-transition memastikan route tidak meratakan seluruh exception menjadi HTTP 400.

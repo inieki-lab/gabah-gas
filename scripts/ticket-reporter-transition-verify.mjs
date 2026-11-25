@@ -14,6 +14,7 @@ assert.ok(route.includes("closed: ['open']"));
 assert.ok(route.includes('if (!reporterAllowed.includes(nextStatus))'));
 assert.ok(route.includes("res.status(403).json({"));
 assert.ok(route.includes('const allowed = TICKET_TRANSITIONS[currentStatus]'));
+assert.ok(route.includes("res.status(typeof err?.statusCode === 'number' ? err.statusCode : 400)"), 'ticket status route must preserve explicit authorization/conflict HTTP status codes');
 console.log('PASS: Ticket reporters can confirm resolved tickets or reopen closed tickets, not operate staff workflow.');
 
 
