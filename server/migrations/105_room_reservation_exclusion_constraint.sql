@@ -25,7 +25,7 @@ BEGIN
         room_id WITH =,
         tstzrange(start_datetime, end_datetime) WITH &&
       )
-      WHERE (status IN ('pending', 'approved', 'in_use', 'checked_in'));
+      WHERE (status IN ('pending', 'pending_approval', 'approved', 'in_use', 'checked_in'));
   END IF;
 END
 $$;
