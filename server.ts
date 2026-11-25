@@ -3398,7 +3398,7 @@ async function startServer() {
         handover: loan.status === 'approved'
           && GabahDomainService.canOperateLoan(loan, actor, 'loans.handover'),
         return: loan.status === 'borrowed'
-          && !isAuditorActor(actor)
+          && !isReadOnlyActor(actor)
           && (loan.borrower_id === actor.id
             || GabahDomainService.canOperateLoan(loan, actor, 'loans.return')),
       },
@@ -3535,7 +3535,7 @@ async function startServer() {
   app.post('/api/loans/:id/return', async (req, res) => {
     try {
       const actor = getActor(req);
-      if (isAuditorActor(actor)) {
+      if (isReadOnlyActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
       }
       const requestedLoan = db.loans.find(loan => loan.id === req.params.id);
@@ -3645,7 +3645,7 @@ async function startServer() {
     try {
       if (!requireRbacPermission(req, res, 'tickets.assign')) return;
       const actor = getActor(req);
-      if (isAuditorActor(actor)) {
+      if (isReadOnlyActor(actor)) {
         return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
       }
       const ticket = db.tickets.find(item => item.id === req.params.id);
@@ -3764,7 +3764,7 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'tickets.read')) return;
     try {
       const actor = getActor(req);
-      if (isAuditorActor(actor)) {
+      if (isReadOnlyActor(actor)) {
         return res.status(403).json({ success: false, message: 'Auditor hanya memiliki akses baca.' });
       }
       const ticket = db.tickets.find(item => item.id === req.params.id);
@@ -3851,7 +3851,7 @@ async function startServer() {
       
     if (!requireRbacPermission(req, res, 'tickets.read')) return;
     const actor = getActor(req);
-      if (isAuditorActor(actor)) {
+      if (isReadOnlyActor(actor)) {
         return res.status(403).json({ success: false, message: 'Akses ditolak: Auditor hanya memiliki izin baca (read-only).' });
       }
       const ticket = db.tickets.find(t => t.id === req.params.id);
@@ -4954,7 +4954,7 @@ async function startServer() {
 
     // Agenda details are private by default. Operational queues are granted
     // by explicit capabilities, never by the employee's primary role label.
-    if (!isSuperadminActor(actor) && !isAuditorActor(actor)) {
+    if (!isSuperadminActor(actor) && !isReadOnlyActor(actor)) {
       const canOperateRooms = isPostgresPersistenceActive()
         ? hasRbacPermission(String(actor.id), 'room_reservations.approve')
           || hasRbacPermission(String(actor.id), 'room_reservations.reject')
