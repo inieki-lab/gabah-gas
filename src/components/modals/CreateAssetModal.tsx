@@ -426,7 +426,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
             <div>
               <h3 className="font-extrabold text-base text-slate-900">Pendaftaran Aset Tetap Baru</h3>
               <p className="text-xs text-slate-500">
-                Sistem Penomoran Resmi GABAH BUMD Food Station ({selectedDivision}-{subCode}-{currentYear}-XXXX)
+                Nomor berikutnya berdasarkan aturan aktif ({selectedDivision}-{subCode}-{currentYear}-XXXX)
               </p>
             </div>
           </div>
@@ -546,7 +546,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
               <div className="flex items-center justify-between text-slate-300 mb-1">
                 <span className="text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
                   <Tag className="w-3.5 h-3.5 text-emerald-400" />
-                  Format Nomor Aset Resmi (Live Preview)
+                  Pratinjau Nomor Aset (Aturan Aktif)
                 </span>
                 <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
                   Otomatis
