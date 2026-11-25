@@ -60,7 +60,7 @@ Dynamic RBAC tidak memiliki daftar role bisnis tertutup. Akun/email seed berikut
 | GA | `ga@foodstation.co.id` | aset GA, sarpras, peminjaman/approval sesuai kewenangan; hanya baca PC/laptop IT bila grant aktif |
 | Sekretariat Direksi | `sekretariat.direksi@foodstation.co.id` | fungsi pegawai + capability sekretariat dan reservasi VIP sesuai grant |
 | Humas | `humas@foodstation.co.id` | fungsi pegawai + capability dokumentasi/notifikasi Humas |
-| Pegawai RPC (legacy fixture) | `sc.warehouse@foodstation.co.id` | fungsi pegawai; office location RPC/SC bukan role atau owner scope |
+| Pegawai RPC (legacy fixture) | `sc.warehouse@foodstation.co.id` | fungsi pegawai; office location RPC (legacy code SC) bukan role atau owner scope |
 | Pegawai PIBC (legacy fixture) | `pibc.admin@foodstation.co.id` | fungsi pegawai; office location PIBC bukan role atau owner scope |
 | Pegawai umum | `hendra.w@foodstation.co.id` | layanan mandiri, aset milik sendiri, tiket, permohonan |
 | Auditor | `auditor@foodstation.co.id` | baca sesuai scope audit; seluruh mutasi ditolak |
@@ -70,8 +70,8 @@ Password tidak boleh dicantumkan di dokumen, log, screenshot, atau commit. Pada 
 ## 4. Model organisasi yang harus dipertahankan saat tes
 
 - Role aplikasi, jabatan/level, unit/divisi, dan lokasi kerja adalah atribut berbeda.
-- RPC/SC dan PIBC adalah unit/lokasi, bukan role permanen.
-- Lokasi aktif yang perlu tersedia: HO, PIBC, RPC/SC, Pangsub, dan Kantor Perawatan. Subang nonaktif.
+- RPC dan PIBC adalah unit/lokasi, bukan role permanen; SC hanya kode legacy.
+- Lokasi aktif yang perlu tersedia: HO, PIBC, RPC, Pangsub, dan Kantor Perawatan. Subang nonaktif.
 - Owner aset tidak sama dengan lokasi fisik. Aset IT tetap owner IT meski berada di PIBC/RPC.
 - IT mengelola aset IT lintas lokasi. GA mengelola aset GA; akses baca ke PC/laptop IT hanya jika permission/scope khusus diberikan, tanpa hak mutasi.
 - Sekdir dan Humas adalah pegawai dengan capability tambahan, bukan pengganti role primer pegawai.
