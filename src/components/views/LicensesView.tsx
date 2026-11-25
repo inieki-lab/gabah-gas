@@ -40,6 +40,14 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
   const handleOpenCreate = onOpenCreateLicenseModal || onOpenNewAssetModal || (() => {});
   const safeAssets = Array.isArray(assets) ? assets : [];
   const licenseAssets = safeAssets.filter((a) => a.category_type === 'License');
+  const renewalMetrics = licenseAssets.flatMap((license) => {
+    const expiry = license.license_detail?.expiration_date;
+    if (!expiry || !Number.isFinite(Date.parse(expiry))) return [];
+    return [{ license, daysRemaining: calculateDaysRemaining(expiry) }];
+  });
+  const overdueRenewals = renewalMetrics.filter(item => item.daysRemaining < 0);
+  const upcomingRenewals = renewalMetrics.filter(item => item.daysRemaining >= 0 && item.daysRemaining <= 90);
+  const nearestUpcomingRenewal = [...upcomingRenewals].sort((a, b) => a.daysRemaining - b.daysRemaining)[0];
 
   const totalAnnualCost = licenseAssets.reduce((sum, a) => {
     return sum + (a.license_detail?.renewal_cost || a.purchase_price || a.price || 0);
@@ -91,9 +99,18 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
         </div>
 
         <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
-          <div className="text-xs font-bold uppercase text-slate-500">Peringatan Jatuh Tempo Segera</div>
-          <div className="text-2xl font-black text-amber-600 mt-2">1 Kontrak (54 Hari)</div>
-          <div className="text-xs text-slate-500 mt-1">Sophos Intercept X Advanced</div>
+          <div className="text-xs font-bold uppercase text-slate-500">Perlu Perhatian (Renewal)</div>
+          <div className="text-2xl font-black text-amber-600 mt-2">{overdueRenewals.length + upcomingRenewals.length} Lisensi</div>
+          <div className="text-xs text-slate-500 mt-1">
+            {overdueRenewals.length} terlambat · {upcomingRenewals.length} jatuh tempo dalam 90 hari
+          </div>
+          <div className="text-[11px] text-slate-500 mt-1">
+            {nearestUpcomingRenewal
+              ? `Terdekat: ${nearestUpcomingRenewal.license.name} — ${nearestUpcomingRenewal.daysRemaining} hari lagi`
+              : overdueRenewals.length > 0
+                ? 'Tidak ada jatuh tempo mendatang dalam 90 hari.'
+                : 'Tidak ada lisensi yang jatuh tempo dalam 90 hari.'}
+          </div>
         </div>
       </div>
 
@@ -102,7 +119,8 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
         {licenseAssets.map((license) => {
           const detail = license.license_detail;
           const daysRemaining = detail?.expiration_date ? calculateDaysRemaining(detail.expiration_date) : 999;
-          const isExpiringSoon = daysRemaining < 90;
+          const isOverdue = daysRemaining < 0;
+          const isExpiringSoon = daysRemaining >= 0 && daysRemaining <= 90;
           const seatPct = detail?.total_seats ? Math.round((detail.used_seats / detail.total_seats) * 100) : 0;
 
           return (
@@ -138,7 +156,12 @@ export const LicensesView: React.FC<LicensesViewProps> = ({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {isExpiringSoon ? (
+                  {isOverdue ? (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-800 border border-rose-300">
+                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" />
+                      Terlambat {Math.abs(daysRemaining)} Hari
+                    </span>
+                  ) : isExpiringSoon ? (
                     <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300">
                       <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />
                       Renewal: {daysRemaining} Hari Lagi
