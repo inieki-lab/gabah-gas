@@ -24,7 +24,7 @@
 - **Authorization:** identitas hanya berasal dari sesi valid. Header `x-user-id` tidak dapat memalsukan identitas. Setiap route tetap harus memeriksa permission dan data scope Dynamic RBAC di backend.
 ```http
 # Browser: cookie dikirim otomatis oleh fetch credentials: 'same-origin'
-Cookie: gabah_session=<HttpOnly session cookie>
+Cookie: gabah_session=<opaque session token>  # HttpOnly is a Set-Cookie attribute, not a request-cookie attribute
 
 # API client non-browser:
 Authorization: Bearer <session_token>
