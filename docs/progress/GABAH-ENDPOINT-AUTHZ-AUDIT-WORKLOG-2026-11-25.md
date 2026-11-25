@@ -470,3 +470,41 @@ The scripts assert permission/scope checks, active-user eligibility, read-only h
 - No new confirmed notification recipient or contract file-access bypass found in the reviewed paths.
 - Contract document upload/download has live PostgreSQL integration coverage in CI; notification recipient isolation remains source-contract coverage and should receive a focused live HTTP negative test.
 - Next: add a disposable-user notification recipient IDOR HTTP matrix, then continue direct-ID authorization review for remaining administration/master-data and download endpoints. Keep browser UAT and release gates open.
+
+
+## 19. Batch 13 — role-targeted notification privacy correction (2026-11-25)
+
+**Confirmed defect:** `isNotificationRecipient` passed the notification's functional `recipient_role` label through `primaryRoleKey()`. That helper intentionally maps user-facing primary profile labels to the canonical `superadmin` or `karyawan` profile. It is not a function-role normalizer. Because operational users have the canonical Karyawan primary profile plus additional function roles, an IT/GA/Humas notification could be matched against Karyawan rather than its intended function role. This could make notifications invisible to the intended operator or visible to unrelated Karyawan users.
+
+### Correction
+
+- Added `notificationRoleKey()` to normalize functional recipient labels independently from primary profile mapping.
+- `isNotificationRecipient` now resolves role recipients against effective function roles in PostgreSQL and legacy function-role labels in file-store mode.
+- Explicit user recipient precedence remains unchanged; unit/division recipient behavior remains unchanged.
+- Unknown role labels fail closed because they do not match an assigned effective role.
+
+### Live regression coverage
+
+- Extended `test:notification-recipient-rbac` with an isolated live HTTP server in file-store mode.
+- The test covers IT role notification `NOTIF-001`, GA role notification `NOTIF-002`, Humas role-only notification `NOTIF-HUMAS-001`, and an IT ticket notification targeted by division.
+- Cross-role list visibility is denied; cross-role `PATCH /api/notifications/:id/read` returns 404; the intended recipient can mark their own notification read.
+- The live test uses canonical test credentials, an OS-assigned localhost port, disables PostgreSQL by setting an empty `DATABASE_URL`, and restores/removes its disposable state snapshot.
+
+### CI and merge
+
+- Initial CI run `45641006835` failed in the new test harness because its credential-file parser split on the literal characters `\\n` instead of actual newlines. Application typecheck/build and earlier suites passed; the login failures were test setup failures, not an application authorization result.
+- Corrected the parser and retained explicit file-store isolation.
+- Final exact-head CI run `45641748515`: **SUCCESS**. Full verify job passed, including TypeScript, production build, Docker runtime smoke, PostgreSQL 17 fresh database/persistence integration, P0 live HTTP security, notification recipient live HTTP, and the complete regression suite.
+- PR #321 merged to main as `e87e6a107e3f4cdf8d9be15e9f5de94836fdaf82`.
+
+### Validation boundary
+
+- The live recipient matrix verifies file-store compatibility. PostgreSQL effective-role resolution is covered by the source contract and the full PostgreSQL CI integration; the new recipient matrix is not yet a dedicated PostgreSQL multi-role notification fixture.
+- No production notifications or user-role assignments were modified.
+- Browser UAT remains required for real role personas and production notification delivery.
+
+### Next batch
+
+1. Continue direct-ID endpoint review for user administration, master data, knowledge records, and download handlers.
+2. Add runtime negative tests where source-only assertions are still the only evidence.
+3. Keep the production release gates open until per-persona browser UAT, legacy database upgrade rehearsal, backup/restore, staging deploy/rollback, and owner sign-off are recorded.
