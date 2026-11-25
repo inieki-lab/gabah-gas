@@ -30,7 +30,8 @@ The CI workflow already registers both:
 - `node scripts/cr04-cr05-verify.mjs` (PostgreSQL 17 fresh-database/persistence integration)
 
 **Local execution:** NOT RUN in this session (no repository checkout/runtime attached).  
-**Exact-head CI:** PENDING — PR #328 is open as a draft; the latest PR head must be checked after the worklog synchronization commit. No PASS is claimed yet.  
+**Initial CI run:** workflow `45710772212` failed at `test:asset-scope-policy` with 107/108 checks passing. The only failure was an overly strict test regex that expected `UPPER(owner.code)` while migration 106 correctly uses `UPPER(BTRIM(owner.code))`; the assertion was corrected in commit `aeddeab293103a5ca1d58673d7494f27a78422be`. All earlier steps, including TypeScript lint, passed.  
+**Exact-head CI:** rerun pending on the corrected PR head; no PASS is claimed yet.  
 **Browser UAT:** NOT RUN. Scenario 2E was added to `docs/testing/UAT.md`.
 
 ## 4. Data-safety boundary
