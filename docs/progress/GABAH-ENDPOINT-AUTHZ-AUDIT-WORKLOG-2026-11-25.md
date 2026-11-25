@@ -346,3 +346,22 @@ Fix is open as PR #311:
 - Secondary IT/GA UI consistency: one residual AssetsView fallback fixed in PR #315; CI pending.
 - PR #314 and all merged PRs above are on main; PR #315 must not merge until exact-head CI succeeds.
 - Continue checking remaining frontend compatibility helpers and endpoint-level object scope; do not stop while PR #315 CI is running.
+
+## 15. Batch 9 — reconciliation external-number input validation (2026-11-25)
+
+### Confirmed validation gap — PR #317
+- `POST /api/reconciliation/link` required `reconciliation.link` and asset owner mutation authority, but accepted `corporateAssetNumber` without type/length/NUL validation before calling `.trim()`.
+- Non-string input could throw a TypeError instead of a controlled 400; oversized or NUL-containing values could be persisted to the external identifier and audit trail.
+- PR #317 validates string/null/undefined, caps text at 120 characters, rejects NUL, trims values, treats blank as unlink, and distinguishes link/unlink audit descriptions. Existing permission and owner-scope checks remain unchanged.
+- Exact head `b555659f167e044f763b05e7211fab3c2da55dd3`; CI pending. Regression source-contract was added to `asset-scope-policy-verify.mjs`.
+
+### Concurrent PR state at this update
+- PR #315 exact head `f9ab1553d0fb14380675b5c2541032827c799b9d`; CI run `45633864278` in progress (48/118 at last poll).
+- PR #316 is the documentation PR for Batches 8–9; CI pending after its latest update.
+- PR #317 is the reconciliation input-validation fix; CI pending.
+- PR #314 merged successfully; no changes are made to primary profile definitions or role templates by PR #315/#317.
+
+### Batch 9 status
+- Reconciliation write authorization and input validation: source-reviewed; input-validation correction proposed in PR #317.
+- No production DB, asset, or reconciliation records changed.
+- Continue independent source review while both code PRs await CI.
