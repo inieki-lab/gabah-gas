@@ -38,7 +38,8 @@ assert.equal(isNavTabAllowedForRole('Any Dynamic Role', 'assets', ['assets.read'
 assert.equal(isNavTabAllowedForRole('Any Dynamic Role', 'assets', ['assets.catalog.read']), false);
 
 // Landing page selection follows effective permissions and active module state.
-assert.equal(getDefaultNavTabForRole('Custom Role', ['reports.read']), 'reports');
+assert.equal(getDefaultNavTabForRole('Custom Role', ['reports.read', 'assets.read']), 'reports',
+  'reports can be the landing page when reports.read and a source data permission are both granted');
 assert.equal(getDefaultNavTabForRole('Custom Role', ['tickets.read', 'loans.read']), 'tickets');
 assert.equal(getDefaultNavTabForRole('Custom Role', ['*']), 'dashboard');
 assert.equal(getDefaultNavTabForRole('Custom Role', []), null);
