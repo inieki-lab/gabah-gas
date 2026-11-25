@@ -18,7 +18,7 @@ assert.match(dashboard, /currentRoleKeys\.includes\('humas'\)/);
 assert.match(dashboard, /currentRoleKeys\.includes\('sekretaris_direksi'\)/);
 assert.match(header, /currentUser\.role_keys\?\.includes\('humas'\)/);
 assert.match(dashboard, /const isStaff = isEmployeeFacingDashboardRole\(currentUser\?\.role, currentRoleKeys\)/);
-assert.match(dashboard, /import \{ isEmployeeFacingDashboardRole \} from '\.\.\/dashboard\/dashboardAudience'/);
+assert.match(dashboard, /import \{ isEmployeeFacingDashboardRole \} from '\.\.\/\.\.\/dashboard\/dashboardAudience'/);
 assert.match(dashboardAudience, /\['Karyawan', 'Supply Chain', 'PIBC'\]\.includes\(role \|\| ''\)/);
 assert.match(dashboardAudience, /roleKeys\.includes\('humas'\)/);
 assert.match(dashboardAudience, /roleKeys\.includes\('sekretaris_direksi'\)/);
