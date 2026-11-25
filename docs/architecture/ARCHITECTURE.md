@@ -114,11 +114,11 @@ Compose app menunggu database healthy; production fail-fast bila PostgreSQL gaga
      - `KnowledgeBaseView.tsx` (SOP teknis, artikel panduan operasional).
      - `ReportsView.tsx` (Rekonsiliasi Accurate ERP, depresiasi aset, audit trail).
    - `modals/`: 14 modal dialog interaktif untuk input, edit, detail, slip, scanner, dan administrasi kontrol panel.
-   - `HeaderNavbar.tsx`: Top bar, status koneksi SSL, notifikasi lonceng, dan quick persona role switcher.
+   - `HeaderNavbar.tsx`: Top bar, status koneksi SSL, notifikasi lonceng, dan menu profil pengguna dan notifikasi.
    - `Sidebar.tsx`: Navigasi samping dengan segmentasi menu dan akses restricted Administration Control Panel khusus Super Admin.
 3. **Klien API (`src/services/gabahApi.ts`)**:
-   - Membungkus seluruh panggilan `fetch` dengan penyematan header `Authorization: Bearer <token>`.
-   - Menangani token session storage dan deserialisasi error respons terstruktur.
+   - Browser menggunakan `credentials: 'same-origin'` untuk mengirim cookie sesi HttpOnly; tidak menyimpan token sesi di browser storage.
+   - API client server tetap dapat mengirim Bearer token; deserialisasi error respons terstruktur ditangani secara terpusat.
 
 ---
 
@@ -131,7 +131,7 @@ Compose app menunggu database healthy; production fail-fast bila PostgreSQL gaga
 2. **Runtime Security Middleware (`server/runtime-hardening.ts`)**:
    - Mencegah peretasan identitas via header `x-user-id` tanpa token (`authenticateRequest`).
    - Menerapkan batasan akses per divisi (scoping aset dan tiket).
-   - Memblokir seluruh operasi mutasi (non-GET) dari akun dengan peran `Auditor`.
+   - Memblokir operasi mutasi dari assignment role key `auditor`; perilaku read-only untuk role custom masih memerlukan policy generik (issue #289).
    - Melindungi API dari serangan denial-of-service/scraping dengan rate limiter (200 req/menit).
 3. **Domain Services (`server/services.ts`)**:
    - `GabahDomainService`: Enkapsulasi seluruh aturan bisnis aset, peminjaman, tiket, reservasi ruang rapat, notifikasi, dan pencatatan audit.
@@ -144,9 +144,10 @@ Compose app menunggu database healthy; production fail-fast bila PostgreSQL gaga
    - Koneksi dikelola oleh pool klien `pg` (`server/persistence.ts`).
    - Konfigurasi database dimuat dari variabel lingkungan (`DATABASE_URL`, `PGHOST`, `PGPORT`, `PGDATABASE`, `PGUSER`, `PGPASSWORD`).
    - Migrasi DDL dijalankan otomatis pada saat booting server (`ensureNormalizedSchema`) dari folder `server/migrations/`.
-2. **Dual-Persistence Resilience Manager**:
-   - Setiap mutasi data langsung dicatat ke cache/memory snapshot dan disinkronkan ke file `server/data/gabah_state.json`.
-   - Pada runtime Docker (NODE_ENV=production), PostgreSQL adalah authoritative store dan startup fail-fast jika koneksi/migrasi gagal. File snapshot bukan fallback operasional pada production.
+2. **PostgreSQL Authoritative + Recovery Snapshot**:
+   - PostgreSQL adalah sumber data otoritatif. Setelah transaksi berhasil commit, payload persis yang telah commit ditulis ke `server/data/gabah_state.json` sebagai snapshot pemulihan; sesi tidak pernah dimasukkan ke snapshot atau blob PostgreSQL.
+   - File-store hanya menjadi fallback development bila PostgreSQL tidak tersedia sejak startup pada lingkungan non-production. Setelah PostgreSQL pernah authoritative, runtime failure melatch penolakan operasi; snapshot tidak dipakai untuk failover otomatis.
+   - Pada production, startup fail-fast bila koneksi/migrasi PostgreSQL gagal.
 
 ---
 
