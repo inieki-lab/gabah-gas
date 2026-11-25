@@ -123,7 +123,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
   const hasAssetPermission = (permission: string) => !isReadOnly && (isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
-      : ['IT', 'GA'].includes(currentUser.role)));
+      : GabahService.hasLegacyCapability(currentUser, 'it') || GabahService.hasLegacyCapability(currentUser, 'ga')));
   const canCreateAsset = hasAssetPermission('assets.create');
   const canImportAssets = hasAssetPermission('assets.bulk_import');
   const canCreateTicket = !isReadOnly && (isSuperAdmin

@@ -142,9 +142,11 @@ const checks = [
     });
   })()],
   ['Meeting facility legacy GA/IT access is confined to the file-store fallback helper', /function hasRoomPermission\(actor: ServerUser, permissionKey: string, legacyRole\?: string \| string\[\]\): boolean[\s\S]*if \(isPostgresPersistenceActive\(\)\) return hasRbacPermission\(String\(actor.id\), permissionKey\);[\s\S]*Array\.isArray\(legacyRole\)/.test(services)],
+  ['Asset create/import controls honor secondary IT/GA capabilities in file-store mode', /const hasAssetPermission = \(permission: string\) => !isReadOnly/.test(assetUi) && /GabahService\.hasLegacyCapability\(currentUser, 'it'\) \|\| GabahService\.hasLegacyCapability\(currentUser, 'ga'\)/.test(assetUi) && !/\['IT', 'GA'\]\.includes\(currentUser\.role\)/.test(assetUi)],
   ['Asset create/import/report shortcuts enforce Auditor read-only and effective create permissions', /const isReadOnly = GabahService\.isReadOnly\(currentUser\)/.test(assetUi) && /const hasAssetPermission = \(permission: string\) => !isReadOnly/.test(assetUi) && /const canCreateTicket = !isReadOnly/.test(assetUi) && /onReportAsset && canCreateTicket/.test(assetUi)],
   ['Knowledge article create/update/vote shortcuts enforce Auditor read-only and explicit permissions', /const isReadOnly = GabahService\.isReadOnly\(currentUser\)/.test(knowledgeUi) && /const hasKnowledgePermission = \(permission: string\) => !isReadOnly/.test(knowledgeUi) && /knowledge\.create/.test(knowledgeUi) && /knowledge\.update/.test(knowledgeUi) && /const canVote = !isReadOnly && \(isSuperAdmin \|\| \(hasPermissionMetadata/.test(knowledgeUi) && knowledgeUi.includes("'knowledge.vote'") && /\{canVote && \(/.test(knowledgeUi)],
   ['Administration modal is gated by effective Superadmin navigation capability, not primary role label', /isOpen=\{isAdministrationModalOpen && isSuperadminNavigationAllowed\(currentUser\?\.role, currentUser\?\.is_superadmin, currentUser\?\.permission_keys\)\}/.test(appUi)],
+  ['License creation honors secondary IT capability in file-store mode', licenseUi.includes("GabahService.hasLegacyCapability(currentUser, 'it')")],
   ['License creation UI follows assets.create and Auditor read-only precedence', /const canCreateLicense = !isReadOnly[\s\S]*assets\.create/.test(licenseUi) && /GabahService\.isReadOnly\(currentUser\)/.test(licenseUi) && !/currentUser\.role === 'Admin GABAH' \|\| currentUser\.role === 'IT'/.test(licenseUi)],
   ['Vendor create/update UI requires explicit permissions and Auditor deny-write precedence', /const isReadOnly = GabahService\.isReadOnly\(currentUser\)/.test(vendorUi) && /const hasPermission = \(permission: string\) => !isReadOnly &&/.test(vendorUi) && /vendors\.create/.test(vendorUi) && /vendors\.update/.test(vendorUi) && !/currentUser\.role === 'Admin GABAH'\s*\|\|\s*currentUser\.permission_keys/.test(vendorUi)],
   ['Contract view treats Superadmin metadata as authority and uses effective Auditor membership', /const isAdmin = currentUser\.is_superadmin === true \|\| currentUser\.role_keys\?\.includes\('superadmin'\) === true/.test(contractUi) && /GabahService\.isReadOnly\(currentUser\)/.test(contractUi)],
@@ -161,5 +163,3 @@ for (const [name, ok] of checks) {
 console.log(`TOTAL: ${checks.length} | PASS: ${checks.length - failed} | FAIL: ${failed}`);
 process.exit(failed === 0 ? 0 : 1);
 
-
-assert.ok(licenseUi.includes("GabahService.hasLegacyCapability(currentUser, 'it')"), 'IT license creation action must honor secondary IT capability in file-store mode');
