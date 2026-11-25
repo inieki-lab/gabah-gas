@@ -1,5 +1,6 @@
+import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import { CORE_NAVIGATION_TABS, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../src/navigation/roleNavigation';
+import { CORE_NAVIGATION_TABS, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed, isStaffNavigationPersona } from '../src/navigation/roleNavigation';
 
 // The application has no fixed role-to-menu matrix. Any Dynamic RBAC role
 // receives exactly the pages authorized by its effective permission keys.
@@ -42,5 +43,23 @@ assert.equal(isSuperadminNavigationAllowed('Admin GABAH', false, ['dashboard.rea
 assert.ok(isSuperadminNavigationAllowed('Admin GABAH', true, ['dashboard.read']));
 assert.ok(isSuperadminNavigationAllowed('Custom Role', false, ['*']));
 assert.ok(isSuperadminNavigationAllowed('Admin GABAH', false, undefined));
+
+
+assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'tickets.create']), true,
+  'ordinary employees and request-only users keep the staff persona');
+assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'tickets.read', 'tickets.update']), false,
+  'IT/GA/ME operators with operational ticket permissions are not classified as staff-only');
+assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'assets.create']), false,
+  'asset operators with a canonical Karyawan profile retain operational labels and badges');
+assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'room_reservations.documentation.read']), true,
+  'Humas documentation-only capability remains a staff persona');
+assert.equal(isStaffNavigationPersona('Karyawan', ['*']), false,
+  'Superadmin wildcard permissions are never classified as staff-only');
+
+const sidebar = fs.readFileSync('src/components/Sidebar.tsx', 'utf8');
+assert.match(sidebar, /const isHumas = !isSuperAdmin && hasPermission/,
+  'Superadmin wildcard must not make the sidebar identify Superadmin as Humas');
+assert.match(sidebar, /const isSekdir = !isSuperAdmin && hasPermission/,
+  'Superadmin wildcard must not make the sidebar identify Superadmin as Sekdir');
 
 console.log('Dynamic navigation policy: PASS (no fixed role catalogue; permissions and landing-page checks)');

@@ -301,3 +301,17 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 ### Perbaikan
 - Route mempertahankan `statusCode` numerik yang diberikan domain; HTTP 400 tetap menjadi fallback untuk input/transisi yang tidak valid tanpa status khusus.
 - Regression test reporter-transition memastikan route tidak meratakan seluruh exception menjadi HTTP 400.
+
+
+## 25 November 2026 — Konsistensi persona navigasi untuk profil pegawai kanonis
+
+### Temuan
+- Semua pegawai operasional menggunakan profil utama `Karyawan`; Sidebar sebelumnya menganggap setiap profil `Karyawan` sebagai staf biasa tanpa memeriksa permission Dynamic RBAC.
+- Dampaknya, akun IT/GA/ME yang sudah memiliki permission operasional tetap mendapat label menu staf dan badge antrean operasional disembunyikan (`pendingLoansCount`/`openTicketsCount`). Ini membuat tampilan kerja tidak konsisten dengan assignment fungsi yang sebenarnya.
+
+### Perbaikan
+- Klasifikasi persona staf kini mempertimbangkan permission operasional efektif (mis. `tickets.update`, `tickets.assign`, `assets.create/update`, persetujuan pinjaman, dan pengelolaan fasilitas).
+- Pegawai biasa dan pemohon layanan tetap mendapat label staf; operator dengan permission pengelolaan mendapat label operasional dan badge antrean.
+- Regression test navigasi mencakup profil Karyawan dengan permission request-only, IT/GA/ME operasional, Humas dokumentasi, dan Superadmin wildcard.
+
+- Pemeriksaan lanjutan menemukan wildcard Superadmin juga membuat predicate Humas/Sekdir pada Sidebar bernilai benar. Persona khusus tersebut kini dikecualikan untuk Superadmin, agar label Dashboard dan badge antrean tidak salah diklasifikasikan sebagai staf.

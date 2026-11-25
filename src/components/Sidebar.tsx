@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { AdministrationModal } from './modals/AdministrationModal';
-import { AppNavTab, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../navigation/roleNavigation';
+import { AppNavTab, isNavTabAllowedForRole, isSuperadminNavigationAllowed, isStaffNavigationPersona } from '../navigation/roleNavigation';
 
 export type NavTab = AppNavTab;
 
@@ -93,14 +93,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
       : (!!activeRole && legacyRoles.includes(activeRole)) || legacyRoles.some(role => currentUserRoleKeys?.includes(role.toLowerCase().replace(/[^a-z0-9]+/g, '_')) === true));
   // Queue badges and labels follow effective capabilities in PostgreSQL mode.
   // Legacy role keys are only a file-store compatibility fallback.
-  const isHumas = hasPermission('room_reservations.documentation.read', ['Humas']);
-  const isSekdir = hasPermission('room_reservations.override_priority', ['Sekretaris Direksi']);
+  // Superadmin is a global system persona, not a Humas/Sekdir persona just because its wildcard grants every permission.
+  const isHumas = !isSuperAdmin && hasPermission('room_reservations.documentation.read', ['Humas']);
+  const isSekdir = !isSuperAdmin && hasPermission('room_reservations.override_priority', ['Sekretaris Direksi']);
   const isIT = hasPermission('room_reservations.it_facilities.read', ['IT', 'Admin GABAH']);
   const isGA = hasPermission('room_reservations.approve', ['GA', 'Admin GABAH'])
     || hasPermission('room_reservations.reject', ['GA', 'Admin GABAH'])
     || hasPermission('meeting_facilities.manage', ['GA', 'Admin GABAH']);
-  const isStaff = activeRole === 'Karyawan' || isSekdir || isHumas
-    || ['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole || '');
+  const isStaff = isStaffNavigationPersona(activeRole, currentUserPermissions) || isSekdir || isHumas;
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
