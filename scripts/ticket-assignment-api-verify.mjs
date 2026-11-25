@@ -20,7 +20,7 @@ assert.match(routes, /user\.is_active === false/);
 assert.match(routes, /hasRbacPermission\(String\(user\.id\), 'tickets\.update'\)/);
 assert.match(routes, /hasRbacScope\(String\(user\.id\), 'division', String\(ticket\.category\), 'tickets'\)/);
 assert.match(routes, /hasRbacScope\(String\(user\.id\), 'unit', String\(ticket\.assigned_unit_id\), 'tickets'\)/);
-assert.match(routes, /isAuditorActor\(actor\)/);
+assert.match(routes, /isReadOnlyActor\(actor\)/);
 assert.match(routes, /\['open', 'assigned'\]/);
 assert.match(routes, /status\(409\)/);
 assert.match(routes, /TICKET_ASSIGNMENT_UPDATED/);
