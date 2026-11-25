@@ -1,4 +1,12 @@
 
+### Loan request error recovery and borrower contact — 2026-11-25
+
+- `CreateLoanModal` previously closed immediately after starting its asynchronous callback. It now awaits the parent callback and leaves close ownership with `App.tsx`, which closes the modal only after successful API response.
+- The form collected `borrower_phone` and the domain service validated/persisted it, but `App.tsx` omitted it from single and batch request payloads. Added the optional field to both API client payload types and forwarded it in both paths.
+- Added in-flight submit protection (disabled button + progress label) to prevent duplicate requests from repeated taps.
+- Extended `test:loanable-pool-ui` to guard phone forwarding, modal close ownership, and duplicate-submit prevention. No schema, permission, approval, or collision policy changes.
+
+
 ### Dynamic RBAC role-assignment session revocation regression — 2026-11-25
 
 - Rechecked `PUT /api/admin/rbac/users/:id/roles` on current `main`: it atomically replaces the full role set, enforces the last-active-Superadmin invariant, then calls `revokeUserSessions(userId)`, refreshes the local RBAC policy cache, and writes the audit event.
