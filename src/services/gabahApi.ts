@@ -308,6 +308,10 @@ class GabahApiClient {
   }
 
   // Master Divisions
+  async getContractCreateOwnerOptions(): Promise<Array<{ code: string; name: string }>> {
+    return this.request<Array<{ code: string; name: string }>>('/api/contracts/create-options');
+  }
+
   async getDivisions(): Promise<any[]> {
     return this.request<any[]>('/api/master/divisions');
   }
