@@ -4,7 +4,7 @@
 **Repository:** `inieki-lab/gabah-gas`  
 **Base dependency:** PR #328 (`fix/retire-legacy-owner-domains-2026-11-26`)  
 **Branch:** `fix/asset-dashboard-owner-scope-audit-2026-11-26`  
-**Status:** INITIAL SOURCE AUDIT — no runtime code changed; regression coverage and live UAT remain pending.
+**Status:** SOURCE AUDIT + REGRESSION GUARD COMPLETE — exact-head CI passed; runtime UAT remains pending.
 
 ## Purpose
 
@@ -71,7 +71,8 @@ All source files below were read from the dependency branch at the time of this 
 ## Checks and evidence
 
 - Source review: completed for the seven files listed above.
-- New regression guard: registered; all 13 source assertions passed in a preflight against the exact branch sources. Exact-head CI remains the authoritative execution evidence and is currently pending.
+- New regression guard: registered; all 13 assertions passed in preflight and exact-head CI run **45715553138** completed **SUCCESS** on commit `d83a2e9b9badd403d464df0bd33288691889fe68`.
+- The exact-head CI pipeline also passed typecheck, production build, Docker image/runtime smoke, PostgreSQL 17 fresh-database/persistence integration, live HTTP security checks, asset/dashboard/contract scope parity, and existing loan/ticket/module regression jobs.
 - Local repository test execution: NOT RUN in this session (no repository checkout/runtime attached).
 - PostgreSQL fresh-install/legacy-upgrade tests: pending.
 - Browser UAT: NOT RUN.
@@ -79,10 +80,9 @@ All source files below were read from the dependency branch at the time of this 
 
 ## Next steps
 
-1. Review exact-head CI for the newly registered source regression guard; fix any mismatch it exposes.
-2. Extend runtime tests for search/filter/export and direct-ID access where an API path exists.
-3. Run the existing asset-scope and CR-04/CR-05 integration suites on PostgreSQL, then execute the persona matrix in UAT.
-4. Record exact commit SHA and CI run in this worklog after the run completes.
-5. Keep dependent PR #328 and this follow-up unmerged until exact-head CI, UAT, and owner review pass.
+1. Continue endpoint inventory for asset search/filter/export and direct-ID paths; current route inventory did not identify a separate asset export endpoint.
+2. Add or extend runtime tests for any discovered alternate read paths and verify scope parity.
+3. Execute the persona matrix in browser UAT: Superadmin, IT, GA workstation read-only, multi-owner custom role, staff/no-scope, Auditor, and historical SC/PIBC.
+4. Keep dependent PR #328 and this follow-up unmerged until browser UAT and owner review pass.
 
 **Merge policy:** No merge to `main` without explicit owner approval.
