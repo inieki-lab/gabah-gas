@@ -723,7 +723,7 @@ Standar nomor aset korporat belum disahkan. GABAH menggunakan aturan penerbitan 
 1. Setiap perpindahan atau peminjaman aset wajib dibuatkan dokumen BAST.
 2. Tombol **"Cetak BAST"** tersedia langsung pada detail aset dan modul peminjaman.
 3. Dokumen BAST GABAH mencantumkan:
-   - Nomor Resmi Aset ({DIVISI}-{KODE}-{TAHUN}-XXXX).
+   - Nomor aset yang tercatat pada sistem saat dokumen diterbitkan (mengikuti aturan penomoran aktif).
    - Identitas Pihak Pertama (Pengelola Devisi) dan Pihak Kedua (Penerima Manfaat).
    - Kondisi fisik saat diserahkan dan masa berlaku penggunaan.
    - Kolom tanda tangan basah / digital untuk arsip audit BPK/Inspektorat DKI Jakarta.`,
