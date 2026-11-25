@@ -123,7 +123,7 @@ export const AssetImportModal: React.FC<AssetImportModalProps> = ({ open, onClos
             <Info className="w-4 h-4 shrink-0 mt-0.5" />
             <span>
               Kolom <strong>Nama Aset</strong> wajib. Kategori &amp; divisi pemilik divalidasi server —
-              nomor aset resmi dibuat otomatis. Baris bermasalah dilewati tanpa menggagalkan batch.
+              nomor aset diterbitkan otomatis mengikuti aturan aktif. Baris bermasalah dilewati tanpa menggagalkan batch.
             </span>
           </div>
 
