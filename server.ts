@@ -3974,6 +3974,7 @@ async function startServer() {
   };
 
   const validateMaintenanceInput = (body: any): string | null => {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) return 'Payload maintenance harus berupa objek JSON.';
     const frequencies = ['weekly', 'monthly', 'quarterly', 'biannual', 'annual', 'one_time'];
     const statuses = ['scheduled', 'in_progress', 'completed', 'overdue', 'cancelled'];
     if (body.frequency !== undefined && !frequencies.includes(body.frequency)) return 'Frekuensi maintenance tidak valid.';
@@ -4075,7 +4076,7 @@ async function startServer() {
     } else if (!isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengelola jadwal servis.' });
     }
-    const validationError = validateMaintenanceInput(req.body || {});
+    const validationError = validateMaintenanceInput(req.body);
     if (validationError) return res.status(400).json({ success: false, message: validationError });
     if (req.body?.status !== undefined && req.body.status !== 'scheduled') {
       return res.status(400).json({ success: false, message: 'Jadwal baru harus dimulai dengan status scheduled.' });
@@ -4146,7 +4147,7 @@ async function startServer() {
       return res.status(403).json({ success: false, message: `Akses ditolak: permission maintenances.update dan scope owner "${schedule.owner_division}" wajib dimiliki.` });
     }
 
-    const validationError = validateMaintenanceInput(req.body || {});
+    const validationError = validateMaintenanceInput(req.body);
     if (validationError) return res.status(400).json({ success: false, message: validationError });
     const currentStatus = String(schedule.status || 'scheduled');
     const nextStatus = req.body?.status;
