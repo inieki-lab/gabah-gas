@@ -20,7 +20,7 @@ const vendorStart = source.indexOf("// Vendor Directory (server-authoritative)")
 assert.ok(createStart >= 0 && updateStart > createStart && vendorStart > updateStart);
 const create = source.slice(createStart, updateStart);
 const update = source.slice(updateStart, vendorStart);
-assert.match(create, /requireRbacPermission\(req, res, 'maintenances\.create'\)[\s\S]*validateMaintenanceInput\(req\.body \|\| \{\}\)/);
+assert.match(create, /requireRbacPermission\(req, res, 'maintenances\.create'\)[\s\S]*validateMaintenanceInput\(req\.body\)/);
 assert.match(create, /else if \(!isSuperadminActor\(actor\) && !hasApplicationRole\(actor, 'it'\) && !hasApplicationRole\(actor, 'ga'\)\)[\s\S]*validateMaintenanceInput/);
 assert.match(update, /else if \(!isSuperadminActor\(actor\) && !hasApplicationRole\(actor, 'it'\) && !hasApplicationRole\(actor, 'ga'\)\)[\s\S]*validateMaintenanceInput/);
 assert.match(update, /requireRbacPermission\(req, res, 'maintenances\.update'\)[\s\S]*validateMaintenanceInput/);
