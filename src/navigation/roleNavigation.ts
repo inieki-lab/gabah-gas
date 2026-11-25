@@ -53,6 +53,39 @@ export function isSuperadminNavigationAllowed(
   return isSuperadmin === true || _role === 'Admin GABAH';
 }
 
+
+/**
+ * Canonical employee profiles are all "Karyawan". Do not use that profile
+ * alone to classify an operational user as a staff-only persona: IT/GA/ME
+ * operators also have the Karyawan primary profile and must retain operational
+ * navigation labels and queue badges.
+ */
+const OPERATIONAL_NAVIGATION_PERMISSIONS: readonly string[] = [
+  'assets.create', 'assets.update', 'assets.assign', 'assets.move', 'assets.lifecycle',
+  'loans.approve', 'loans.reject', 'loans.handover', 'loans.return',
+  'tickets.update', 'tickets.assign',
+  'maintenances.create', 'maintenances.update',
+  'meeting_rooms.update', 'meeting_facilities.manage',
+  'room_reservations.approve', 'room_reservations.reject',
+  'room_reservations.checkin', 'room_reservations.checkout',
+  'vendors.create', 'vendors.update',
+  'contracts.create', 'contracts.update',
+  'licenses.update',
+];
+
+/** True only for employee-facing personas without operational management grants. */
+export function isStaffNavigationPersona(
+  role: UserRole | null | undefined,
+  permissionKeys?: readonly string[],
+): boolean {
+  if (!role) return false;
+  if (permissionKeys !== undefined) {
+    if (permissionKeys.includes('*')) return false;
+    if (OPERATIONAL_NAVIGATION_PERMISSIONS.some(permission => permissionKeys.includes(permission))) return false;
+  }
+  return ['Karyawan', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(role);
+}
+
 const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
   'dashboard', 'my_assets', 'tickets', 'loans', 'meeting_rooms', 'assets',
   'maintenance', 'contracts', 'vendors', 'licenses', 'knowledge', 'reports',
