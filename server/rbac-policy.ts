@@ -149,8 +149,10 @@ export function isRbacSuperadmin(userId: string): boolean {
 }
 
 /** Preserve local file-store development while making PostgreSQL role identity authoritative. */
-export function isSuperadminActor(actor: { id: string; role?: string; role_keys?: string[] }): boolean {
-  return isPostgresPersistenceActive() ? isRbacSuperadmin(actor.id) : actor.role === 'Admin GABAH' || actor.role_keys?.includes('superadmin') === true;
+export function isSuperadminActor(actor: { id: string; role?: string; role_keys?: string[]; permission_keys?: string[] }): boolean {
+  if (isPostgresPersistenceActive()) return isRbacSuperadmin(actor.id);
+  return !isReadOnlyActor(actor)
+    && (actor.role === 'Admin GABAH' || actor.role_keys?.includes('superadmin') === true);
 }
 
 /** Generic read-only policy; the legacy Auditor role remains a compatible source of this policy. */
