@@ -7,7 +7,7 @@ const modal = fs.readFileSync('src/components/modals/AdministrationModal.tsx', '
 const migration = fs.readFileSync('server/migrations/102_notification_rule_settings.sql', 'utf8');
 
 const checks = [
-  ['Notification settings reads require an authenticated actor and active PostgreSQL', /app\.get\('\/api\/admin\/notification-rules'[\s\S]*?getActor\(req\)[\s\S]*?isPostgresPersistenceActive\(\)[\s\S]*?FROM gabah_notification_rule_settings/.test(server)],
+  ['Notification settings reads require active Superadmin authorization', /app\.get\('\/api\/admin\/notification-rules'[\s\S]*?requireRbacSuperadmin\(req, res\)[\s\S]*?FROM gabah_notification_rule_settings/.test(server)],
   ['Notification settings writes require stable Superadmin authorization', /app\.patch\('\/api\/admin\/notification-rules\/:ruleId'[\s\S]*?requireRbacSuperadmin\(req, res\)/.test(server)],
   ['Only the four known notification rules can be changed', /NOTIFICATION_RULE_IDS = new Set\(\['rule-warranty', 'rule-loan', 'rule-sla', 'rule-bast'\]\)/.test(server) && ['rule-warranty', 'rule-loan', 'rule-sla', 'rule-bast'].every(id => migration.includes("'" + id + "'"))],
   ['Notification rule status accepts strict booleans only', /typeof req\.body\?\.is_active !== 'boolean'/.test(server)],
