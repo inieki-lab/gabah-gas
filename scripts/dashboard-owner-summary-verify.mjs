@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync(new URL('../src/components/views/DashboardView.tsx', import.meta.url), 'utf8');
+const header = fs.readFileSync(new URL('../src/components/HeaderNavbar.tsx', import.meta.url), 'utf8');
 
 const checks = [
   ['Division dashboard label follows visible owner domains', source.includes('visibleOwnerDomains = Array.from(new Set(') && source.includes('visibleOwnerDomains.join(\' / \')')],
