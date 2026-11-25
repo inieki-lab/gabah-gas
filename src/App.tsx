@@ -100,6 +100,7 @@ export default function App() {
   const [selectedAssetForEdit, setSelectedAssetForEdit] = useState<Asset | null>(null);
   const [selectedAssetForQr, setSelectedAssetForQr] = useState<Asset | null>(null);
   const [selectedLoanForBast, setSelectedLoanForBast] = useState<Loan | null>(null);
+  const [selectedAssetForBast, setSelectedAssetForBast] = useState<Asset | null>(null);
   const [isAdministrationModalOpen, setIsAdministrationModalOpen] = useState(false);
   const [isGlobalSearchOpen, setIsGlobalSearchOpen] = useState(false);
 
@@ -155,6 +156,7 @@ export default function App() {
     setSelectedAssetForEdit(null);
     setSelectedAssetForQr(null);
     setSelectedLoanForBast(null);
+    setSelectedAssetForBast(null);
     setPreselectedTicketAssetId(undefined);
     setContractForLinkedTicket(null);
     setLinkedTicketContractId(undefined);
@@ -463,32 +465,21 @@ export default function App() {
     return true;
   };
 
-  // Direct BAST Document Generation for Any Asset
+  // Direct BAST generation keeps permanent asset assignment separate from a loan.
   const handleGenerateBastForAsset = (ast: Asset) => {
-    const existingLoan = (loans || []).find(l => l.asset_id === ast.id && (l.status === 'active' || l.status === 'approved' || l.status === 'returned'));
+    const existingLoan = (loans || []).find(l =>
+      l.asset_id === ast.id
+      && ['active', 'borrowed', 'approved', 'overdue', 'returned'].includes(String(l.status).toLowerCase())
+    );
     if (existingLoan) {
+      setSelectedAssetForBast(null);
       setSelectedLoanForBast(existingLoan);
-    } else {
-      const officialBastLoan: Loan = {
-        id: `BAST-${ast.id}`,
-        loan_number: `BAST-${ast.asset_number.replace(/[^A-Za-z0-9-]/g, '')}`,
-        asset_id: ast.id,
-        asset_name: ast.name,
-        asset_number: ast.asset_number,
-        corporate_asset_number: ast.corporate_asset_number || null,
-        borrower_id: ast.assigned_to?.id || currentUser.id,
-        borrower_name: ast.assigned_to?.name || currentUser.name,
-        borrower_department: ast.assigned_to?.department || currentUser.department,
-        borrower_phone: '021-5000-888',
-        start_date: ast.purchase_date || new Date().toISOString().split('T')[0],
-        due_date: ast.warranty_until || new Date(Date.now() + 365*24*60*60*1000).toISOString().split('T')[0],
-        purpose: `Penyerahan & Inventarisasi Resmi Aktiva Tetap (Devisi ${ast.owner_division || 'GA'})`,
-        status: 'approved',
-        category_type: ast.category_type,
-        created_at: new Date().toISOString()
-      };
-      setSelectedLoanForBast(officialBastLoan);
+      return;
     }
+    // Permanent assignment BAST uses the asset directly. Do not fabricate a
+    // loan, borrower phone, due date, or approval record for this document.
+    setSelectedLoanForBast(null);
+    setSelectedAssetForBast(ast);
   };
 
   // 8. Create Ticket (SLA Engine Server-Side)
@@ -1129,10 +1120,14 @@ export default function App() {
       />
 
       <BastDocumentModal
-        isOpen={!!selectedLoanForBast}
-        onClose={() => setSelectedLoanForBast(null)}
+        isOpen={!!selectedLoanForBast || !!selectedAssetForBast}
+        onClose={() => {
+          setSelectedLoanForBast(null);
+          setSelectedAssetForBast(null);
+        }}
         loan={selectedLoanForBast}
-        asset={(visibleAssets || []).find(a => a.id === selectedLoanForBast?.asset_id) || null}
+        asset={selectedAssetForBast || ((visibleAssets || []).find(a => a.id === selectedLoanForBast?.asset_id) || null)}
+        currentUser={currentUser}
       />
 
       <AdministrationModal
