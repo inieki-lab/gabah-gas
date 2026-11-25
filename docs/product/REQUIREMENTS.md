@@ -101,13 +101,13 @@
 ## 2. Kebutuhan Non-Fungsional (Non-Functional Requirements)
 
 1. **NFR-01: Keamanan (Security)**
-   - Proteksi otentikasi via HTTP Bearer token.
-   - Deteksi dan blokir ID spoofing via manipulasi header `x-user-id` (HTTP 403).
+   - Browser menggunakan sesi cookie HttpOnly/SameSite=Strict (Secure pada production); klien API non-browser dapat menggunakan Bearer token. Mutasi berbasis cookie wajib lolos pemeriksaan Origin same-origin.
+   - Deteksi dan blokir ID spoofing via manipulasi header `x-user-id` (HTTP 403); identitas hanya berasal dari sesi server yang valid.
    - Password hashing menggunakan algoritma aman dengan per-user salt.
-   - Proteksi read-only mutlak untuk akun Auditor.
+   - Policy read-only harus menolak seluruh mutasi untuk assignment read-only. Implementasi saat ini masih mengikat enforcement pada role key `auditor`; dukungan read-only generik untuk custom role tracked pada issue #289.
 2. **NFR-02: Integritas Data & Persistensi (Data Integrity)**
    - Database PostgreSQL 17 dengan skema ternormalisasi, foreign key cascade/restrict, unique constraints, dan trigger PL/pgSQL.
-   - Dual-persistence bridge: sinkronisasi asinkron ke database relasional dengan fail-safe persistent file store.
+   - PostgreSQL adalah authoritative store; recovery snapshot JSON ditulis hanya setelah commit berhasil dan tidak memuat sesi. File-store development hanya boleh menjadi fallback saat PostgreSQL tidak tersedia sejak startup; tidak ada failover otomatis setelah runtime failure.
 3. **NFR-03: Kinerja & Skalabilitas (Performance)**
    - Respons API di bawah 200ms untuk query katalog aset dan dashboard.
    - Dukungan koneksi pool hingga 5 concurrent pool clients dengan idle timeout 10 detik.
