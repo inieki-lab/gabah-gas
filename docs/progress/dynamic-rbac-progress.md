@@ -1,3 +1,10 @@
+
+### Dynamic RBAC role-assignment session revocation regression — 2026-11-25
+
+- Rechecked `PUT /api/admin/rbac/users/:id/roles` on current `main`: it atomically replaces the full role set, enforces the last-active-Superadmin invariant, then calls `revokeUserSessions(userId)`, refreshes the local RBAC policy cache, and writes the audit event.
+- The implementation already invalidates the target account's active sessions after a successful role-set change. The gap was regression coverage: the Dynamic RBAC foundation verifier asserted transaction/audit/cache behavior but did not guard the session-revocation call.
+- Added a static regression assertion that the successful assignment path revokes target sessions before policy refresh. This is a test-only hardening change; no runtime behavior or database schema changed.
+
 > **Historical-progress note:** This file is a chronological log of work at the PR/commit stated in each entry. Older recommendations and role/owner assumptions may have been superseded. Do not use an old PASS or old status as current-head evidence. Current owner intent and source behavior are summarized in `docs/PROJECT-CONTEXT.md` and `docs/IMPLEMENTATION-TRUTH-REGISTER.md`.
 
 ### Production dependency vulnerability gate — 2026-11-23 (PR #244; CI pending)
