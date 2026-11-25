@@ -29,7 +29,7 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { AdministrationModal } from './modals/AdministrationModal';
-import { AppNavTab, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from '../navigation/roleNavigation';
+import { AppNavTab, isNavTabAllowedForRole, isSuperadminNavigationAllowed, isStaffNavigationPersona } from '../navigation/roleNavigation';
 
 export type NavTab = AppNavTab;
 
@@ -99,8 +99,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isGA = hasPermission('room_reservations.approve', ['GA', 'Admin GABAH'])
     || hasPermission('room_reservations.reject', ['GA', 'Admin GABAH'])
     || hasPermission('meeting_facilities.manage', ['GA', 'Admin GABAH']);
-  const isStaff = activeRole === 'Karyawan' || isSekdir || isHumas
-    || ['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole || '');
+  const isStaff = isStaffNavigationPersona(activeRole, currentUserPermissions) || isSekdir || isHumas;
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
