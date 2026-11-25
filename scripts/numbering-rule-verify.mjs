@@ -71,8 +71,12 @@ assert.doesNotMatch(createAssetUi, /Sistem Penomoran Resmi GABAH|Format Nomor As
 assert.doesNotMatch(assetDetailUi, /Format resmi:.*DIVISI/,
   'asset detail must not describe a historical pattern as an approved corporate standard');
 assert.match(assetImportUi, /nomor aset diterbitkan otomatis mengikuti aturan aktif/);
-assert.match(mockKnowledge, /Standar nomor aset korporat belum disahkan/);
-assert.doesNotMatch(mockKnowledge, /Struktur Format Nomor Aset Resmi|SC-MSN-2026|PIBC-KDR-2026/);
+const mockNumberingArticleStart = mockKnowledge.indexOf("id: 'kb-003'");
+const mockNumberingArticleEnd = mockKnowledge.indexOf("id: 'kb-004'", mockNumberingArticleStart);
+assert.ok(mockNumberingArticleStart >= 0 && mockNumberingArticleEnd > mockNumberingArticleStart);
+const mockNumberingArticle = mockKnowledge.slice(mockNumberingArticleStart, mockNumberingArticleEnd);
+assert.match(mockNumberingArticle, /Standar nomor aset korporat belum disahkan/);
+assert.doesNotMatch(mockNumberingArticle, /Struktur Format Nomor Aset Resmi|SC-MSN-2026|PIBC-KDR-2026/);
 assert.match(dbSeed, /Standar nomor aset korporat belum disahkan/);
 assert.doesNotMatch(dbSeed, /Nomor Resmi Aset \(\{DIVISI\}-\{KODE\}-\{TAHUN\}-XXXX\)/);
 assert.match(css, /Theme enforcement layer/);
