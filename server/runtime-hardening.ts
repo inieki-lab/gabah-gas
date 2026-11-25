@@ -26,7 +26,8 @@ function canManageTicket(actor: ServerUser, ticketId: string): boolean {
   const ticket = db.tickets.find(t => t.id === ticketId);
   if (!ticket) return false;
   if (isSuperadmin(actor)) return true;
-  if (isReadOnlyActor(actor)) return false;
+  // Read-only denies mutation, not scoped visibility. A custom read-only role
+  // must still see tickets allowed by reporter ownership or explicit RBAC scope.
   if (ticket.reporter_id === actor.id || ticket.assigned_agent_id === actor.id) return true;
   if (isPostgresPersistenceActive()) {
     // PostgreSQL RBAC is owner-code agnostic: custom operational functions
