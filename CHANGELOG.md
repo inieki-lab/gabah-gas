@@ -1,3 +1,7 @@
+## [2026-11-25] — Guard session revocation on Dynamic RBAC assignment
+- Add a regression check requiring successful per-user role-set changes to revoke the target user's existing sessions before the process refreshes effective RBAC policy.
+- Preserve the existing atomic assignment transaction, last-Superadmin guard, and audit event; this change adds regression coverage only.
+
 ## [2026-11-25] — Keep Superadmin separate from Humas and Sekdir sidebar personas
 - Prevent the Superadmin wildcard permission set from activating Humas/Sekdir staff labels and suppressing operational badges.
 - Add navigation regression checks for Superadmin persona precedence.
