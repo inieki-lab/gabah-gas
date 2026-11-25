@@ -1703,3 +1703,10 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - The assertion now verifies both normalized `users` lookup and active-state handling; implementation behavior was not weakened to satisfy the test.
 - Exact-head CI for commit `92ae0c669d7676af028eac9841bc814a8de83faa` is running; do not treat this batch as validated until the workflow completes.
 - Branch: `fix/rbac-superadmin-admin-entry-2026-11-20`; PR #177 remains draft and unmerged.
+
+
+## 2026-11-25 — Loan approval separation of duties
+- Added a server-side guard preventing an IT/GA custodian or other non-Superadmin actor from approving their own loan request, even when they hold the owner-domain approval capability.
+- Denied self-approval attempts are recorded as `LOAN_APPROVAL_DENIED`; the request remains pending and the asset is not reserved.
+- Superadmin retains explicit global break-glass authority. Regression coverage exercises both the denial and the retained override.
+- Validation is pending exact-head CI; this change is not merged until all required checks pass.
