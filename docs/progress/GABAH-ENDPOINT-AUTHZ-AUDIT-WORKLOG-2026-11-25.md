@@ -149,3 +149,43 @@ Reviewed `requestLoan`, `approveLoan`, `rejectLoan`, `canOperateLoan`, `handover
 - PR #301 remains OPEN at exact head `aef08cebc66439df6bb7be715772b27072ed637c`. The previously posted review concern about label-based global visibility in `ContractDomainService.getNotificationLogs()` has no maintainer response or fix visible as of this update. Keep PR #301 blocked from merge pending correction and regression coverage.
 
 **Batch 2 status:** STATIC REVIEW COMPLETE for the above areas; no runtime tests executed and no code defect confirmed in these reviewed methods.
+## 9. Batch 3 — room reservation privacy and database concurrency (2026-11-25)
+
+### Revalidation of historical security-report findings
+
+The older GABAH-AUDIT-REPORT.md / GABAH-P0-SECURITY-HARDENING-REPORT.md contains findings that are stale relative to current main. The following were rechecked against current source and should not be repeated as still-open vulnerabilities without new evidence:
+
+- PATCH /api/notifications/:id/read now requires notifications.read and checks isNotificationRecipient(actor, notif); non-recipient IDs return 404. read-all separately requires notifications.read_all.
+- GET /api/notifications filters records through isNotificationRecipient.
+- GET /api/room-reservations requires room_reservations.read and redacts private agenda/attendee/phone/consumption/documentation/rejection/interruption details for operational queues. IT facility and Humas documentation queues are separately filtered and redacted.
+- Room approve/reject/check-in/check-out/cancel domain methods enforce explicit capability/organizer ownership and valid state transitions. Their persistence path captures/restores domain snapshots on failure.
+- Contract document upload/download is implemented in current source. Existing dynamic-rbac-foundation-verify.mjs asserts permission + visible-contract checks, MIME/signature validation, storage-path confinement, and persistent upload volume. The older report's claim that there is no physical upload/download endpoint is stale.
+
+### Confirmed database invariant gap — PR #303
+
+A current-source comparison found a genuine gap in room anti-double-booking:
+
+1. Migration 015_room_reservations.sql creates idx_room_reservations_no_double_booking as a partial GiST index, not an EXCLUDE constraint. A normal GiST index does not itself prohibit overlapping ranges.
+2. Its predicate covers pending, approved, in_use, and checked_in.
+3. Current application code creates a non-auto-approved reservation with status pending_approval, which is absent from that predicate and the legacy trigger's active-status predicate.
+4. The prior concurrency verification updates fixtures to pending, not the real application status pending_approval; it therefore did not verify the actual pending approval state.
+
+A focused correction is open as PR #303:
+- URL: https://github.com/inieki-lab/gabah-gas/pull/303
+- Branch: fix/room-reservation-exclusion-constraint-2026-11-25
+- Exact head: 06573108f0306c1c8f721cd428190c6d6af1cb5f
+- Adds migration 105 with a true PostgreSQL GiST exclusion constraint including pending_approval.
+- Fails closed if historical active rows overlap; it does not silently rewrite/cancel business records.
+- Removes the redundant non-enforcing partial GiST index after the exclusion constraint is installed.
+- Updates the PostgreSQL two-connection test to use pending_approval and accept SQLSTATE 23P01 as well as the existing trigger's P0001.
+- CI run 45618201678 was QUEUED at the time of this worklog update; no test result is claimed.
+
+Important deployment note: migration 105 has not been run against production. Before production rollout, check for existing overlapping active reservations and resolve them with business approval and a backup. The migration intentionally fails rather than making an automatic data decision.
+
+### Batch 3 status
+
+- Notification ownership and reservation queue privacy: source-reviewed; no current bypass found.
+- Room reservation state transitions: source-reviewed; no current bypass found.
+- Contract document upload/download: current implementation and regression assertions located; runtime test not executed here.
+- Room double-booking: confirmed schema/predicate/test-fixture mismatch; fix proposed in PR #303, CI pending.
+- No production database or operational records changed.
