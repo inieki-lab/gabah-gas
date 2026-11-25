@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, FileText, ShieldAlert } from 'lucide-react';
 import { UserProfile } from '../../types';
 import { GabahService } from '../../services/gabahService';
+import { gabahApi } from '../../services/gabahApi';
 
 interface CreateContractModalProps {
   isOpen: boolean;
@@ -27,9 +28,6 @@ interface CreateContractModalProps {
   }) => Promise<void>;
 }
 
-/** Divisi pemilik kontrak — bebas per departemen, tidak terbatas GA/IT/SC/PIBC saja. */
-const OWNER_DIVISION_OPTIONS = ['GA', 'IT', 'SC', 'PIBC', 'Sekretariat Direksi', 'Humas', 'Komersial', 'Keuangan', 'SDM'];
-
 const CONTRACT_TYPE_PRESETS = ['Security', 'Maintenance', 'Supplier Barang', 'Layanan Pasar', 'Sewa', 'Konsultansi', 'Langganan Layanan', 'Umum'];
 
 export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen, onClose, users, currentUser, onCreate }) => {
@@ -46,6 +44,9 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
   const [title, setTitle] = useState('');
   const [vendorName, setVendorName] = useState('');
   const [ownerDivision, setOwnerDivision] = useState(ownDivision);
+  const [ownerDomains, setOwnerDomains] = useState<Array<{ code: string; name: string }>>([]);
+  const [ownerDomainsLoading, setOwnerDomainsLoading] = useState(false);
+  const [ownerDomainsError, setOwnerDomainsError] = useState('');
   const [picUserId, setPicUserId] = useState(currentUser.id);
   const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
   const [endDate, setEndDate] = useState('');
@@ -61,6 +62,44 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (!isOpen) return;
+    let active = true;
+    setOwnerDomainsLoading(true);
+    setOwnerDomainsError('');
+    gabahApi.getDivisions()
+      .then(rows => {
+        if (!active) return;
+        const locationOnlyLegacyCodes = new Set(['SC', 'SUPPLY CHAIN', 'PIBC', 'RPC']);
+        const options = (Array.isArray(rows) ? rows : [])
+          .filter((row: any) => row && row.is_active !== false)
+          .map((row: any) => ({
+            code: String(row.code || '').trim().toUpperCase(),
+            name: String(row.name || row.code || '').trim(),
+          }))
+          .filter((row: { code: string; name: string }) => row.code && !locationOnlyLegacyCodes.has(row.code))
+          .sort((left: { code: string; name: string }, right: { code: string; name: string }) => left.name.localeCompare(right.name));
+        setOwnerDomains(options);
+        const currentOwner = ownDivision.trim().toUpperCase();
+        const selectedOwner = isAdmin
+          ? (options.some(option => option.code === currentOwner) ? currentOwner : options[0]?.code || '')
+          : (options.some(option => option.code === currentOwner) ? currentOwner : '');
+        setOwnerDivision(selectedOwner);
+        if (options.length === 0) setOwnerDomainsError('Belum ada owner domain aktif. Hubungi Superadmin untuk mengelola master owner.');
+        else if (!isAdmin && !selectedOwner) setOwnerDomainsError('Akun Anda belum memiliki owner domain aktif. Hubungi Superadmin; lokasi kantor tidak otomatis menjadi owner kontrak.');
+      })
+      .catch(() => {
+        if (!active) return;
+        setOwnerDomains([]);
+        setOwnerDivision('');
+        setOwnerDomainsError('Gagal memuat master owner domain. Coba tutup dan buka kembali form kontrak.');
+      })
+      .finally(() => {
+        if (active) setOwnerDomainsLoading(false);
+      });
+    return () => { active = false; };
+  }, [isOpen, isAdmin, ownDivision]);
+
   if (!isOpen) return null;
 
   const picCandidates = users.filter(u => u.is_active !== false);
@@ -71,6 +110,10 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
     if (!canCreateContract) return;
     if (!title.trim() || !vendorName.trim() || !endDate) {
       setError('Judul, vendor, dan tanggal berakhir wajib diisi.');
+      return;
+    }
+    if (ownerDomainsLoading || !ownerDomains.some(option => option.code === ownerDivision)) {
+      setError(ownerDomainsError || 'Pilih owner domain aktif yang tersedia.');
       return;
     }
     setSaving(true);
@@ -157,14 +200,19 @@ export const CreateContractModal: React.FC<CreateContractModalProps> = ({ isOpen
           {/* Ownership */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="font-bold text-slate-700">Divisi Pemilik *</label>
+              <label className="font-bold text-slate-700">Owner Domain Kontrak *</label>
               <select value={ownerDivision} onChange={e => setOwnerDivision(e.target.value)}
-                disabled={!isAdmin}
+                disabled={!isAdmin || ownerDomainsLoading || ownerDomains.length === 0}
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white focus:outline-none focus:border-emerald-500 disabled:bg-slate-100">
-                {Array.from(new Set([ownDivision, ...OWNER_DIVISION_OPTIONS])).map(d => (
-                  <option key={d} value={d}>{d}{d === ownDivision ? ' (divisi Anda)' : ''}</option>
+                <option value="">{ownerDomainsLoading ? 'Memuat owner domain...' : 'Pilih owner domain aktif'}</option>
+                {ownerDomains.map(option => (
+                  <option key={option.code} value={option.code}>
+                    {option.name} ({option.code}){option.code === ownDivision ? ' — owner Anda' : ''}
+                  </option>
                 ))}
               </select>
+              {ownerDomainsError && <p className="text-xs text-amber-700 mt-1">{ownerDomainsError}</p>}
+              <p className="text-[11px] text-slate-500 mt-1">Pilihan berasal dari master owner aktif. RPC/PIBC adalah lokasi, bukan owner kontrak otomatis.</p>
               {!isAdmin && <p className="text-[10px] text-slate-400">Non-admin hanya dapat mendaftarkan kontrak untuk divisinya sendiri.</p>}
             </div>
             <div className="space-y-1">
