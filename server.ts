@@ -4112,7 +4112,7 @@ async function startServer() {
       owner_division: asset.owner_division,
       scheduled_date: req.body.scheduled_date || new Date().toISOString().split('T')[0],
       frequency: req.body.frequency || 'one_time',
-      status: 'scheduled',
+      status: 'scheduled' as const,
       technician_name: req.body.technician_name || 'Tim Internal',
       vendor_id: vendorResolution.vendor?.id,
       vendor_name: vendorResolution.vendor?.name,
