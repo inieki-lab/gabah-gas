@@ -191,6 +191,9 @@ jobs:
       - name: File-store auth rate-limit memory bound regression
         run: npm run test:auth-rate-limit-memory
 
+      - name: Legacy user_sessions runtime dependency guard
+        run: npm run test:legacy-session-store
+
       - name: Legacy PostgreSQL contract migration preserves existing records
         env:
           GABAH_TEST_PG_ADMIN_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres

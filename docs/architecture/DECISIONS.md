@@ -48,14 +48,15 @@
 
 ---
 
-## ADR-006: Server-Authoritative Authorization & Anti-Spoofing RBAC
-- **Konteks**: Keamanan enterprise melarang mempercayai identitas pengguna dari klaim sepihak klien (misal manipulasi header `x-user-id` atau token palsu).
-- **Keputusan**:
-  1. Identitas pengguna diverifikasi secara eksklusif melalui Bearer session token yang tersimpan di tabel `user_sessions`.
-  2. Setiap percobaan manipulasi identitas melalui header `x-user-id` yang tidak sesuai dengan token sesi langsung dibatalkan dengan HTTP `403 Forbidden` (`spoofAttempt: true`).
-  3. Menghapus celah auto-login ke akun Super Admin jika token tidak disertakan (request tanpa token menghasilkan `401 Unauthorized`).
-  4. Menegakkan pembatasan bahwa peran `Auditor` dikunci 100% read-only pada seluruh rute non-GET.
-- **Status**: Diterapkan & Aktif (`server/runtime-hardening.ts`, `server/auth.ts`).
+## ADR-006: Server-Authoritative Authentication, Session Revocation & Dynamic RBAC
+- **Konteks**: Keamanan enterprise melarang mempercayai identitas pengguna dari klaim sepihak klien (misalnya manipulasi header `x-user-id` atau token palsu).
+- **Keputusan saat ini**:
+  1. Identitas request berasal dari opaque session token yang divalidasi terhadap registry sesi in-memory `db.sessions`. Browser menggunakan cookie `gabah_session` HttpOnly (SameSite=Strict, Secure pada production); klien non-browser dapat memakai Bearer token. Cookie mutation wajib lolos pemeriksaan Origin same-origin.
+  2. Tabel legacy `user_sessions` yang dibuat migration 002 bukan sumber sesi aktif dan tidak dibaca/ditulis runtime. Payload PostgreSQL/JSON selalu mengecualikan sesi; boot mengosongkan registry dan mengharuskan pengguna login ulang.
+  3. Token baru dibuat dengan CSPRNG. Sesi memuat security epoch global dan `authVersion` user; logout, reset password, perubahan privilege, deactivation, atau forced revoke membatalkan sesi terkait.
+  4. Header `x-user-id` tidak dapat menetapkan identitas. Ketidaksesuaian dengan sesi aktif ditolak HTTP `403 Forbidden` (`spoofAttempt: true`); request tanpa sesi valid ditolak `401 Unauthorized`, tanpa fallback ke Super Admin.
+  5. Backend authorization menggunakan Dynamic RBAC permission dan explicit data scope. Read-only ditegakkan sebagai capability/policy terpisah dari data visibility; jangan menyimpulkan akses global dari label role.
+- **Status**: Diterapkan & Aktif pada source runtime (`server/auth.ts`, `server/persistence.ts`, `server/runtime-hardening.ts`). Inventarisasi residu baris pada database existing dan keputusan pembersihan tabel tetap tertunda pada issue #293; jangan drop tabel atau membaca/mengekspor nilai token sebelum backup/restore rehearsal dan persetujuan owner.
 
 ---
 
