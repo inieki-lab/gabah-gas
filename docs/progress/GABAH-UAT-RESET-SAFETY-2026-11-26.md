@@ -3,7 +3,7 @@
 **Date:** 26 November 2026  
 **Branch:** `security/uat-user-reset-safety-2026-11-26`  
 **Base:** `main`  
-**Status:** Code change pushed; exact-head CI pending. No database was accessed or modified.
+**Status:** Code change pushed; exact-head CI passed. No database was accessed or modified.
 
 ## Finding
 
@@ -26,8 +26,8 @@ This is unsafe to retain as an executable utility, particularly because GABAH is
 ## Validation
 
 - Static review of the old script confirmed whole-user-collection replacement and mass deactivation.
-- Regression test added; exact-head CI execution pending.
-- No local test execution in this session (no repository checkout/runtime attached).
+- Regression test added and exact-head CI run **45716588933** completed **SUCCESS** on commit `c0c33b96a92c5a2bfe76b076e71e7c81018f3bb5`.
+- No local test execution in this session (no repository checkout/runtime attached); CI is the execution evidence.
 - No PostgreSQL database, user, asset, role, or session was modified.
 
 ## Follow-up
