@@ -1710,3 +1710,9 @@ Implementasi file upload yang benar-benar menyimpan file (bukan hanya metadata s
 - Denied self-approval attempts are recorded as `LOAN_APPROVAL_DENIED`; the request remains pending and the asset is not reserved.
 - Superadmin retains explicit global break-glass authority. Regression coverage exercises both the denial and the retained override.
 - Validation is pending exact-head CI; this change is not merged until all required checks pass.
+
+
+## 2026-11-25 — Loan overlapping approval regression
+- Added an isolated runtime regression for two overlapping pending requests against the same loan-pool asset.
+- The first owner-domain approval must reserve the asset; the second approval must return HTTP 409, leave its request pending, and preserve the first reservation.
+- This specifically protects the reported loan-pool collision path without blocking multiple employees from submitting requests while an asset is still available.
