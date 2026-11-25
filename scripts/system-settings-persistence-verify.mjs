@@ -6,7 +6,7 @@ const modal = fs.readFileSync('src/components/modals/AdministrationModal.tsx', '
 const migration = fs.readFileSync('server/migrations/103_system_settings_company_profile.sql', 'utf8');
 
 const checks = [
-  ['System settings read requires authentication and active PostgreSQL', /app\.get\('\/api\/admin\/system-settings'[\s\S]*?getActor\(req\)[\s\S]*?isPostgresPersistenceActive\(\)/.test(server)],
+  ['System settings read requires active Superadmin authorization', /app\.get\('\/api\/admin\/system-settings'[\s\S]*?requireRbacSuperadmin\(req, res\)[\s\S]*?isPostgresPersistenceActive\(\)/.test(server)],
   ['System settings mutation requires stable Superadmin authorization', /app\.patch\('\/api\/admin\/system-settings'[\s\S]*?requireRbacSuperadmin\(req, res\)/.test(server)],
   ['Only the four approved company-profile fields are accepted', /SYSTEM_SETTING_KEYS = \['companyName', 'accountingStandard', 'baseCurrency', 'fiscalYear'\] as const/.test(server)],
   ['Company profile fields, strict string types, and fiscal year are validated', /SYSTEM_SETTING_KEYS\.some\(key => typeof body\[key\] !== 'string'\)/.test(server) && server.includes('nextSettings.companyName.length < 3') && /\^\(20\[0-9\]\{2\}|2100\)\$/.test(server)],
