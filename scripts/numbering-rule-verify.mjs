@@ -10,6 +10,11 @@ const migration = fs.readFileSync(path.join(root, 'server/migrations/043_asset_n
 const persistence = fs.readFileSync(path.join(root, 'server/persistence.ts'), 'utf8');
 const services = fs.readFileSync(path.join(root, 'server/services.ts'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'src/index.css'), 'utf8');
+const createAssetUi = fs.readFileSync(path.join(root, 'src/components/modals/CreateAssetModal.tsx'), 'utf8');
+const assetDetailUi = fs.readFileSync(path.join(root, 'src/components/modals/AssetDetailModal.tsx'), 'utf8');
+const assetImportUi = fs.readFileSync(path.join(root, 'src/components/modals/AssetImportModal.tsx'), 'utf8');
+const mockKnowledge = fs.readFileSync(path.join(root, 'src/data/mockData.ts'), 'utf8');
+const dbSeed = fs.readFileSync(path.join(root, 'server/db.ts'), 'utf8');
 
 AssetNumberingEngine._resetForTesting();
 AssetNumberingEngine.configureRules([{
@@ -61,6 +66,15 @@ assert.match(server, /requireRbacPermission\(req, res, 'numbering\.manage'\)/);
 assert.match(server, /usageCount > 0 \|\| \(sequence\?\.current \|\| 0\) > 0/);
 assert.match(server, /confirmation !== expected \|\| reason\.length < 20/);
 assert.match(server, /nomor yang telah terbit tidak diubah/);
+assert.doesNotMatch(createAssetUi, /Sistem Penomoran Resmi GABAH|Format Nomor Aset Resmi/,
+  'asset creation UI must not call an unapproved technical format the corporate standard');
+assert.doesNotMatch(assetDetailUi, /Format resmi:.*DIVISI/,
+  'asset detail must not describe a historical pattern as an approved corporate standard');
+assert.match(assetImportUi, /nomor aset diterbitkan otomatis mengikuti aturan aktif/);
+assert.match(mockKnowledge, /Standar nomor aset korporat belum disahkan/);
+assert.doesNotMatch(mockKnowledge, /Struktur Format Nomor Aset Resmi|SC-MSN-2026|PIBC-KDR-2026/);
+assert.match(dbSeed, /Standar nomor aset korporat belum disahkan/);
+assert.doesNotMatch(dbSeed, /Nomor Resmi Aset \(\{DIVISI\}-\{KODE\}-\{TAHUN\}-XXXX\)/);
 assert.match(css, /Theme enforcement layer/);
 assert.match(css, /--gabah-green-800/);
 
