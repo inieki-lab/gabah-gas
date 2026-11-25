@@ -561,7 +561,7 @@ export const ContractDomainService = {
 
   getNotificationLogs(user: ServerUser, contractId?: string): ServerContractNotificationLog[] {
     const logs = contractId ? db.contractNotificationLogs.filter(l => l.contract_id === contractId) : db.contractNotificationLogs;
-    if (user.role === 'Admin GABAH' || isAuditorActor(user)) return logs;
+    if (isSuperadminActor(user) || isAuditorActor(user)) return logs;
     const visibleContracts = new Set(this.listContracts(user).map(c => c.id));
     return logs.filter(l => visibleContracts.has(l.contract_id));
   },
