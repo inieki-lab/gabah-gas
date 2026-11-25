@@ -587,3 +587,27 @@ The scripts assert permission/scope checks, active-user eligibility, read-only h
 1. Review consistency of 403/404 behavior for direct-ID mutations without changing existing role contracts accidentally.
 2. Add runtime negative tests for any remaining source-only authorization assertions.
 3. Continue per-persona browser UAT preparation and keep production go-live blocked until backup/restore, migration rehearsal, staging deploy/rollback, and owner sign-off are recorded.
+
+
+## 22. Batch 16 — direct-ID mutation response semantics (2026-11-25)
+
+**Review basis:** source review of object-level guards and existing regression assertions after Batches 10–15. No application behavior was changed in this batch.
+
+### Read and mutation response behavior
+
+- Scoped read detail paths conceal missing/out-of-scope records with 404: asset detail uses `getScopedAssets`; contract detail uses `canSeeContract`; ticket detail actions use `canAccessTicket`; notification read uses recipient membership.
+- Mutations require the corresponding operation permission before invoking the domain method. Asset update/assign/move/lifecycle and maintenance/vendor update paths additionally check owner scope; ticket actions check per-ticket visibility; contract mutation uses `canEditContract`; room reservation check-in/out/cancel allows the organizer or an explicitly authorized GA operator.
+- Vendor update checks both the existing owner and requested new owner scope before applying a transfer, preventing a user from moving a vendor out of or into a domain they cannot manage.
+- Room approval/rejection remains a GA operation guarded by `room_reservations.approve/reject`; organizer self-service applies to check-in/out/cancel as configured by the domain policy.
+- Some mutation endpoints return 403 for a known but out-of-scope ID while corresponding read endpoints return 404. These mutation errors return no protected record payload; the asset and maintenance messages may disclose the owner-domain label. Existing tests explicitly expect 403 for operation authorization failures. This is a response-consistency/privacy consideration, not a demonstrated authorization bypass; do not mass-convert to 404 without product/security decision and updated tests.
+
+### Evidence
+
+- `test:asset-mutation-http-status`, `test:asset-scope-policy`, `test:maintenance-authz`, `test:maintenance-dynamic-scope`, `test:ticket-assignment-api`, `test:ticket-comments-api`, `test:ticket-reporter-transition`, `test:loan-authz`, `test:contract-owner-filter`, `test:meeting-room`, and `test:room-domain-persistence` cover the reviewed mutation/read paths.
+- PR #325 documentation update merged as `e4918deb6c79592b4034551d30c7fd1f8145ea64`; exact-head CI run `45644113840`: **SUCCESS, 118/118**.
+
+### Result and next stage
+
+- No new direct-ID authorization bypass was confirmed in this pass.
+- Endpoint authorization static/live regression coverage is substantially broader, but it does not replace browser UAT with actual business personas.
+- Next release work is operational acceptance: per-persona browser UAT, migration rehearsal against a copy of the existing PostgreSQL database, backup/restore verification, staging deployment and rollback rehearsal, and named business-owner sign-off. Do not declare production-ready until those are recorded.
