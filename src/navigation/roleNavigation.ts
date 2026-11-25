@@ -35,7 +35,7 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   maintenance: ['maintenances.read'],
   loans: ['loans.read'],
   tickets: ['tickets.read'],
-  licenses: ['licenses.read'],
+  licenses: ['licenses.read', 'assets.read'],
   contracts: ['contracts.read'],
   vendors: ['vendors.read'],
   knowledge: ['knowledge.read'],
@@ -125,6 +125,7 @@ export function isNavTabAllowedForRole(
       return permissionKeys.includes('meeting_rooms.read')
         && permissionKeys.includes('room_reservations.read');
     }
+    if (tab === 'licenses') return required.every(key => permissionKeys.includes(key));
     if (tab === 'assets') {
       return permissionKeys.includes('assets.read')
         && (permissionKeys.includes('assets.catalog.read') || permissionKeys.includes('assets.audit.read'));
