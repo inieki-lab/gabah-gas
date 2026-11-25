@@ -42,8 +42,8 @@ Sistem tidak lagi menggunakan arsitektur warisan (legacy) PHP/Laravel. Seluruh k
 |   [ Security & Hardening Middleware: server/runtime-hardening.ts ]                |
 |   - API Rate Limiter (200 req/min per IP)                                         |
 |   - Anti-Spoofing Guard (Rejects unverified x-user-id headers)                    |
-|   - Token Authenticator (Validates Bearer token via server/auth.ts)               |
-|   - Auditor Read-Only Interceptor (Enforces strict 403 on non-GET)                |
+|   - Session Authenticator (HttpOnly cookie for browser; Bearer token for API clients via server/auth.ts)               |
+|   - Legacy Auditor role-key deny-write guard; generic custom-role read-only policy tracked in issue #289                |
 |   - Role-Based Attention Scoping                                                  |
 |                                                                                   |
 |   [ Domain & Business Services: server/services.ts ]                              |
