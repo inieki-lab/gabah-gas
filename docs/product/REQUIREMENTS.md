@@ -11,8 +11,8 @@
 
 ### FR-01: Autentikasi Pengguna & Manajemen Sesi
 - **FR-01.1**: Sistem harus menyediakan mekanisme login berbasis email/alias dan kata sandi dengan verifikasi hash PBKDF2/SHA-256 dan salt kriptografis.
-- **FR-01.2**: Sistem harus menerbitkan sesi autentikasi unik dengan masa aktif yang dikonfigurasi dan menyimpan status sesi secara server-side pada `user_sessions`.
-- **FR-01.3**: Sistem harus menyediakan endpoint `/api/auth/me` untuk memverifikasi profil akun aktif melalui mekanisme sesi yang benar-benar diterapkan pada versi aplikasi. **Baseline `main` yang diperiksa 23 November 2026 menggunakan Bearer token**; perubahan ke HttpOnly cookie pada PR terpisah belum dianggap berlaku sebelum merge dan verifikasi.
+- **FR-01.2**: Sistem harus menerbitkan sesi autentikasi unik dengan masa aktif 7 hari dan memvalidasinya di server. Pada implementasi saat ini, registry sesi bersifat ephemeral di memori proses; sesi tidak ditulis ke tabel legacy `user_sessions`, JSON snapshot, atau blob PostgreSQL. Restart aplikasi mengharuskan autentikasi ulang.
+- **FR-01.3**: Sistem harus menyediakan endpoint `/api/auth/me` untuk memverifikasi profil akun aktif melalui sesi server yang valid. Browser menggunakan cookie `gabah_session` HttpOnly, SameSite=Strict, Secure pada production, dan `credentials: 'same-origin'`; klien API non-browser dapat menggunakan Bearer token. Mutasi berbasis cookie wajib lolos pemeriksaan Origin same-origin.
 - **FR-01.4**: Fasilitas simulasi/alih identitas hanya boleh tersedia pada konteks yang diotorisasi dan tidak boleh menjadi jalur publik, fallback autentikasi, atau cara menaikkan hak akses. Perilaku dan ketersediaannya harus diverifikasi terhadap implementasi aktif; jangan menganggap simulasi lintas user sebagai fitur produksi.
 - **FR-01.5**: Sistem harus menerapkan rate limiting login (maksimal 5 kali percobaan gagal sebelum lockout 5 menit pada lingkungan produksi) dan API rate limiting (maksimal 200 req/menit per client IP).
 
