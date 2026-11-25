@@ -1103,7 +1103,7 @@ async function main() {
           name: 'CI Custom Read Only',
           role_key: 'ci_custom_read_only',
           description: 'Integration fixture for generic read-only policy',
-          permission_keys: ['assets.read', 'assets.create', 'assets.update', 'security.read_only'],
+          permission_keys: ['assets.read', 'assets.create', 'assets.update', 'tickets.read', 'security.read_only'],
         },
       });
       customReadOnlyRoleId = Number(createdReadOnlyRole.json?.data?.id || 0) || null;
@@ -1112,6 +1112,13 @@ async function main() {
         createdReadOnlyRole.status === 201 && Boolean(customReadOnlyRoleId));
 
       if (customReadOnlyRoleId) {
+        const scoped = await req(base, 'PUT', `/api/admin/rbac/roles/${customReadOnlyRoleId}/scopes`, {
+          token: adminToken,
+          body: { scopes: [{ module: 'tickets', type: 'all', value: null }] },
+        });
+        record('Custom read-only role can receive explicit module scope', '200',
+          `HTTP ${scoped.status}`, scoped.status === 200);
+
         const assigned = await req(base, 'PUT', `/api/admin/rbac/users/${rbacGuardUserId}/roles`, {
           token: adminToken,
           body: { role_ids: [customReadOnlyRoleId] },
@@ -1134,14 +1141,16 @@ async function main() {
             && !effectiveRoleKeys.includes('auditor')
             && effectivePermissions.includes('security.read_only')
             && effectivePermissions.includes('assets.read')
+            && effectivePermissions.includes('tickets.read')
             && !effectivePermissions.includes('assets.create')
             && !effectivePermissions.includes('assets.update'));
 
         const scopedAssetRead = await req(base, 'GET', '/api/assets', { token: karyawanToken });
+        const scopedTicketRead = await req(base, 'GET', '/api/tickets', { token: karyawanToken });
         const blockedAssetWrite = await req(base, 'POST', '/api/assets', { token: karyawanToken, body: {} });
-        record('Custom read-only role retains explicit reads and blocks writes despite write grants', 'GET 200 + POST 403',
-          `GET=${scopedAssetRead.status}; POST=${blockedAssetWrite.status}`,
-          scopedAssetRead.status === 200 && blockedAssetWrite.status === 403);
+        record('Custom read-only role retains explicit scoped reads and blocks writes despite write grants', 'GET assets 200 + GET tickets 200 + POST 403',
+          `GET assets=${scopedAssetRead.status}; GET tickets=${scopedTicketRead.status}; POST=${blockedAssetWrite.status}`,
+          scopedAssetRead.status === 200 && scopedTicketRead.status === 200 && blockedAssetWrite.status === 403);
 
         const readOnlyCheckClient = new pg.Client({ connectionString: TEST_DB_URL });
         await readOnlyCheckClient.connect();
