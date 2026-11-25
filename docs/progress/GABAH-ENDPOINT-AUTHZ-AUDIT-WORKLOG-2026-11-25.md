@@ -106,3 +106,46 @@ No test is claimed PASS unless the execution result was directly observed. Exist
 4. Continue Batch 2 with business endpoint-by-endpoint checks for object ownership, data scope, approval transitions, exports/downloads, and mutation atomicity.
 
 **Handoff status:** Batch 1 source review recorded; runtime validation remains OPEN. This worklog is not a production-readiness or go-live approval.
+
+
+## 8. Batch 2 — asset custody, loans, tickets, and numbering routes (2026-11-25)
+
+**Review basis:** `main` @ `152c69757c3a60805d019af522d38e01a0179a08`. Static source inspection; no runtime mutation was performed.
+
+### Loan workflow checks
+
+Reviewed `requestLoan`, `approveLoan`, `rejectLoan`, `canOperateLoan`, `handoverLoan`, `returnLoan`, and `persistLoanMutation` in `server/services.ts`, plus the associated route/API/test references.
+
+- Request creation binds the borrower to the authenticated actor; creating on behalf of another employee requires effective Superadmin.
+- Approval/rejection/handover require the operation permission plus a matching loan owner-domain scope (or effective Superadmin); Auditor is denied.
+- Approval is restricted to `pending_approval`, rejects self-approval for non-Superadmin, checks outstanding loans, date collisions, and revalidates asset loanability/status.
+- Handover is restricted to `approved` and revalidates the reserved asset state.
+- Return is restricted to `borrowed` / `overdue`; the borrower can return only their own loan, while other actors need owner-scope return authority or Superadmin. Auditor is denied.
+- Loan mutations snapshot affected collections and restore them if durable persistence fails.
+- Existing CI/test-script references cover loan authorization, state transitions, timezone handling, and mutation atomicity. Their source was inspected; they were not executed separately in this session.
+
+**Result:** No new confirmed loan IDOR or workflow-state bypass found in the reviewed service methods. This is a static finding, not a live HTTP assurance.
+
+### Asset mutation checks
+
+- Assignment, relocation, and lifecycle mutation each check the corresponding operation permission and owner-domain authority through `canMutateAssetOwner`.
+- Generic assignment, relocation, and lifecycle transitions reject assets with active approved/borrowed loans, preventing these paths from bypassing loan custody.
+- Assignment validates an active target user; direct unassignment returns the asset to pool state.
+- Existing lifecycle path separately requires effective Superadmin for disposal approval.
+
+**Result:** No new confirmed owner-scope bypass found in the inspected methods.
+
+### Ticket and numbering route checks
+
+- Existing ticket regression references assert reporter/assignee/owner-scope/Superadmin authorization for status mutation and explicit ticket read permission. The ticket creation domain method validates category, bounded text, linked asset visibility, and linked contract visibility.
+- Numbering rule create/update/delete endpoints each enforce effective Superadmin and `numbering.manage`; update/delete additionally protect rules with historical usage and validate format/collision constraints.
+- `GET /api/taxonomy/categories` is behind the global authenticated API middleware; mutation is restricted to effective Superadmin. This is treated as authenticated master-data visibility, not an anonymous endpoint.
+
+**Result:** No confirmed ticket or numbering authorization bypass established from the reviewed excerpts. Continue with room-reservation, notification ownership, maintenance/vendor/contract download paths and live HTTP negative tests.
+
+### CI status update
+
+- PR #302 (`audit/endpoint-authz-batch-1-2026-11-25`) exact head `21bb99428b0d9402b3bd54ebe0721deb641eaf38`: CI run `45603803729` completed SUCCESS, 119/119 steps. PR remains OPEN and unmerged.
+- PR #301 remains OPEN at exact head `aef08cebc66439df6bb7be715772b27072ed637c`. The previously posted review concern about label-based global visibility in `ContractDomainService.getNotificationLogs()` has no maintainer response or fix visible as of this update. Keep PR #301 blocked from merge pending correction and regression coverage.
+
+**Batch 2 status:** STATIC REVIEW COMPLETE for the above areas; no runtime tests executed and no code defect confirmed in these reviewed methods.
