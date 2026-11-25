@@ -1226,8 +1226,8 @@ export class GabahDomainService {
     related_asset_id?: string;
     contract_id?: string;
   }, actor: ServerUser, persistAudit = true): ServerTicket {
-    if (isAuditorActor(actor)) {
-      throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
+    if (isReadOnlyActor(actor)) {
+      throw Object.assign(new Error('Akses ditolak: akun ini memiliki kebijakan read-only.'), { statusCode: 403 });
     }
 
     // Match the normalized PostgreSQL schema before mutating in-memory state.
