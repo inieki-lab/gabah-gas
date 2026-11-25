@@ -219,4 +219,5 @@ The next AI must read `docs/GABAH-DOCUMENTATION-CONTROL.md`, this worklog, curre
 ### Remaining implementation gaps — do not call the audit complete
 - Issue #289: read-only enforcement is still hard-coded to the `auditor` role key; make it a generic configurable policy/capability for custom roles.
 - Issue #291: legacy SC/PIBC codes remain in the shared owner/division master as active-looking compatibility records and are still returned by `GET /api/master/divisions`; retire them for new owner/contract choices without deleting historical references.
+- Issue #293: inventory and safely retire any stale rows/table from legacy `user_sessions`; current runtime ignores the table, but existing database contents have not been audited.
 - Full endpoint-by-endpoint RBAC audit, UAT per custom role/scope, legacy database upgrade rehearsal, and production browser/proxy validation remain open.
