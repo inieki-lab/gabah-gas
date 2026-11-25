@@ -55,7 +55,9 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
   const hasPermissionMetadata = Array.isArray(currentUser.permission_keys);
   const isSuperAdmin = currentUser.is_superadmin === true || currentUser.role_keys?.includes('superadmin') === true
     || (!hasPermissionMetadata && currentUser.role === 'Admin GABAH');
-  const legacyVendorManager = !hasPermissionMetadata && ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const legacyVendorManager = !hasPermissionMetadata && (currentUser.role === 'Admin GABAH'
+    || GabahService.hasLegacyCapability(currentUser, 'it')
+    || GabahService.hasLegacyCapability(currentUser, 'ga'));
   const hasPermission = (permission: string) => !isReadOnly && (isSuperAdmin
     || (hasPermissionMetadata
       ? currentUser.permission_keys!.includes('*') || currentUser.permission_keys!.includes(permission)
