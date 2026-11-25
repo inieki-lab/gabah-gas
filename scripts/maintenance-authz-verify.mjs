@@ -203,6 +203,12 @@ async function main() {
     record('POST IT on IT asset allowed', '201', `HTTP ${itOnIt.status}`, itOnIt.status === 201);
     const createdId = itOnIt.json?.data?.id;
 
+    const nullBodyCreate = await req(base, 'POST', '/api/maintenances', { token: tokens.it, body: null });
+    record('POST rejects a JSON null payload without crashing', '400', `HTTP ${nullBodyCreate.status}`, nullBodyCreate.status === 400);
+
+    const nullBodyUpdate = await req(base, 'PATCH', '/api/maintenances/mnt-002', { token: tokens.admin, body: null });
+    record('PATCH rejects a JSON null payload without crashing', '400', `HTTP ${nullBodyUpdate.status}`, nullBodyUpdate.status === 400);
+
     const directCompletedCreate = await req(base, 'POST', '/api/maintenances', {
       token: tokens.it,
       body: { asset_id: 'AST-HSV-001', title: 'Invalid direct completion', status: 'completed' },
