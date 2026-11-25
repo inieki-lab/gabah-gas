@@ -292,6 +292,17 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 
 
 
+## 25 November 2026 — Konsistensi status error pada route perubahan status tiket
+
+### Temuan
+- Route `PATCH /api/tickets/:id/status` selalu mengubah exception menjadi HTTP 400.
+- Jika domain/service melempar penolakan otorisasi atau konflik state dengan `statusCode` eksplisit, informasi tersebut hilang dan klien menerima status yang keliru.
+
+### Perbaikan
+- Route mempertahankan `statusCode` numerik yang diberikan domain; HTTP 400 tetap menjadi fallback untuk input/transisi yang tidak valid tanpa status khusus.
+- Regression test reporter-transition memastikan route tidak meratakan seluruh exception menjadi HTTP 400.
+
+
 ## 25 November 2026 — Pembatasan baca konfigurasi administrasi
 
 ### Temuan
@@ -301,5 +312,3 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 ### Perbaikan
 - Kedua endpoint baca kini memakai `requireRbacSuperadmin`, konsisten dengan batas otorisasi operasi tulis dan visibilitas Administration.
 - Regression checks memastikan akses baca juga mensyaratkan Superadmin aktif; akses pengguna biasa tetap ditolak oleh backend (403).
-
-- `GET /api/modules` sengaja tetap dapat dibaca semua pengguna terautentikasi karena status global modul dipakai untuk membangun navigasi; operasi perubahan status dan histori tetap dibatasi untuk Superadmin.
