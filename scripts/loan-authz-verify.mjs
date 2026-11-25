@@ -379,6 +379,7 @@ async function main() {
     record('Loan request preserves borrower contact entered in the form', '+62 813-5555-0101',
       loanContactSnapshot?.borrower_phone || '(missing)', loanContactSnapshot?.borrower_phone === '+62 813-5555-0101');
 
+    const appr = async (loanId, token) => req(base, 'POST', `/api/loans/${loanId}/approve`, { token, body: {} });
     // Separation of duties: an IT custodian may request an asset, but cannot
     // approve that same request. Superadmin is the explicit break-glass exception.
     const selfApprovalLoan = await mkLoan(it.token, itAsset6.id);
@@ -396,7 +397,6 @@ async function main() {
       `HTTP ${superadminApproval.status}`, superadminApproval.status === 200);
 
     // Approve: IT approves IT loans, GA approves GA loan
-    const appr = async (loanId, token) => req(base, 'POST', `/api/loans/${loanId}/approve`, { token, body: {} });
     const aL1 = await appr(L1.id, it.token);
     const aL2 = await appr(L2.id, it.token);
     const aL4 = await appr(L4.id, ga.token);
