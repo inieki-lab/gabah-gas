@@ -290,3 +290,14 @@ Perubahan diajukan pada branch `ai/codex/dashboard-loan-scope-consistency`; CI e
 - Domain service kini menandai penolakan lifecycle dengan `statusCode: 403`.
 - Regression test mutasi aset mencakup `assign`, `move`, dan `lifecycle`, termasuk propagasi status HTTP dari route.
 
+
+
+## 25 November 2026 — Pembatasan baca konfigurasi administrasi
+
+### Temuan
+- Endpoint `GET /api/admin/notification-rules` dan `GET /api/admin/system-settings` hanya memeriksa keberadaan sesi melalui `getActor(req)`, sementara endpoint `PATCH` masing-masing sudah mensyaratkan assignment Superadmin Dynamic RBAC.
+- Akibatnya, setiap pengguna terautentikasi dapat membaca konfigurasi administratif yang tidak ditampilkan untuk role non-admin di UI.
+
+### Perbaikan
+- Kedua endpoint baca kini memakai `requireRbacSuperadmin`, konsisten dengan batas otorisasi operasi tulis dan visibilitas Administration.
+- Regression checks memastikan akses baca juga mensyaratkan Superadmin aktif; akses pengguna biasa tetap ditolak oleh backend (403).
