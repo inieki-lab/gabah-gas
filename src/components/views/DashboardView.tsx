@@ -22,6 +22,7 @@ import {
 import { Asset, Loan, Ticket, UserProfile, AuditLog, RoomReservation } from '../../types';
 import { GabahService, formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
+import { isActiveLoanStatus, isPendingLoanStatus } from '../../utils/dashboardLoanStatus';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -149,8 +150,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const totalAssetValue = dashboardAssets.reduce((sum, a) => sum + (a.purchase_price || a.price || 0), 0);
 
-  const pendingLoans = dashboardLoans.filter(l => l.status === 'pending');
-  const activeLoans = dashboardLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
+  const pendingLoans = dashboardLoans.filter(l => isPendingLoanStatus(l.status));
+  const activeLoans = dashboardLoans.filter(l => isActiveLoanStatus(l.status));
 
   const openTickets = dashboardTickets.filter(t => t.status === 'open' || t.status === 'in_progress' || t.status === 'pending_vendor');
   const urgentTickets = dashboardTickets.filter(t => t.priority === 'urgent' && t.status !== 'resolved' && t.status !== 'closed');
@@ -163,8 +164,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       l.borrower_id === currentUserId
     );
   });
-  const myActiveLoans = myLoans.filter(l => l.status === 'active' || l.status === 'approved' || l.status === 'overdue');
-  const myPendingLoans = myLoans.filter(l => l.status === 'pending_approval');
+  const myActiveLoans = myLoans.filter(l => isActiveLoanStatus(l.status));
+  const myPendingLoans = myLoans.filter(l => isPendingLoanStatus(l.status));
 
   const myTickets = safeTickets.filter(t => {
     return (
