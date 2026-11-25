@@ -21,7 +21,8 @@ Impact: dashboard tiles could under-report pending approvals and loans currently
 - Pending states: `pending` (legacy compatibility) and `pending_approval`.
 - Active/reservation states: `active` (legacy), `approved`, `borrowed`, and `overdue`.
 - Updated global and employee dashboard counts, sidebar pending-loan badge, and dashboard loan status badges to use the same classifiers.
-- Added a regression test for positive and terminal states and asserted App/sidebar + DashboardView both use the shared classifiers; registered in npm and CI.
+- Replaced raw backend state strings in dashboard loan badges with Indonesian labels (Menunggu Persetujuan, Disetujui, Dipinjam, Terlambat, Dikembalikan, Ditolak, Ditutup, Dibatalkan).
+- Added regression coverage for positive/terminal states, App/sidebar + DashboardView classifier usage, and user-facing status labels; registered in npm and CI.
 
 ## Validation
 
