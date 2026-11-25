@@ -44,6 +44,18 @@ assert.doesNotMatch(roleCatalogue, /value: '(IT|GA|Auditor|Humas|Sekretaris Dire
 assert.ok(modal.includes('export const PRIMARY_PROFILE_ROLES = SYSTEM_ROLES;'));
 assert.ok(modal.includes('const DEFAULT_PERMISSIONS: RolePermissionRow[] = [];'));
 assert.ok(modal.includes('Matriks role statis telah dihentikan'));
+const defaultDivisionStart = modal.indexOf('const DEFAULT_DIVISIONS: OrgDivision[] = [');
+const defaultDivisionEnd = modal.indexOf('];', defaultDivisionStart);
+assert.ok(defaultDivisionStart >= 0 && defaultDivisionEnd > defaultDivisionStart, 'fallback division master exists');
+const defaultDivisions = modal.slice(defaultDivisionStart, defaultDivisionEnd);
+assert.doesNotMatch(defaultDivisions, /code: '(SC|PIBC)'|Supply Chain|Pasar Induk Beras Cipinang/,
+  'RPC/SC and PIBC must not be seeded as organization divisions');
+const legacyPermissionFieldsStart = modal.indexOf('const PERMISSION_TEMPLATE_FIELDS:');
+const legacyPermissionFieldsEnd = modal.indexOf('};', legacyPermissionFieldsStart);
+assert.ok(legacyPermissionFieldsStart >= 0 && legacyPermissionFieldsEnd > legacyPermissionFieldsStart);
+const legacyPermissionFields = modal.slice(legacyPermissionFieldsStart, legacyPermissionFieldsEnd);
+assert.doesNotMatch(legacyPermissionFields, /Divisi SC|Divisi PIBC|Truk\/SC|Approve Pasar|View SC/,
+  'retired static permission matrix must not reintroduce location-based authorization options');
 
 const createFormStart = modal.indexOf('{/* Add User Form Modal */}');
 const createFormEnd = modal.indexOf('{/* Edit User Modal */}', createFormStart);
