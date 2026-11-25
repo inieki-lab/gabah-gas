@@ -4580,16 +4580,27 @@ async function startServer() {
     if (!requireRbacPermission(req, res, 'reconciliation.link')) return;
     const actor = getActor(req);
     const { assetId, corporateAssetNumber } = req.body;
+    if (corporateAssetNumber !== undefined && corporateAssetNumber !== null
+      && typeof corporateAssetNumber !== 'string') {
+      return res.status(400).json({ success: false, message: 'Nomor aset Accurate harus berupa teks.' });
+    }
+    if (typeof corporateAssetNumber === 'string'
+      && (corporateAssetNumber.includes('\u0000') || corporateAssetNumber.length > 120)) {
+      return res.status(400).json({ success: false, message: 'Nomor aset Accurate maksimal 120 karakter dan tidak boleh berisi karakter null.' });
+    }
+    const normalizedCorporateAssetNumber = typeof corporateAssetNumber === 'string'
+      ? (corporateAssetNumber.trim() || null)
+      : null;
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.update')) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Anda tidak memiliki permission dan owner scope untuk mengubah data aset ini.' });
     }
 
-    asset.corporate_asset_number = corporateAssetNumber ? corporateAssetNumber.trim() : null;
+    asset.corporate_asset_number = normalizedCorporateAssetNumber;
     asset.updated_at = new Date().toISOString();
 
-    GabahDomainService.recordAudit('RECONCILIATION_LINK', 'Assets', `Menautkan nomor aset Accurate "${corporateAssetNumber}" ke ${asset.asset_number}`, actor, asset.id);
+    GabahDomainService.recordAudit('RECONCILIATION_LINK', 'Assets', normalizedCorporateAssetNumber ? `Menautkan nomor aset Accurate "${normalizedCorporateAssetNumber}" ke ${asset.asset_number}` : `Melepas tautan nomor aset Accurate dari ${asset.asset_number}`, actor, asset.id);
 
     res.json({ success: true, data: asset });
   });
