@@ -83,7 +83,10 @@ export function isStaffNavigationPersona(
     if (permissionKeys.includes('*')) return false;
     if (OPERATIONAL_NAVIGATION_PERMISSIONS.some(permission => permissionKeys.includes(permission))) return false;
   }
-  return ['Karyawan', 'Humas', 'Sekretaris Direksi', 'Supply Chain', 'PIBC'].includes(role);
+  // Primary identity is intentionally limited to Karyawan/Admin GABAH.
+  // Humas, Sekretariat, RPC/SC and PIBC are capabilities or org/location data,
+  // never alternate employee personas.
+  return role === 'Karyawan';
 }
 
 const DEFAULT_NAV_TAB_ORDER: readonly AppNavTab[] = [
