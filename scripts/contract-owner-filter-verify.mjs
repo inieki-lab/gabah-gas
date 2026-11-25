@@ -33,15 +33,15 @@ const checks = [
   ],
   [
     'Contract creation form independently enforces contracts.create and Auditor deny-write',
-    createModal.includes("const isAuditor = GabahService.isAuditor(currentUser)")
-      && createModal.includes("const canCreateContract = !isAuditor")
+    createModal.includes("const isReadOnly = GabahService.isReadOnly(currentUser)")
+      && createModal.includes("const canCreateContract = !isReadOnly")
       && createModal.includes("currentUser.permission_keys!.includes('contracts.create')")
       && createModal.includes('if (!canCreateContract) return;')
       && createModal.includes('disabled={saving || !canCreateContract}'),
   ],
   [
     'Creating a linked helpdesk ticket is gated by tickets.create, not contract renewal decision',
-    source.includes("const canCreateLinkedTicket = !isAuditor && hasPermission('tickets.create'")
+    source.includes("const canCreateLinkedTicket = !isReadOnly && hasPermission('tickets.create'")
       && linkedTicketButton >= 0
       && linkedTicketAction > linkedTicketButton
       && (renewalDecisionButton < 0 || linkedTicketButton < renewalDecisionButton),
