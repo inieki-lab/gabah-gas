@@ -26,3 +26,24 @@ assert.match(update, /requireRbacPermission\(req, res, 'maintenances\.update'\)[
 assert.match(update, /canMutateAssetOwner\(actor, schedule\.owner_division, 'maintenances\.update'\)[\s\S]*validateMaintenanceInput/);
 assert.equal((source.match(/validateMaintenanceInput\(req\.body \|\| \{\}\)/g) || []).length, 2);
 console.log('Maintenance input validation: 12 checks passed');
+
+
+// Maintenance lifecycle must be enforced by the API, not only by UI buttons.
+const lifecycleStart = source.indexOf('const MAINTENANCE_STATUS_TRANSITIONS: Record<string, string[]> = {');
+const lifecycleEnd = source.indexOf('  };', lifecycleStart);
+assert.ok(lifecycleStart >= 0 && lifecycleEnd > lifecycleStart, 'maintenance lifecycle transition map must exist');
+const lifecycle = source.slice(lifecycleStart, lifecycleEnd);
+for (const transition of [
+  "scheduled: ['in_progress', 'overdue', 'cancelled']",
+  "overdue: ['in_progress', 'cancelled']",
+  "in_progress: ['completed', 'cancelled']",
+  'completed: []',
+  'cancelled: []',
+]) assert.ok(lifecycle.includes(transition), 'missing maintenance transition policy: ' + transition);
+const createLifecycle = source.slice(createStart, updateStart);
+assert.match(createLifecycle, /req\.body\?\.status !== undefined && req\.body\.status !== 'scheduled'/);
+assert.match(createLifecycle, /status: 'scheduled'/);
+assert.match(update, /const currentStatus = String\(schedule\.status \|\| 'scheduled'\)/);
+assert.match(update, /allowedTransitions\.includes\(nextStatus\)/);
+assert.match(update, /nextStatus === 'completed' && nextStatus !== currentStatus/);
+console.log('Maintenance lifecycle: 8 checks passed');
