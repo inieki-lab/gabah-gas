@@ -176,19 +176,21 @@ const DEFAULT_PERMISSIONS: RolePermissionRow[] = [];
  * daftar ini (bukan input bebas) agar nilai matriks konsisten dan tidak
  * merusak tampilan/pemetaan hak akses.
  */
+// Legacy display-matrix editor is intentionally inert. Effective permissions
+// are edited only through the Dynamic RBAC role/permission/scope controls below.
 const PERMISSION_TEMPLATE_FIELDS: Record<keyof Omit<RolePermissionRow, 'role' | 'desc'>, string[]> = {
-  assets: ['Full Access', 'Divisi IT', 'Divisi GA', 'Divisi SC', 'Divisi PIBC', 'Aset Pribadi', 'Audit Only', 'No'],
-  loans: ['Approve & Handover', 'Approve IT Aset', 'Approve GA Aset', 'Approve Truk/SC', 'Approve Pasar', 'Request Pinjam', 'Audit History', 'No'],
-  tickets: ['All Categories', 'IT & License', 'Fasilitas GA', 'Logistik SC', 'Operasional', 'Buat Tiket', 'Buat Tiket Sendiri', 'Audit Trail', 'No'],
-  licenses: ['Full', 'Manage', 'Read', 'Audit', 'No'],
-  reports: ['Full', 'Divisi IT', 'Divisi GA', 'Divisi SC', 'Divisi PIBC', 'Rekonsiliasi', 'No'],
-  audit: ['Full', 'Full Read', 'View IT', 'View GA', 'View SC', 'View', 'No'],
-  admin: ['Full Control', 'No'],
+  assets: [],
+  loans: [],
+  tickets: [],
+  licenses: [],
+  reports: [],
+  audit: [],
+  admin: [],
 };
 
+// Fallback organization divisions are not office locations. RPC/SC and PIBC
+// belong to the office-location master and must never reappear as divisions.
 const DEFAULT_DIVISIONS: OrgDivision[] = [
-  { code: 'SC', name: 'Supply Chain & Logistik', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
-  { code: 'PIBC', name: 'Pasar Induk Beras Cipinang', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
   { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
   { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
 ];
