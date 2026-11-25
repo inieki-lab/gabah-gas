@@ -1,3 +1,7 @@
+## [2026-11-25] — Restrict administrative settings reads to Superadmin
+- Require an active Dynamic RBAC Superadmin assignment to read notification-rule and company system settings, matching the existing write boundary and Administration UI visibility.
+- Extend both persistence regression checks to prevent authenticated non-admin users from reading administrative configuration.
+
 ## [2026-11-25] — Preserve ticket status route authorization error codes
 - Ticket status route now propagates explicit domain `statusCode` values instead of flattening every thrown error to HTTP 400.
 - Extend reporter-transition regression to guard status-code propagation for authorization and conflict errors.
