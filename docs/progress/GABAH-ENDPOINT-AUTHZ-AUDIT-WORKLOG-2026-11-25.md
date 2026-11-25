@@ -314,3 +314,61 @@ Fix is open as PR #311:
 - PostgreSQL ticket scope and backend authorization unchanged.
 - No ticket records or operational data modified.
 - Continue scanning remaining legacy-primary-role branches while PR #311 CI runs.
+
+## 14. Batch 8 — secondary-role UI capability parity (2026-11-25)
+
+### Merged work after Batch 7
+- PR #314 merged to main as `0fe041d29301667a53e81112b219d7357fd4f6c4`; exact-head CI run `45632931632` SUCCESS (119/119). It aligns additional IT/GA capabilities across contract creation, vendor/knowledge UI, and notification badges.
+- PR #315 is open at exact head `f9ab1553d0fb14380675b5c2541032827c799b9d`; CI run `45633864278` was IN_PROGRESS (48/118 at last poll).
+
+### Confirmed residual UI inconsistency — PR #315
+- `AssetsView` file-store compatibility fallback checked only `currentUser.role` for IT/GA, while the canonical profile is Karyawan and functional roles are retained in `role_keys`.
+- This hid asset create/import controls for a Karyawan account with an additional IT or GA function in file-store mode. This is a UI compatibility issue, not a PostgreSQL backend authorization bypass.
+- Updated fallback to `GabahService.hasLegacyCapability(currentUser, 'it'|'ga')` and added a regression check.
+- During test review, found the LicensesView secondary-IT assertion had been appended after `process.exit()` in `asset-scope-policy-verify.mjs`; moved it into the counted `checks` array so CI actually executes it.
+- No role assignment, database rows, or asset data changed.
+
+### Other related merged fixes revalidated
+- PR #305 merged; its exact-head CI `45627849061` SUCCESS. License workspace requires both `licenses.read` and backing `assets.read`; renewal KPIs derive from actual expiration dates and distinguish overdue from upcoming.
+- PR #306 merged; exact-head CI `45628963545` SUCCESS. `sanitizeUser()` excludes server-only `authVersion` from client payloads.
+- PR #308 merged; exact-head CI `45630247071` SUCCESS. BAST is hidden before loan approval, permanent assignment BAST no longer synthesizes loan/contact/due-date data, owner division comes from `owner_division`, and edit authority is rechecked.
+- PR #311 merged; Auditor additional-role file-store ticket visibility uses effective Auditor membership. PostgreSQL scoped response path unchanged.
+- PR #307/#309/#312 are audit documentation batches; merged to main after their CI checks.
+
+### Scope and validation boundary
+- Dashboard stats and attention endpoints require `dashboard.read`; assets are resolved through `getScopedAssets`; loans/tickets are filtered by borrower/reporter/assignee plus explicit owner/unit scopes. Global Superadmin/Auditor behavior is explicit.
+- Global search is client-side over the already scoped asset/loan/ticket collections; it introduces no separate search endpoint or broader server query.
+- Module registry read requires authenticated actor; module audit and status changes require effective Superadmin. Status change requires a validated reason and writes audit history transactionally.
+- `GET /api/users` requires `users.read`; `sanitizeUser()` removes password material, Telegram chat ID unless Superadmin, and now authVersion.
+- These remain source/CI-contract observations. No new live browser UAT or production PostgreSQL UAT was performed in this session.
+
+### Batch 8 status
+- Secondary IT/GA UI consistency: one residual AssetsView fallback fixed in PR #315; CI pending.
+- PR #314 and all merged PRs above are on main; PR #315 must not merge until exact-head CI succeeds.
+- Continue checking remaining frontend compatibility helpers and endpoint-level object scope; do not stop while PR #315 CI is running.
+
+## 15. Batch 9 — reconciliation external-number input validation (2026-11-25)
+
+### Confirmed validation gap — PR #317
+- `POST /api/reconciliation/link` required `reconciliation.link` and asset owner mutation authority, but accepted `corporateAssetNumber` without type/length/NUL validation before calling `.trim()`.
+- Non-string input could throw a TypeError instead of a controlled 400; oversized or NUL-containing values could be persisted to the external identifier and audit trail.
+- PR #317 validates string/null/undefined, caps text at 120 characters, rejects NUL, trims values, treats blank as unlink, and distinguishes link/unlink audit descriptions. Existing permission and owner-scope checks remain unchanged.
+- Exact head `b555659f167e044f763b05e7211fab3c2da55dd3`; CI pending. Regression source-contract was added to `asset-scope-policy-verify.mjs`.
+
+### Concurrent PR state at this update
+- PR #315 exact head `f9ab1553d0fb14380675b5c2541032827c799b9d`; CI run `45633864278` in progress (48/118 at last poll).
+- PR #316 is the documentation PR for Batches 8–9; CI pending after its latest update.
+- PR #317 is the reconciliation input-validation fix; CI pending.
+- PR #314 merged successfully; no changes are made to primary profile definitions or role templates by PR #315/#317.
+
+### Batch 9 status
+- Reconciliation write authorization and input validation: source-reviewed; input-validation correction proposed in PR #317.
+- No production DB, asset, or reconciliation records changed.
+- Continue independent source review while both code PRs await CI.
+
+### CI completion and merge update (2026-11-25)
+- PR #315 merged to main as `e376f44dc61d1616cdbbcf94478d9f3516cadd8d`; exact-head CI run `45633864278` SUCCESS (119/119).
+- PR #317 merged to main as `b34492d76ba2f72260241d1e4d0e5d4c37725f11`; exact-head CI run `45634628920` SUCCESS (119/119).
+- PR #316 documentation CI run `45634694803` was still IN_PROGRESS (79/118 at last poll); the latest documentation update will start a fresh exact-head run.
+- Main branch CI run `45634781924` on `e376f44dc61d1616cdbbcf94478d9f3516cadd8d` was IN_PROGRESS at last poll; PR #317 merge triggers a new main run.
+
