@@ -38,7 +38,7 @@ function readCredentials() {
   const file = path.resolve(process.cwd(), 'server/data/initial_credentials_dev.txt');
   try {
     const map = {};
-    for (const line of fs.readFileSync(file, 'utf8').split('\\n')) {
+    for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
       const i = line.indexOf('=>');
       if (i > 0) map[line.slice(0, i).trim()] = line.slice(i + 2).trim();
     }
