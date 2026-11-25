@@ -297,7 +297,7 @@ async function startServer() {
   // Authenticated users may read global module availability to build navigation.
   app.get('/api/modules', async (req, res) => {
     try {
-      if (!requireRbacSuperadmin(req, res)) return;
+      getActor(req);
       if (!isPostgresPersistenceActive()) {
         return res.status(503).json({ success: false, code: 'MODULE_REGISTRY_UNAVAILABLE', message: 'Registry modul memerlukan PostgreSQL aktif.' });
       }
