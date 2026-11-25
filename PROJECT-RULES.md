@@ -49,7 +49,7 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 - Owner aset adalah domain/master pemilik yang dapat dikonfigurasi; bukan enum permanen yang diturunkan dari nama role, divisi, unit, atau lokasi.
 - IT mengelola aset dengan owner domain IT di seluruh lokasi. GA mengelola aset dengan owner domain GA di seluruh lokasi.
 - GA hanya boleh membaca Laptop/PC owner IT jika permission baca khusus diaktifkan; permission tersebut tidak memberi hak create/update/delete/approve/move atas aset IT.
-- RPC/SC dan PIBC adalah lokasi/unit operasional, bukan role aplikasi dan bukan owner aset otomatis. Kode owner historis SC/PIBC dipertahankan sampai review per aset disetujui; jangan mengubah owner historis hanya berdasarkan lokasi.
+- RPC dan PIBC adalah lokasi/unit operasional, bukan role aplikasi dan bukan owner aset otomatis. Kode historis SC/PIBC dipertahankan hanya untuk referensi data lama sampai review per aset disetujui; jangan mengubah owner historis hanya berdasarkan lokasi.
 - Owner domain tambahan hanya dibuat melalui master/policy yang disetujui. Lokasi fisik, lokasi kerja pegawai, jabatan, unit organisasi, kategori, dan custodian tidak otomatis menentukan owner atau hak akses.
 - Backend wajib memeriksa permission tindakan dan data scope efektif untuk list, detail-by-ID, dashboard, pencarian, export, dan mutasi. Visibility tidak sama dengan authority to mutate.
 
