@@ -126,6 +126,8 @@ export function isNavTabAllowedForRole(
         && permissionKeys.includes('room_reservations.read');
     }
     if (tab === 'licenses') return required.every(key => permissionKeys.includes(key));
+    if (tab === 'reports') return permissionKeys.includes('reports.read')
+      && ['assets.read', 'loans.read', 'tickets.read', 'maintenances.read'].some(key => permissionKeys.includes(key));
     if (tab === 'assets') {
       return permissionKeys.includes('assets.read')
         && (permissionKeys.includes('assets.catalog.read') || permissionKeys.includes('assets.audit.read'));
