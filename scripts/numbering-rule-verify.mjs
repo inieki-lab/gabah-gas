@@ -68,6 +68,10 @@ assert.match(server, /confirmation !== expected \|\| reason\.length < 20/);
 assert.match(server, /nomor yang telah terbit tidak diubah/);
 assert.doesNotMatch(createAssetUi, /Sistem Penomoran Resmi GABAH|Format Nomor Aset Resmi/,
   'asset creation UI must not call an unapproved technical format the corporate standard');
+assert.match(createAssetUi, /Nomor aset diterbitkan server berdasarkan aturan aktif saat disimpan/);
+assert.match(createAssetUi, /Nomor diterbitkan server saat penyimpanan/);
+assert.doesNotMatch(createAssetUi, /livePreviewNumber|Seq \\+1|currentYear/,
+  'client must not fabricate the next canonical asset number or sequence');
 assert.doesNotMatch(assetDetailUi, /Format resmi:.*DIVISI/,
   'asset detail must not describe a historical pattern as an approved corporate standard');
 assert.match(assetImportUi, /nomor aset diterbitkan otomatis mengikuti aturan aktif/);
