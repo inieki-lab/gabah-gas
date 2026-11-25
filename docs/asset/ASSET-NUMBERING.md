@@ -86,7 +86,7 @@ Kode kategori dan nomor historis yang memuat `SC` atau `PIBC` hanya dipertahanka
 ### 4.2 Master Aturan Penomoran
 - Aturan tersimpan di tabel `asset_numbering_rules` (migration yang menambah aturan harus diverifikasi pada direktori `server/migrations/`; migration 043 tercatat sebagai baseline terkait) dan dikelola melalui Administration Control Panel oleh Superadmin.
 - Setiap aturan mengikat kombinasi `owner_division + asset_code`, separator, panjang sequence (3–8 digit), status aktif/nonaktif, dan catatan.
-- Jika tidak ada aturan khusus, generator mempertahankan format default `DIV-CODE-YEAR-SEQUENCE` dengan separator strip dan 4 digit.
+- Jika tidak ada aturan khusus, generator memakai default teknis `DIV-CODE-YEAR-SEQUENCE` dengan separator strip dan 4 digit. Default ini bukan standar korporat final; standar perusahaan tetap menunggu pengesahan.
 - Aturan nonaktif menolak penerbitan nomor baru untuk kombinasi tersebut; nomor aset lama tetap valid dan tidak diubah.
 - Aturan yang sudah digunakan boleh mengubah separator/panjang sequence selama validasi counter dan collision lolos. Identitas divisi/kode aset tidak dapat diubah setelah digunakan.
 - Aturan yang belum pernah digunakan dapat dihapus hanya dengan konfirmasi kode `DIV/CODE` dan alasan minimal 20 karakter. Penghapusan dicatat ke audit log.
@@ -114,7 +114,7 @@ Kode kategori dan nomor historis yang memuat `SC` atau `PIBC` hanya dipertahanka
 - `server.ts`: API Superadmin untuk membaca, membuat, mengubah, menonaktifkan, dan menghapus aturan dengan guard server-side.
 
 Logika di atas tertanam secara otoritatif pada:
-- `server/numbering.ts`: class `AssetNumberingEngine` yang menyinkronkan sequence dari aset existing saat boot dan mengalokasikan nomor melalui `Map` in-memory. Generator belum menggunakan tabel `asset_number_sequences` untuk alokasi atomik PostgreSQL; multi-instance collision safety belum terjamin.
+- `server/numbering.ts`: `AssetNumberingEngine` mem-parsing nomor historis, menyelaraskan counter saat boot, dan memformat hasil reservasi. Pada PostgreSQL mode, `server/persistence.ts` melalui `reserveAssetNumberSequence()` mengalokasikan sequence dalam transaksi dengan `INSERT ... ON CONFLICT DO UPDATE ... RETURNING`; alokasi dibagi lintas instance dan gagal tertutup saat PostgreSQL tidak tersedia. Counter `Map` in-memory hanya dipakai pada file-store development.
 - `server/taxonomy.ts`: Array `CANONICAL_TAXONOMY` dan fungsi `resolveTaxonomyByHumanName()`.
 - `server/services.ts`: Fungsi `createAsset()` pada `GabahDomainService`.
 - `server/migrations/001_gabah_normalized_schema.sql`: DDL tabel `assets`, `asset_categories`, dan `asset_number_sequences`.
