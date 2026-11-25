@@ -31,7 +31,8 @@ The CI workflow already registers both:
 
 **Local execution:** NOT RUN in this session (no repository checkout/runtime attached).  
 **Initial CI run:** workflow `45710772212` failed at `test:asset-scope-policy` with 107/108 checks passing. The only failure was an overly strict test regex that expected `UPPER(owner.code)` while migration 106 correctly uses `UPPER(BTRIM(owner.code))`; the assertion was corrected in commit `aeddeab293103a5ca1d58673d7494f27a78422be`. All earlier steps, including TypeScript lint, passed.  
-**Exact-head CI:** rerun pending on the corrected PR head; no PASS is claimed yet.  
+**Second CI run:** workflow `45711177123` again stopped at `test:asset-scope-policy` (107/108). The remaining assertion expected `UPPER(code)` while migration 106 uses `UPPER(BTRIM(code))`; corrected in commit `2e6d4e821805e6c68fd12d7a04ce62a53dea55bb`.  
+**Exact-head CI:** rerun pending on the latest corrected PR head; no PASS is claimed yet.  
 **Browser UAT:** NOT RUN. Scenario 2E was added to `docs/testing/UAT.md`.
 
 ## 4. Data-safety boundary
