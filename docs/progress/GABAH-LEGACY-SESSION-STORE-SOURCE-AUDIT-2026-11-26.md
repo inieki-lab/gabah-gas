@@ -4,7 +4,9 @@
 **Repository:** `inieki-lab/gabah-gas`  
 **Base:** `main` @ `ec4e648281363e63effcf6d2642ebc9c457b2333`  
 **Branch:** `test/legacy-session-runtime-guard-2026-11-26`  
-**Status:** SOURCE CONTRACT GUARD ADDED — CI pending; issue #293 remains open.
+**PR:** [#329](https://github.com/inieki-lab/gabah-gas/pull/329)  
+**PR head at creation:** `3977d85e054b67e7dae9eb2317b6c32d87bf6bb0`  
+**Status:** SOURCE CONTRACT GUARD ADDED — exact-head CI pending; issue #293 remains open.
 
 ## Scope
 
