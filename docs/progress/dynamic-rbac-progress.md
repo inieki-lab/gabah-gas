@@ -1644,3 +1644,16 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - Added audit event `LOAN_APPROVAL_DENIED` and runtime regression coverage: self-approval returns 403 and leaves the request pending; Superadmin can still approve as the documented break-glass exception.
 - File-store compatibility still uses legacy owner role keys as the authority signal; it does not have the PostgreSQL permission/scope policy cache. This remains a separate compatibility limitation to address without weakening production RBAC.
 - Exact-head CI required before merge.
+
+
+### Loan pool overlapping pending-request regression — 2026-11-25
+- Added an end-to-end HTTP regression that creates two overlapping pending requests for one IT pool asset, approves the first, and verifies the second is rejected with 409 while remaining pending.
+- The test also verifies the physical asset remains reserved for the winning approval; no request or asset state is silently overwritten.
+- Exact-head CI is required before merge.
+
+
+### Loan regression fixture isolation — 2026-11-25 (PR #284)
+- Exact-head CI confirmed the overlapping pending-request test itself passes: both requests are created, first approval returns 200, second returns 409, and the asset remains reserved.
+- The same test had reserved `itAsset6` before the existing self-approval regression reused it. That fixture collision caused the self-approval setup to fail before the authorization assertion could run.
+- Added a dedicated `itAsset7` fixture for self-approval and expanded the fixture-count assertion. This changes test isolation only; application authorization and reservation behavior are unchanged.
+- Full exact-head CI must pass before merge.

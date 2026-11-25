@@ -184,6 +184,7 @@ async function main() {
     const gaAsset2 = await mkAsset('KDR', 'GA', 'LoanAuthz GA Vehicle 2');
     const itAsset5 = await mkAsset('HLT', 'IT', 'LoanAuthz unavailable request fixture');
     const itAsset6 = await mkAsset('HLT', 'IT', 'LoanAuthz approval recheck fixture');
+    const itAsset7 = await mkAsset('HLT', 'IT', 'LoanAuthz self-approval fixture');
 
     // Asset creation must never silently ignore a missing or inactive custodian.
     const inactiveCustodian = await req(base, 'POST', '/api/users', {
@@ -216,9 +217,9 @@ async function main() {
     record('Asset creation rejects inactive initial custodian without creating an orphan asset', '404 + no asset created',
       `deactivate ${deactivateInitialCustodian.status}, create ${rejectedInitialAssignment.status}, absent ${noOrphanedInitialAsset}`,
       deactivateInitialCustodian.status === 200 && rejectedInitialAssignment.status === 404 && noOrphanedInitialAsset);
-    record('Setup: 8 loanable fixtures created (6 IT + 2 GA)', 'ids issued',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].filter(a => a.id).length + ' ids',
-      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6].every(a => a.id));
+    record('Setup: 9 loanable fixtures created (7 IT + 2 GA)', 'ids issued',
+      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6, itAsset7].filter(a => a.id).length + ' ids',
+      [itAsset1, itAsset2, itAsset3, itAsset4, gaAsset1, gaAsset2, itAsset5, itAsset6, itAsset7].every(a => a.id));
 
     const patchAsset = (assetId, body) => req(base, 'PATCH', `/api/assets/${assetId}`, { token: admin.token, body });
     const protectedInfrastructure = await req(base, 'POST', '/api/assets', {
@@ -302,6 +303,36 @@ async function main() {
       `HTTP ${returnRechecked.status} + ${returnRechecked.json?.data?.status}`,
       returnRechecked.status === 200 && returnRechecked.json?.data?.status === 'returned');
 
+    // Two requests may wait for the same pool unit, but only one overlapping
+    // request can be approved. The losing request must remain pending and must
+    // not overwrite the reservation created by the winning approval.
+    const overlapStart = isoDatePlus(20);
+    const overlapDue = isoDatePlus(27);
+    const overlapA = await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
+      asset_id: itAsset6.id, purpose: 'Overlap approval winner fixture', start_date: overlapStart, due_date: overlapDue,
+    } });
+    const overlapB = await req(base, 'POST', '/api/loans', { token: karyawan.token, body: {
+      asset_id: itAsset6.id, purpose: 'Overlap approval loser fixture', start_date: overlapStart, due_date: overlapDue,
+    } });
+    const overlapAId = overlapA.json?.data?.id;
+    const overlapBId = overlapB.json?.data?.id;
+    const overlapApproveA = overlapAId
+      ? await req(base, 'POST', `/api/loans/${overlapAId}/approve`, { token: it.token, body: {} })
+      : { status: 0 };
+    const overlapApproveB = overlapBId
+      ? await req(base, 'POST', `/api/loans/${overlapBId}/approve`, { token: it.token, body: {} })
+      : { status: 0 };
+    const overlapLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    const overlapAStatus = overlapLoans.find(l => l.id === overlapAId)?.status;
+    const overlapBStatus = overlapLoans.find(l => l.id === overlapBId)?.status;
+    const overlapAsset = ((await req(base, 'GET', '/api/assets', { token: admin.token })).json?.data || []).find(a => a.id === itAsset6.id);
+    record('Overlapping pending requests cannot both reserve one pool asset', 'first 200 + second 409 + approved/pending + reserved',
+      `request ${overlapA.status}/${overlapB.status}, approve ${overlapApproveA.status}/${overlapApproveB.status}, states ${overlapAStatus}/${overlapBStatus}, asset ${overlapAsset?.status}`,
+      overlapA.status === 201 && overlapB.status === 201
+        && overlapApproveA.status === 200 && overlapApproveB.status === 409
+        && overlapAStatus === 'approved' && overlapBStatus === 'pending_approval'
+        && overlapAsset?.status === 'reserved');
+
     const initialLoans = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
     const invalidLoanDate = await req(base, 'POST', '/api/loans', {
       token: admin.token,
@@ -382,7 +413,7 @@ async function main() {
     const appr = async (loanId, token) => req(base, 'POST', `/api/loans/${loanId}/approve`, { token, body: {} });
     // Separation of duties: an IT custodian may request an asset, but cannot
     // approve that same request. Superadmin is the explicit break-glass exception.
-    const selfApprovalLoan = await mkLoan(it.token, itAsset6.id);
+    const selfApprovalLoan = await mkLoan(it.token, itAsset7.id);
     const selfApprovalAttempt = selfApprovalLoan.id
       ? await appr(selfApprovalLoan.id, it.token)
       : { status: 0 };
