@@ -22,3 +22,13 @@ assert.match(source, /normalizeOwnerCode\(relatedAsset\.owner_division\) === div
 assert.doesNotMatch(source, /divisionFilter === 'all' \|\| t\.category === divisionFilter/);
 assert.match(source, /normalizeOwnerCode\(m\.owner_division \|\| 'Umum'\)/);
 console.log('Report KPI data integrity: checks passed');
+
+
+const licenseView = fs.readFileSync('src/components/views/LicensesView.tsx', 'utf8');
+assert.match(licenseView, /const renewalMetrics = licenseAssets\.flatMap/);
+assert.match(licenseView, /const overdueRenewals = renewalMetrics\.filter/);
+assert.match(licenseView, /const upcomingRenewals = renewalMetrics\.filter/);
+assert.match(licenseView, /nearestUpcomingRenewal\.license\.name/);
+assert.match(licenseView, /Terlambat \{Math\.abs\(daysRemaining\)\} Hari/);
+assert.doesNotMatch(licenseView, /1 Kontrak \(54 Hari\)|Sophos Intercept X Advanced/,
+  'license renewal KPI must not display a hardcoded product or expiry countdown');
