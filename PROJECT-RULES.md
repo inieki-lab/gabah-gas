@@ -3,7 +3,9 @@
 **Repository:** inieki-lab/GABAH  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Tujuan Dokumen:** Standar acuan rekayasa perangkat lunak, aturan arsitektur, dan disiplin pengembangan yang wajib dipatuhi oleh seluruh pengembang dan agen kecerdasan buatan (AI).  
-**Status:** Aturan rekayasa wajib; kesesuaian implementasi diverifikasi per perubahan, bukan diasumsikan.  
+**Status:** Aturan rekayasa wajib; kesesuaian implementasi diverifikasi per perubahan, bukan diasumsikan.
+
+> **Koreksi model pengguna (25 November 2026):** Dua profil utama saja — Admin GABAH dan Karyawan. Role fungsi bersifat dinamis, tidak dibatasi sembilan label lama. Jika bagian dokumen lain masih menyebut role/divisi lama sebagai otoritas tetap, aturan Dynamic RBAC pada Bagian 3.0 dan keputusan bisnis terbaru yang berlaku.  
 
 ---
 
@@ -43,15 +45,26 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 - Pengguna yang sama diperbolehkan meminjam aset yang berbeda (misalnya laptop IT dan mobil GA) secara simultan tanpa ada bentrok.
 - Pada level database, integritas diperkuat oleh trigger PL/pgSQL `trg_check_loan_schedule_collision` pada tabel `loans`.
 
-### 2.3 Hak Milik Divisi (Division Asset Ownership)
-- **Barang IT (IT-H & IT-S)**: Seluruh laptop, komputer, server, perangkat jaringan, dan lisensi software adalah hak milik mutlak Divisi IT. Divisi GA hanya memiliki akses baca (*read-only*).
-- **Furniture (INV-F)**: Seluruh furniture (meja, kursi, lemari) adalah hak milik mutlak Divisi GA di manapun furniture tersebut diletakkan secara fisik.
-- **Armada Logistik & Mesin Pabrik**: Truk muatan beras (`KDR-SC`) dan mesin pabrik/forklift (`MSN`) adalah milik Divisi Supply Chain.
-- **Sarana Pasar & Timbangan**: Jembatan timbang truk 60 ton dan sarana los/kios adalah milik Divisi PIBC.
+### 2.3 Owner Domain Aset dan Lokasi (Dynamic Ownership)
+- Owner aset adalah domain/master pemilik yang dapat dikonfigurasi; bukan enum permanen yang diturunkan dari nama role, divisi, unit, atau lokasi.
+- IT mengelola aset dengan owner domain IT di seluruh lokasi. GA mengelola aset dengan owner domain GA di seluruh lokasi.
+- GA hanya boleh membaca Laptop/PC owner IT jika permission baca khusus diaktifkan; permission tersebut tidak memberi hak create/update/delete/approve/move atas aset IT.
+- RPC/SC dan PIBC adalah lokasi/unit operasional, bukan role aplikasi dan bukan owner aset otomatis. Kode owner historis SC/PIBC dipertahankan sampai review per aset disetujui; jangan mengubah owner historis hanya berdasarkan lokasi.
+- Owner domain tambahan hanya dibuat melalui master/policy yang disetujui. Lokasi fisik, lokasi kerja pegawai, jabatan, unit organisasi, kategori, dan custodian tidak otomatis menentukan owner atau hak akses.
+- Backend wajib memeriksa permission tindakan dan data scope efektif untuk list, detail-by-ID, dashboard, pencarian, export, dan mutasi. Visibility tidak sama dengan authority to mutate.
 
 ---
 
 ## 3. Keamanan, Autentikasi & RBAC
+
+### 3.0 Model Profil dan Otorisasi yang Berlaku (APPROVED)
+- Profil utama hanya dua: **Admin GABAH** (administrator sistem) dan **Karyawan** (identitas pegawai). Label `Superadmin` adalah alias/kompatibilitas administrator, bukan katalog profil tambahan.
+- Tidak ada katalog role fungsi yang tertutup atau berjumlah sembilan. Role/capability fungsi dibuat, diubah, dinonaktifkan, dan dihapus melalui Dynamic RBAC oleh administrator yang berwenang.
+- Pegawai dapat memiliki beberapa role fungsi sekaligus. Permission menjawab tindakan apa yang boleh dilakukan; scope menjawab data/objek mana yang boleh dijangkau.
+- Jabatan/level, unit organisasi, divisi, lokasi kerja, owner aset, lokasi fisik aset, dan custodian adalah dimensi terpisah. Tidak satu pun otomatis memberi permission.
+- RPC/SC dan PIBC bukan role aplikasi. IT, GA, ME, Auditor, Humas, Sekretariat Direksi, dan fungsi lain adalah contoh assignment/capability yang dapat dikonfigurasi, bukan daftar wajib yang ditanam permanen dalam kode.
+- Backend PostgreSQL Dynamic RBAC adalah otoritas produksi. Nama role/label tampilan dan filter frontend tidak boleh menjadi satu-satunya dasar otorisasi. Custom role tanpa permission/scope eksplisit harus ditolak secara default.
+- Pemeriksaan legacy `users.role`, allowlist role, dan fallback file-store hanya boleh dipertahankan sebagai kompatibilitas migrasi yang terukur; tidak boleh dianggap sebagai model target atau sumber otoritas produksi. Setiap ketergantungan yang tersisa harus dicatat sebagai gap dan diuji.
 
 1. **HttpOnly Cookie Session**:
    - Browser menggunakan cookie sesi `gabah_session` dengan atribut HttpOnly, SameSite=Strict, Path=/, dan Secure pada production; masa berlaku cookie maksimum 7 hari.
@@ -60,8 +73,9 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 2. **Anti-Spoofing & Zero Fallback**:
    - Header manipulasi `x-user-id` yang tidak sesuai dengan sesi aktif akan ditolak seketika dengan status `403 Forbidden` (`spoofAttempt: true`).
    - Request tanpa cookie sesi yang valid tidak pernah di-fallback otomatis menjadi Super Admin.
-3. **Auditor Strictly Read-Only**:
-   - Pengguna dengan peran `Auditor` diblokir dari seluruh request yang bermutasi (`POST`, `PATCH`, `PUT`, `DELETE`), kecuali logout dan menandai notifikasi terbaca. Pergantian peran (`switch-role`) bersifat **admin-only** dan bukan pengecualian Auditor. Setiap percobaan mutasi data oleh Auditor menghasilkan `403 Forbidden`.
+3. **Read-only capability / separation of duties**:
+   - Sifat read-only harus ditegakkan sebagai policy/permission efektif pada backend, termasuk bila capability audit digabung dengan role fungsi lain. Jangan mengandalkan satu label `Auditor` atau nama role untuk menegakkan keamanan.
+   - Endpoint mutasi memeriksa permission tindakan, scope objek, dan aturan separation-of-duties; pengecualian administratif hanya melalui capability Superadmin yang eksplisit dan diaudit.
 4. **Audit Logging Wajib**:
    - Setiap mutasi administratif (buat aset, ubah status, serah terima pinjaman, buat tiket, ubah master data, alih peran) wajib mencatat riwayat audit ke tabel `audit_logs` secara otomatis melalui `GabahDomainService.recordAudit()`.
 5. **Rate Limiting**:
@@ -91,8 +105,8 @@ Semua aturan bisnis kritis **wajib dieksekusi dan divalidasi di level server bac
 ## 5. Alur Pemesanan Ruang Rapat & Notifikasi Terpadu
 
 1. **Prioritas Pemesanan**:
-   - Reservasi yang diajukan oleh `Sekretaris Direksi` berstatus prioritas VIP dan otomatis disetujui (*auto-approved*).
-   - Reservasi oleh karyawan/divisi lain berstatus `pending_approval` dan menunggu persetujuan Divisi GA.
+   - Perlakuan prioritas/VIP ditentukan oleh permission/capability sekretariat yang ditetapkan secara eksplisit, bukan semata-mata jabatan, nama akun, atau string role `Sekretaris Direksi`.
+   - Persetujuan reservasi mengikuti policy approval dan scope yang dikonfigurasi; jangan menyimpulkan hak approve hanya dari divisi atau lokasi.
 2. **Multi-Divisi Notification Dispatch**:
    - Fasilitas IT (Polycom, Smart TV, Proyektor, HDMI, WiFi) memicu notifikasi otomatis ke Divisi IT Support.
    - Fasilitas fisik GA (Sound System, Mic Wireless, Whiteboard) memicu notifikasi ke GA Sarpras.
