@@ -74,8 +74,8 @@ Do not use “complete”, “production-ready”, “100% synchronized”, or �
 These are owner-provided project constraints, recorded in detail in `docs/PROJECT-CONTEXT.md`:
 - GABAH is an existing application to stabilize and complete, not a greenfield rebuild.
 - IT and GA are functional asset-owner domains. IT manages IT computing assets across locations; GA may have configured read-only visibility of IT laptops/PCs but must not manage IT assets.
-- HO, PIBC, RPC/SC, Pangsub and Kantor Perawatan are operational locations. PIBC and RPC/SC are not automatically application roles or asset owners.
-- “Supply Chain” is referred to as RPC in current organizational terminology; do not reintroduce SC as a role or treat a location as a division without an approved rule.
+- HO, PIBC, RPC (legacy code SC), Pangsub and Kantor Perawatan are operational locations. PIBC and RPC/SC are not automatically application roles or asset owners.
+- RPC is the current operational name; Supply Chain is the former label and SC is retained only as a legacy code. Do not reintroduce Supply Chain/SC as a role or treat a location as a division without an approved rule.
 - Job level (Direksi/Kadiv/Kadep/Kasi/Staf), organizational unit, application role, permissions, data scope, asset owner and physical location are separate dimensions.
 - Superadmin has full administration authority. Other access must be permission- and scope-driven on the server, not inferred from labels or hidden UI controls.
 - PIBC maintenance includes ME (Mechanical/Electrical/Perawatan). IT helpdesk routing is direct to IT Support unless an approved workflow changes it.
