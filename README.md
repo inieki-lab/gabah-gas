@@ -18,7 +18,7 @@
 
 ## 🌾 Fitur Utama (Core Modules)
 
-1. **Katalog Aset Multi-Divisi**: Pencatatan aset berdasarkan owner domain yang disahkan (antara lain IT dan GA), kategori PSAK 16, serta lokasi fisik operasional. RPC/SC dan PIBC adalah konteks lokasi, bukan owner aset otomatis.
+1. **Katalog Aset Multi-Divisi**: Pencatatan aset berdasarkan owner domain yang disahkan (antara lain IT dan GA), kategori PSAK 16, serta lokasi fisik operasional. RPC dan PIBC adalah konteks lokasi, bukan owner aset otomatis.
 2. **Penomoran Aset Otomatis**: Nomor diterbitkan backend berdasarkan aturan aktif dan direkonsiliasi dengan Accurate ERP. Standar nomor aset korporat masih menunggu pengesahan.
 3. **Peminjaman Barang Anti-Bentrok**: Validasi ketersediaan aset per tanggal berbasis server, alur persetujuan divisi pemilik, dan cetak BAST digital.
 4. **Helpdesk & Tiket SLA**: Pelaporan kendala operasional dengan kalkulasi tenggat waktu SLA otomatis (Urgent 4h, High 8h, Medium 24h, Low 48h).
