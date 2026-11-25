@@ -1167,8 +1167,8 @@ export class GabahDomainService {
     if (returnNotes !== undefined && (typeof returnNotes !== 'string' || returnNotes.includes('\u0000') || returnNotes.length > 2000)) {
       throw Object.assign(new Error('Catatan pengembalian harus berupa teks tanpa NUL dan maksimal 2.000 karakter.'), { statusCode: 400 });
     }
-    if (isAuditorActor(actor)) {
-      throw Object.assign(new Error('Akses ditolak: Auditor hanya memiliki izin baca (read-only).'), { statusCode: 403 });
+    if (isReadOnlyActor(actor)) {
+      throw Object.assign(new Error('Akses ditolak: akun ini memiliki kebijakan read-only.'), { statusCode: 403 });
     }
     const loan = db.loans.find(l => l.id === loanId);
     if (!loan) throw new Error('Data pinjaman tidak ditemukan');
