@@ -3963,6 +3963,16 @@ async function startServer() {
     }
   });
 
+  // Server-side maintenance lifecycle: valid enum values alone are not enough.
+  // New schedules begin scheduled; operational completion must follow work start.
+  const MAINTENANCE_STATUS_TRANSITIONS: Record<string, string[]> = {
+    scheduled: ['in_progress', 'overdue', 'cancelled'],
+    overdue: ['in_progress', 'cancelled'],
+    in_progress: ['completed', 'cancelled'],
+    completed: [],
+    cancelled: [],
+  };
+
   const validateMaintenanceInput = (body: any): string | null => {
     const frequencies = ['weekly', 'monthly', 'quarterly', 'biannual', 'annual', 'one_time'];
     const statuses = ['scheduled', 'in_progress', 'completed', 'overdue', 'cancelled'];
@@ -4067,6 +4077,9 @@ async function startServer() {
     }
     const validationError = validateMaintenanceInput(req.body || {});
     if (validationError) return res.status(400).json({ success: false, message: validationError });
+    if (req.body?.status !== undefined && req.body.status !== 'scheduled') {
+      return res.status(400).json({ success: false, message: 'Jadwal baru harus dimulai dengan status scheduled.' });
+    }
     if (!req.body.asset_id) {
       return res.status(400).json({ success: false, message: 'Aset wajib dipilih untuk jadwal pemeliharaan.' });
     }
@@ -4099,7 +4112,7 @@ async function startServer() {
       owner_division: asset.owner_division,
       scheduled_date: req.body.scheduled_date || new Date().toISOString().split('T')[0],
       frequency: req.body.frequency || 'one_time',
-      status: req.body.status || 'scheduled',
+      status: 'scheduled',
       technician_name: req.body.technician_name || 'Tim Internal',
       vendor_id: vendorResolution.vendor?.id,
       vendor_name: vendorResolution.vendor?.name,
@@ -4135,6 +4148,14 @@ async function startServer() {
 
     const validationError = validateMaintenanceInput(req.body || {});
     if (validationError) return res.status(400).json({ success: false, message: validationError });
+    const currentStatus = String(schedule.status || 'scheduled');
+    const nextStatus = req.body?.status;
+    if (typeof nextStatus === 'string' && nextStatus !== currentStatus) {
+      const allowedTransitions = MAINTENANCE_STATUS_TRANSITIONS[currentStatus] || [];
+      if (!allowedTransitions.includes(nextStatus)) {
+        return res.status(409).json({ success: false, message: `Transisi status maintenance tidak valid: '${currentStatus}' → '${nextStatus}'.` });
+      }
+    }
 
     // SECURITY (CR-06): explicit allowlist — no Object.assign / mass assignment.
     // Protected server-owned fields: id, schedule_code, asset_id, asset_name,
@@ -4160,7 +4181,7 @@ async function startServer() {
       schedule.vendor_id = vendorResolution.vendor?.id;
       schedule.vendor_name = vendorResolution.vendor?.name;
     }
-    if (req.body.status === 'completed') {
+    if (nextStatus === 'completed' && nextStatus !== currentStatus) {
       schedule.last_completed_at = new Date().toISOString();
     }
     GabahDomainService.recordAudit('MAINTENANCE_UPDATED', 'Maintenance', `Memperbarui jadwal servis ${schedule.schedule_code} status: ${schedule.status}`, actor, schedule.id);
