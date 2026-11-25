@@ -506,7 +506,7 @@ export const INITIAL_ASSETS: Asset[] = [
     updated_at: '2026-01-10T00:00:00Z',
   },
 
-  // SC Assets - Owned by Supply Chain
+  // Legacy SC owner-code fixtures retained for per-asset review; not a current owner domain.
   {
     id: 'asset-012',
     asset_number: 'SC-MSN-2026-0001',
