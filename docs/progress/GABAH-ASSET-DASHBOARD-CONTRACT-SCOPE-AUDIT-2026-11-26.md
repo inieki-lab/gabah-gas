@@ -62,11 +62,17 @@ All source files below were read from the dependency branch at the time of this 
 - No session/token rows are inspected, exported, or deleted by this workstream.
 - Any demo-data reset must be explicitly restricted to development/UAT and must never be an implicit production migration.
 
+## Follow-up implementation on this branch
+
+- Added `scripts/asset-dashboard-contract-scope-verify.mjs` with source regression assertions for asset list/detail/mutation, PostgreSQL dynamic asset scopes, GA workstation read-only exception, dashboard stats/attention, contract list/detail, PIC visibility, and non-destructive legacy-owner migration.
+- Registered `test:asset-dashboard-contract-scope` in `package.json` and `.github/workflows/ci.yml`.
+- This is a source-level regression guard; it does not replace runtime authorization tests or live PostgreSQL/browser UAT.
+
 ## Checks and evidence
 
 - Source review: completed for the seven files listed above.
+- New regression guard: registered; exact-head CI is the execution evidence (see below).
 - Local test execution: NOT RUN in this session (no repository checkout/runtime attached).
-- CI: pending on this branch after PR creation.
 - PostgreSQL fresh-install/legacy-upgrade tests: pending.
 - Browser UAT: NOT RUN.
 - Production acceptance: NOT CLAIMED.
