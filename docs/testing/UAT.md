@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Ikuti [Documentation Authority & AI Handoff Guide](../GABAH-DOCUMENTATION-CONTROL.md) dan [Master Test Strategy](./MASTER-TEST-STRATEGY.md) untuk menjaga istilah, status, dan bukti tetap konsisten.  
-**Terakhir Diperbarui:** 23 November 2026
+**Terakhir Diperbarui:** 25 November 2026
 
 > **Batas bukti:** Bagian hasil PASS/angka total pengujian yang tercatat dari siklus terdahulu adalah HISTORICAL dan hanya berlaku pada commit/run yang disebutkan di catatan asal. Jangan menganggapnya sebagai hasil UAT pada HEAD saat ini. Setiap siklus baru harus mengisi bukti dan SHA aktual.
 
@@ -282,6 +282,29 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
 - **Docker build tidak dapat diverifikasi** (Docker tidak tersedia di lingkungan verifikasi).
 
 
+
+
+### Skenario 2D: Isolasi Penerima Notifikasi berdasarkan Role Fungsi
+
+- **Tujuan:** Memastikan notifikasi untuk IT, GA, dan Humas hanya terlihat dan dapat ditandai dibaca oleh penerima yang tepat.
+- **Langkah:** Gunakan akun Karyawan dengan role tambahan IT, GA, dan Humas. Verifikasi notifikasi IT tidak tampil pada GA/Humas, notifikasi GA tidak tampil pada IT/Humas, dan notifikasi Humas tidak tampil pada IT/GA. Coba akses langsung `PATCH /api/notifications/:id/read` dari akun yang bukan penerima; API harus mengembalikan 404. Penerima yang benar harus dapat menandai notifikasi dibaca.
+- **Bukti otomatis:** PR #321, CI run `45641748515` (live HTTP matrix IT/GA/Humas).
+- **Status Browser UAT:** NOT RUN.
+
+### Skenario 7A: Maintenance Lifecycle dan Validasi Payload
+
+- **Tujuan:** Memastikan API tidak dapat melewati status maintenance dan tidak menerima payload non-object.
+- **Langkah:** Buat jadwal baru dan pastikan status awal `scheduled`; transisikan `scheduled → in_progress → completed`; coba langsung `scheduled → completed` dan membuka ulang `completed → in_progress`, keduanya harus ditolak HTTP 409. Uji payload JSON null/non-object; API harus mengembalikan 400.
+- **Bukti otomatis:** PR #319, CI run `45639035905` (live HTTP + PostgreSQL 17).
+- **Status Browser UAT:** NOT RUN.
+
+### Skenario 9A: Master Lokasi Fasilitas — Validasi dan Atomicity
+
+- **Tujuan:** Memastikan field master lokasi tervalidasi dan PATCH gagal tidak mengubah sebagian record.
+- **Langkah:** Sebagai Superadmin, kirim PATCH dengan `name` valid dan `address` numerik; API harus mengembalikan 400 dan GET berikutnya harus menunjukkan nama lama. Uji PATCH JSON null dan POST dengan nama non-string; keduanya harus 400.
+- **Bukti otomatis:** PR #324, CI run `45643550850` (live organization-model HTTP regression).
+- **Status Browser UAT:** NOT RUN.
+
 ### Skenario 2C: Custom Dynamic RBAC Read-Only Policy (setelah integrasi PR #301)
 - **Prasyarat:** Buat role fungsi kustom non-Auditor dan tetapkan permission `security.read_only`; berikan juga satu atau lebih permission tulis untuk memastikan policy deny-write mengalahkan grant tulis. Scope baca harus eksplisit dan terbatas. Jangan gunakan akun/DB produksi.
 - **Langkah:**
@@ -293,4 +316,27 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
   6. Verifikasi logout dan tindakan baca notifikasi yang memang dikecualikan tetap berfungsi; pengecualian tidak boleh membuka mutasi lain.
   7. Cabut permission `security.read_only`, refresh sesi/policy sesuai kontrak, lalu verifikasi perilaku kembali mengikuti permission dan scope yang tersisa.
 - **Kriteria Lulus:** Custom role non-Auditor dengan grant tulis tetap tidak dapat melakukan mutasi selama marker read-only aktif; Superadmin tidak dapat dielevasi melalui kombinasi assignment; read visibility tetap mengikuti scope eksplisit; revoke berlaku lintas instance sesuai SLA refresh policy.
-- **Status:** NOT RUN pada baseline `main` 25 November 2026. Jalankan hanya setelah PR #301 (atau implementasi ekuivalen) terintegrasi dan CI exact-head lulus.
+- **Status Otomatis:** PASS pada CI exact-head `45643550850` (118/118; termasuk P0 live HTTP, Dynamic RBAC, dan PostgreSQL 17 integration). PR #301 sudah terintegrasi.
+- **Status Browser UAT:** NOT RUN. Skenario di atas tetap harus dijalankan dengan akun persona nyata pada lingkungan UAT; hasil CI tidak menggantikan UAT.
+
+
+## 5. Status Eksekusi UAT dan Release Gate — 25 November 2026
+
+**Kode dan CI bukan bukti browser UAT.** Pada `main` setelah PR #324, pemeriksaan CI exact-head terakhir untuk perubahan aplikasi terkait lulus pada run `45643550850` (118/118). PR #321 juga lulus live HTTP notification-recipient matrix pada run `45641748515`.
+
+| Aktivitas | Status | Bukti / catatan |
+|---|---|---|
+| TypeScript + production build | PASS | CI exact-head #45643550850 |
+| Docker runtime smoke (Node 22 + PostgreSQL 17 + uploads volume) | PASS | CI exact-head #45643550850 |
+| PostgreSQL 17 fresh DB + persistence integration | PASS | CI exact-head #45643550850 |
+| P0 API security + regression suite | PASS | CI exact-head #45643550850 |
+| Maintenance lifecycle API regression | PASS | CI #45639035905 |
+| Notification role recipient live HTTP | PASS | CI #45641748515 |
+| Facility location malformed-input/atomicity HTTP | PASS | CI #45643550850 |
+| Browser UAT per persona (Admin GABAH, Karyawan + IT, GA, Auditor, Humas, Sekretariat Direksi, ME) | NOT RUN | Perlu akun UAT dan browser pada environment pengguna |
+| Upgrade rehearsal dari salinan database lama | NOT RUN | Jangan jalankan pada database produksi |
+| Backup dan restore terverifikasi | NOT RUN | Perlu bukti restore, bukan hanya backup job |
+| Staging deployment + rollback rehearsal | NOT RUN | Perlu environment staging |
+| Business-owner sign-off | PENDING | Wajib sebelum go-live |
+
+**Keputusan:** GABAH belum boleh dinyatakan production-ready hanya berdasarkan CI. Selesaikan seluruh aktivitas NOT RUN/PENDING, rekam tanggal, pelaksana, exact SHA, dan bukti hasil pada tabel ini sebelum persetujuan go-live.

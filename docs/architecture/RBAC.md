@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Spesifikasi target Dynamic RBAC; implementasi masih dalam audit dan UAT. Matriks role lama di bawah bukan sumber otorisasi aktif.  
-**Terakhir Diperbarui:** 8 November 2026  
+**Terakhir Diperbarui:** 25 November 2026  
 
 ---
 
@@ -45,6 +45,15 @@ GABAH tidak menggunakan sembilan label role lama sebagai daftar role permanen. R
 Lokasi kantor aktif saat ini: HO (OFF-KP), PIBC (OFF-PIBC), RPC/SC (OFF-RPC), Pangsub (OFF-PANGSUB), dan Kantor Perawatan (OFF-PERAWATAN). Subang tidak aktif; data historis dipertahankan. Lokasi baru dapat ditambahkan melalui master tanpa perubahan kode.
 
 Owner domain adalah master fleksibel (misalnya IT, GA, dan domain fungsi lain yang secara eksplisit disahkan). RPC/SC dan PIBC adalah lokasi/operasional context, bukan owner domain otomatis. IT mengelola owner IT lintas lokasi; GA mengelola owner GA lintas lokasi. Super Admin dapat mengatur pola luas seperti GA = semua owner kecuali IT, tetapi konfigurasi tersebut tidak aktif otomatis. GA dapat diberi permission assets.read.it_workstations untuk melihat Laptop/PC milik IT secara read-only. Owner dan scope tidak ditentukan oleh lokasi kantor atau lokasi fisik.
+
+
+### 1.5 Status Implementasi dan Bukti Terkini (25 November 2026)
+
+- Model profil utama yang berlaku tetap hanya **Admin GABAH** dan **Karyawan**. IT, GA, Auditor, Humas, Sekretariat Direksi, ME, dan fungsi lain adalah role/capability tambahan yang ditetapkan melalui Dynamic RBAC. Supply Chain/SC dan PIBC adalah unit/lokasi, bukan profil atau role primer.
+- Implementasi backend telah melalui audit endpoint bertahap dan regression CI; worklog aktif: `docs/progress/GABAH-ENDPOINT-AUTHZ-AUDIT-WORKLOG-2026-11-25.md`.
+- Bukti CI untuk perubahan aplikasi terakhir pada baseline dokumen ini: run `45643550850` (118/118) termasuk typecheck, production build, Docker runtime smoke, PostgreSQL 17 integration, P0 live HTTP security, maintenance lifecycle, notification recipient, dan master-data input integrity.
+- Bukti tersebut membuktikan skenario otomatis yang dijalankan saja. Browser UAT per persona, upgrade rehearsal dari database legacy, backup/restore, staging deploy/rollback, dan business-owner sign-off masih merupakan release gate yang belum dipenuhi.
+- Matriks legacy pada Bagian 1.4 hanya fixture/alias historis untuk kompatibilitas; bukan daftar role aktif, roster HR, atau sumber permission produksi.
 
 ### 1.4 Legacy role labels
 
