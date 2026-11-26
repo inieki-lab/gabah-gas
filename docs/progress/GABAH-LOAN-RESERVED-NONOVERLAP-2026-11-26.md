@@ -15,11 +15,12 @@ This contradicted the product rule that collision detection is per physical asse
 ## Change
 
 - Request and approval now accept an asset in `available` or `reserved` status.
+- The loan picker now also lists reserved pool assets; its existing date-specific conflict check flags overlapping selections and permits non-overlapping windows. Assets with active/borrowed/overdue custody remain excluded.
 - Existing active custody checks remain authoritative: `active`, `borrowed`, and `overdue` loans block another request/approval even if inventory incorrectly says available.
 - Existing date-range collision checks remain authoritative for `approved`, `borrowed`, `active`, and `overdue` records.
 - Approval continues to mark the asset `reserved`.
 - Returning one healthy loan now restores `reserved` (not `available`) if another approved reservation for the same asset still exists; damaged returns remain `damaged`.
-- Added `test:loan-reserved-nonoverlap` and registered it in CI. The regression verifies request/approval status gates, custody checks, date-range checks, return-state preservation, and the PostgreSQL per-asset `FOR UPDATE` lock.
+- Added `test:loan-reserved-nonoverlap` and registered it in CI. The regression verifies request/approval status gates, UI pool filtering, custody checks, date-range checks, return-state preservation, and the PostgreSQL per-asset `FOR UPDATE` lock.
 
 ## Validation boundary
 
@@ -31,7 +32,7 @@ This contradicted the product rule that collision detection is per physical asse
 ## UAT required
 
 1. Approve a future reservation for an IT laptop.
-2. Submit a second request for the same laptop on a non-overlapping date range; it should be accepted.
+2. Confirm the reserved laptop appears in the loan picker. Submit a second request for the same laptop on a non-overlapping date range; it should be accepted.
 3. Submit a third request whose dates overlap either approved reservation; it must be rejected with HTTP 409.
 4. Set a loan to `borrowed` or `overdue` while inventory is stale as `available`; new requests and approvals must remain blocked.
 5. Return the first physical loan while another approved future reservation exists; confirm the asset remains `reserved` and the later approved reservation can be handed over.
