@@ -245,3 +245,31 @@ TAHAP 6 **tidak boleh ditandai selesai** dan branch **belum layak di-merge**. Li
 --- 
 
 *Tracker ini diperbarui setiap tahap dan menjadi referensi utama status pekerjaan GABAH-GAS. TAHAP 1–5 selesai sesuai laporan masing-masing. TAHAP 6 **belum selesai**: lint/build lulus, tetapi regresi NEU-01 dan temuan NEU-30 masih terbuka, NEU-25 baru partial, dan migration 004 masih BLOCKED.*
+
+---
+
+## Update implementasi lanjutan — 26 November 2026
+
+**Baseline:** `547ab6bd`  
+**Branch:** `ai/hermes/authorization-endpoint-audit`
+
+Perubahan kode dan CI yang dipush setelah baseline:
+
+| Commit | Perubahan |
+|---|---|
+| `e701f9f8` | NEU-30: hapus larangan membuat tiket lintas departemen; kategori resmi tetap divalidasi |
+| `6016e24a` | NEU-01: RBAC policy store tidak aktif menghasilkan 503 eksplisit, bukan 403 akibat cache kosong |
+| `9dad16a8` | Numbering test reset juga membersihkan counter kontrak |
+| `e0167d12` | CI dijalankan pada branch audit dan PR ke branch audit |
+
+**GitHub Actions:** [Run #45798367854](https://github.com/inieki-lab/gabah-gas/actions/runs/45798367854) — IN_PROGRESS saat pembaruan ini. Workflow menjalankan pemeriksaan lint/build, PostgreSQL 17 integration, migration CR-04/CR-05, P0 security, loan authz, dan regression suites yang telah dikonfigurasi.
+
+### Status setelah update
+
+- NEU-01: SAFETY MITIGATION (503 fail-closed); Dynamic RBAC file-store belum tersedia.
+- NEU-30: IMPLEMENTED; runtime proof menunggu CI.
+- NEU-25: PARTIAL; startup sync ada, tetapi allocator masih in-memory dan belum aman multi-instance.
+- NEU-22/23/33 dan CR-04/05/06: tetap OPEN/PARTIAL/BLOCKED sesuai bukti sebelumnya; tidak dinaikkan menjadi selesai.
+- Tahap 6 belum selesai; merge ditahan; Tahap 7 belum dimulai.
+
+Pembaruan ini tidak mengubah status hasil test yang belum selesai dan tidak mengklaim runtime PASS.
