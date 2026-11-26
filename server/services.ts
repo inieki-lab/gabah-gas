@@ -255,7 +255,7 @@ export class GabahDomainService {
   /**
    * Filter assets based on user's role and division scope
    */
-  static getScopedAssets(user: ServerUser): ServerAsset[] {
+  static getScopedAssets(user: ServerUser, options: { includeReadOnlyItWorkstations?: boolean } = {}): ServerAsset[] {
     if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
 
     const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
@@ -288,7 +288,7 @@ export class GabahDomainService {
     // The workstation exception follows the explicit permission, not the
     // primary profile role; Karyawan + additional GA capability must work too.
     const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
-    if (canReadItWorkstations) {
+    if (canReadItWorkstations && options.includeReadOnlyItWorkstations !== false) {
       const isItWorkstation = (asset: ServerAsset) =>
         ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
       // GA's writable inventory follows its explicit dynamic owner scope.
