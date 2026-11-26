@@ -616,7 +616,7 @@ export class GabahDomainService {
     // Loan workflow is the sole authority for custody while a loan is approved
     // or physically borrowed. Direct assignment/unassignment must not bypass it.
     const activeLoan = (db.loans || []).find(loan =>
-      loan.asset_id === asset.id && ['approved', 'borrowed'].includes(loan.status)
+      loan.asset_id === asset.id && ['active', 'approved', 'borrowed', 'overdue'].includes(String(loan.status).toLowerCase())
     );
     if (activeLoan) {
       throw Object.assign(
@@ -703,7 +703,7 @@ export class GabahDomainService {
     // Keep physical location aligned with custody: an approved reservation or
     // active loan cannot be relocated through the generic asset movement path.
     const activeLoan = (db.loans || []).find(loan =>
-      loan.asset_id === asset.id && ['approved', 'borrowed'].includes(loan.status)
+      loan.asset_id === asset.id && ['active', 'approved', 'borrowed', 'overdue'].includes(String(loan.status).toLowerCase())
     );
     if (activeLoan) {
       throw Object.assign(
@@ -764,7 +764,7 @@ export class GabahDomainService {
       throw Object.assign(new Error('Catatan lifecycle maksimal 2.000 karakter.'), { statusCode: 400 });
     }
     const activeLoan = (db.loans || []).find(loan =>
-      loan.asset_id === asset.id && ['approved', 'borrowed'].includes(loan.status)
+      loan.asset_id === asset.id && ['active', 'approved', 'borrowed', 'overdue'].includes(String(loan.status).toLowerCase())
     );
     if (activeLoan) {
       throw Object.assign(
