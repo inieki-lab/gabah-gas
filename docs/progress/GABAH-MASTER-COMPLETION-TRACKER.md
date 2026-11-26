@@ -13,7 +13,7 @@ Working branch: `ai/chatgpt/vendor-knowledge-rbac-hardening`
 - [x] Knowledge Base create/update now require `knowledge.create` / `knowledge.update`; legacy Superadmin/IT/GA allowlist fallback removed.
 - [x] Added static contract verification for all four write routes.
 - [x] Added the verification script to package scripts and GitHub Actions.
-- [ ] GitHub Actions on this branch: pending verification.
+- [x] Initial CI identified four stale contract assertions in the broader Dynamic RBAC foundation test; the assertions were updated to require the new fail-closed behavior (not to relax the security checks).\n- [ ] Follow-up exact-HEAD CI after that test correction: pending.
 - [ ] Runtime PostgreSQL integration and role-by-role UAT: not yet verified.
 
 ## Prior stabilization work retained for reference
@@ -32,6 +32,6 @@ Earlier branch `ai/hermes/authorization-endpoint-audit` contains fixes for asset
 
 1. Wait for exact-head CI and fix any genuine failures.
 2. Continue independent endpoint audit (user administration, permission assignments, read/export/search/aggregate endpoints).
-3. Review and port any uniquely useful fixes from the closed stale branch into this clean `main)-based branch.
+3. Review and port any uniquely useful fixes from the closed stale branch into this clean `main`-based branch.
 4. Open PR to `main`; merge only after exact-head CI is green and PR diff is focused.
 5. After merge, provide the exact `main` commit for user testing.
