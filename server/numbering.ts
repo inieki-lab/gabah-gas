@@ -91,5 +91,6 @@ export class AssetNumberingEngine {
     this.sequenceStore.clear();
     this.ticketSeq.clear();
     this.loanSeq.clear();
+    this.contractSeq.clear();
   }
 }
