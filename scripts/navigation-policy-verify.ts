@@ -82,3 +82,21 @@ assert.match(sidebar, /const isSekdir = !isSuperAdmin && hasPermission/,
   'Superadmin wildcard must not make the sidebar identify Superadmin as Sekdir');
 
 console.log('Dynamic navigation policy: PASS (no fixed role catalogue; permissions and landing-page checks)');
+
+
+// Runtime integration: the app must not render or navigate to a page merely
+// because a tab was previously selected. Both effective read permission and
+// active module state are checked at render and click time.
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+assert.match(app, /activeModuleKeys !== null && activeModuleKeys\.includes\(tab\)/,
+  'module availability must fail closed while module state is unknown');
+assert.match(app, /isNavTabAllowedForRole\(currentUser\.role, currentTab, currentUser\.permission_keys\) && isModuleAvailable\(currentTab\)/,
+  'rendered page must be revalidated against current effective permission and module state');
+assert.match(app, /if \(!currentUser \|\| !isNavTabAllowedForRole\(currentUser\.role, tab, currentUser\.permission_keys\) \|\| !isModuleAvailable\(tab\)\)/,
+  'click navigation must reject tabs outside current permission or module scope');
+
+const sidebarSource = fs.readFileSync('src/components/Sidebar.tsx', 'utf8');
+assert.match(sidebarSource, /isNavTabAllowedForRole\(activeRole, item\.id, currentUserPermissions\)[\s\S]*Array\.isArray\(activeModuleKeys\) && activeModuleKeys\.includes\(item\.id\)/,
+  'sidebar visibility must require both permission and active module');
+assert.match(sidebarSource, /currentUserPermissions!\.includes\('\*'\)/,
+  'wildcard permission is evaluated only from the server permission payload');
