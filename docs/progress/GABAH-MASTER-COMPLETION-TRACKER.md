@@ -526,3 +526,13 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - T2B-1/2/3 fase kedua membandingkan fingerprint startup dengan snapshot fase pertama, dan memeriksa health memastikan benar-benar file-store. Endpoint bisnis tetap fail-closed.
 - Commits: `5d617266971a7a036b3795e8a669f3fef0c43b05` (fingerprint startup), `e6bbdf8d09bdb4283d4ce4cdd7b376ba8b16583e` + `a2e8f9b24d40eeed5bc1750fa94ea3a68cd27ddb` (T2B-1), `1654cd05ee6848355b82ae0fdcbe8e8fb3e21ce4` (T2B-2), `c661fc2acf5497a2f909d49e894b84ef5bccbebc` (T2B-3).
 - Ini mempertahankan kebijakan fail-closed; CI exact HEAD diperlukan untuk membuktikan seluruh fingerprint cocok.
+
+
+## 2026-11-26 — Konsistensi permission di seluruh view operasional
+
+- Audit frontend lanjutan menemukan sejumlah view masih memeriksa role primer langsung walau backend sudah memakai permission keys/role tambahan: Assets, Loans, Tickets, Meeting Rooms, Maintenance, dan Vendors.
+- Perubahan: Assets create/report, Vendors create/update, Maintenance create/update dipisah per permission; Loans dan Tickets memakai persona efektif sehingga Karyawan+IT/GA tidak terjebak filter staf; Meeting Rooms memakai permission terpisah untuk create/approve/reject/cancel/update, serta capability IT facilities dan Humas documentation untuk antrean spesialis.
+- Sidebar dan Dashboard berbagi resolver persona; Auditor tetap read-only melalui helper permission UI.
+- Regression static baru `scripts/role-capability-ui-verify.mjs` (8 kontrak) ditambahkan ke package dan CI.
+- Commits utama: `a7aae95545fad6a5199138ebdab63461fcfd5fae`, `4caca0fac57939a5a450360b569b6e1c69fb993f`, `976aca61acced1f2857090d566cbf5e4bcd0a27b`, `de4b40098e2c79ccd7d4d34c8abdf82189c97cd8`, `c4d0b8e443c8e513b2c31e9d21697da42e6bd082`, `171e0da9ec36dd779215f26b0c0bce6e17dcb3e3`, `eacec6161bf9fde927bf79484e7eb8b9a203fbf5`, `ef34ed8694b5c9a3a3e97355a02f957f59a00e74`, `35f77aa65ac291f62e3e877dc244e2ff385fa9b4`, `dc7e68b3e517652111167c478e53bdce8c1ab6e3`, `e99a0f07db96eb03698f275d0620c312d0348a6c`, `dc5b92431f7c0af0229ae70c108741f6fd7029d8`, `fb8d99bdf346dd40cdf335dc6dd79e6b6feb7233`, `5a6878dce699c537757836a4e9e92a86fa937871`, `c5811ee61014d188196e5b608b9887a6a95b2412`.
+- CI exact HEAD pending; backend authorization remains authoritative.
