@@ -289,6 +289,9 @@ jobs:
       - name: Overdue loan collision integrity regression
         run: npm run test:loan-overdue-collision
 
+      - name: Non-overlapping reservations on reserved assets
+        run: npm run test:loan-reserved-nonoverlap
+
       - name: Loan authorization and state transitions
         run: npm run test:loan-authz
 
