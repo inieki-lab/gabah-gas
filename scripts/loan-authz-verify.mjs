@@ -43,6 +43,15 @@ assert.match(
 );
 record('Loan list file-store scope honors secondary role_keys', 'IT/GA functional capability', 'hasApplicationRole(owner division)', true);
 
+const loanServiceSource = fs.readFileSync('server/services.ts', 'utf8');
+const loanCreateRouteSource = fs.readFileSync('server.ts', 'utf8')
+  .split("app.post('/api/loans'")[1]?.split("app.post('/api/loans/:id/approve'")[0] || '';
+assert.match(loanServiceSource, /static requestLoansBatch\([\s\S]*Full read-only preflight[\s\S]*return assetIds\.map/);
+assert.match(loanCreateRouteSource, /GabahDomainService\.requestLoansBatch\(/);
+assert.match(loanCreateRouteSource, /GabahDomainService\.requestLoansBatch\(\{[\s\S]*asset_ids: normalizedAssetIds,[\s\S]*\}, actor\)/,
+  'batch preflight must receive the authenticated actor for borrower and read-only checks');
+record('Multi-asset loan route uses full read-only preflight service and authenticated actor', 'requestLoansBatch before mutation with actor', 'service and route contract present', true);
+
 async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   const res = await fetch(`${base}${urlPath}`, {
     method,
@@ -359,14 +368,19 @@ async function main() {
       `HTTP ${invalidBorrowerPhone.status} + delta ${afterInvalidBorrowerPhone.length - initialLoans.length}`,
       invalidBorrowerPhone.status === 400 && afterInvalidBorrowerPhone.length === initialLoans.length);
 
+    const auditBeforeBulkFailure = (await req(base, 'GET', '/api/audit-logs', { token: admin.token })).json?.data || [];
     const bulkPartial = await req(base, 'POST', '/api/loans', {
       token: admin.token,
       body: { asset_ids: [itAsset1.id, 'AST-NOT-FOUND'], borrower_id: 'USR-01', purpose: 'Atomic bulk fixture', start_date: isoDatePlus(1), due_date: isoDatePlus(7) },
     });
     const afterBulkFailure = (await req(base, 'GET', '/api/loans', { token: admin.token })).json?.data || [];
+    const auditAfterBulkFailure = (await req(base, 'GET', '/api/audit-logs', { token: admin.token })).json?.data || [];
     record('Bulk request rolls back earlier valid items when a later asset is invalid', '404 + no new loans',
       `HTTP ${bulkPartial.status} + delta ${afterBulkFailure.length - initialLoans.length}`,
       bulkPartial.status === 404 && afterBulkFailure.length === initialLoans.length);
+    record('Invalid multi-asset batch leaves no partial audit entries', 'unchanged audit count',
+      `audit ${auditBeforeBulkFailure.length}→${auditAfterBulkFailure.length}`,
+      auditBeforeBulkFailure.length === auditAfterBulkFailure.length);
 
     const duplicateBulk = await req(base, 'POST', '/api/loans', {
       token: admin.token,

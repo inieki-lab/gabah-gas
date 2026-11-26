@@ -3484,11 +3484,10 @@ async function startServer() {
           auditLogs: [...db.auditLogs],
         };
         try {
-          const createdLoans = [];
-          for (const id of normalizedAssetIds) {
-            const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
-            createdLoans.push(newLoan);
-          }
+          const createdLoans = GabahDomainService.requestLoansBatch({
+            ...req.body,
+            asset_ids: normalizedAssetIds,
+          }, actor);
           await persistDataStore();
       (req as any).__gabahPersisted = true;
           return res.status(201).json({
