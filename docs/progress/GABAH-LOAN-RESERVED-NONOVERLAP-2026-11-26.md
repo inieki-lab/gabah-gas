@@ -4,7 +4,7 @@
 **Branch:** `fix/allow-nonoverlap-reserved-loans-2026-11-26`  
 **Base:** `fix/loan-overdue-collision-guard-2026-11-26`  
 **Related work:** PR #336 — overdue loan collision guard  
-**Status:** Regression updated after CI exposed a stale UI eligibility assertion; second CI run also exposed that the first test edit changed its description but not the regex body. Corrected the actual regex to assert the `['available', 'reserved']` status allowlist; third exact-head CI pending. New non-overlap regression and all loan service/state checks passed in both runs. No database outside disposable CI was accessed.
+**Status:** Regression updated after CI exposed a stale UI eligibility assertion; second CI run also exposed that the first test edit changed its description but not the regex body. Corrected the actual regex to assert the `['available', 'reserved']` status allowlist; third exact-head CI **SUCCESS** (run `45752593162`, commit `d7a1c185e054c518b7332fbe7c50c2a59e8af187`). New non-overlap regression and all loan service/state checks passed. No database outside disposable CI was accessed.
 
 ## Finding
 
@@ -25,7 +25,7 @@ This contradicted the product rule that collision detection is per physical asse
 ## Validation boundary
 
 - New non-overlap source regression passed in CI.
-- First exact-head CI run failed only at the pre-existing `Loanable asset pool UI eligibility regression`: its assertion still required `available` only. Updated the existing UI assertion itself to expect the exact `available`/`reserved` allowlist; third rerun pending.
+- First and second CI runs exposed the pre-existing `Loanable asset pool UI eligibility regression` assertion, which still required `available` only. Corrected the assertion to check the exact `available`/`reserved` allowlist. Third exact-head CI run `45752593162` completed **SUCCESS** on code commit `d7a1c185e054c518b7332fbe7c50c2a59e8af187`.
 - No local PostgreSQL integration test or browser UAT was run in this session.
 - No loan, asset, borrower, or production database record was changed.
 - This branch is stacked on PR #336 so the overdue-custody protection is included.
