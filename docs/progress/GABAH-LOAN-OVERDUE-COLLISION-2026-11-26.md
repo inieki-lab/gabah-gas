@@ -3,7 +3,7 @@
 **Date:** 26 November 2026  
 **Branch:** `fix/loan-overdue-collision-guard-2026-11-26`  
 **Base:** `main`  
-**Status:** Implementation and regression committed; exact-head CI pending.
+**Status:** Implementation committed; exact-head GitHub CI passed (120/120 steps) on `f3d346dafabda9d9947e344646ff8dd1ead4071a`, run `45733915096`.
 
 ## Finding
 
