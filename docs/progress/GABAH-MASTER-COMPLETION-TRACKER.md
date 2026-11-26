@@ -658,3 +658,11 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Perbaikan: POST `maintenances.create` dan PATCH `maintenances.update` sekarang selalu melewati `requireRbacPermission`; ketika policy store tidak tersedia, request ditolak 503 `RBAC_POLICY_UNAVAILABLE`, tanpa allowlist role legacy.
 - Commit: `e0e33f7003102f29f396d91cee6934576ef8bb0a`.
 - Status tes: menunggu CI baru; belum dinyatakan lulus.
+
+
+## 2026-11-27 — Sinkronisasi kontrak tes Maintenance fail-closed
+
+- CI setelah perubahan endpoint gagal pada Dynamic RBAC foundation `124/125`: satu assertion lama masih mewajibkan allowlist file-store Admin/IT/GA untuk POST/PATCH Maintenance. Ini bertentangan dengan kebijakan fail-closed yang sudah diuji oleh `maintenance-authz-verify.mjs` dan dengan GET Maintenance.
+- Assertion diperbarui untuk memastikan POST/PATCH wajib memakai `requireRbacPermission` dan tidak lagi mengandung allowlist role legacy.
+- Commit test: `5a61f38ac32b79f5eb70b89406e73fb15423c04d`.
+- Tes ulang menunggu CI baru; belum dinyatakan lulus.
