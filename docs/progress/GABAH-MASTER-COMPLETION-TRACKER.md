@@ -468,3 +468,10 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Commits: `0cd2f7f53fa4d5291f96bf55d1fb0346620fc1d9` (server), `96ecf9e6b5cccf11032de7e25d569cc49b5221ac` (test), `baeade220cce5169ab541f22b0ba9245f05d9896` (package), `b922f3328844351302bba0281e1cdfd3be2c5166` (CI).
 - Ini merupakan port perbaikan spesifik ke branch kerja, bukan merge dari `main`. CI exact HEAD belum selesai.
 - Tidak ada merge ke `main`.
+
+
+## 2026-11-26 — Koreksi compile no-access landing
+
+- CI run `45828391750` berhenti pada TypeScript lint: `src/App.tsx(795,16): Cannot find name 'ShieldCheck'`. UI fallback no-access menggunakan ikon yang belum diimpor.
+- Perbaikan: menambahkan import `ShieldCheck` dari `lucide-react` pada commit `62f71e3eaed5f72e207f3ea28828785ee1240c7b`.
+- CI exact commit baru sedang antre; build/typecheck belum dinyatakan lulus.
