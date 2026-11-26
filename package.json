@@ -109,7 +109,8 @@
     "test:production-dependency-policy": "node scripts/production-dependency-policy-verify.mjs",
     "test:shared-rate-limits": "node --import tsx scripts/shared-rate-limit-verify.ts",
     "test:auth-rate-limit-memory": "node --import tsx scripts/auth-rate-limit-memory-verify.mjs",
-    "test:production-secret-policy": "node --import tsx scripts/production-secret-policy-verify.mjs"
+    "test:production-secret-policy": "node --import tsx scripts/production-secret-policy-verify.mjs",
+    "test:vendor-knowledge-rbac-fail-closed": "node scripts/vendor-knowledge-rbac-fail-closed-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
