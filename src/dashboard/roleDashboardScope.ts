@@ -48,14 +48,22 @@ export function resolveDashboardPersona(user: Pick<UserProfile, 'role' | 'role_k
 
 
 /** UI affordances follow effective permissions; backend remains authoritative. */
+export function hasEffectivePermission(
+  user: Pick<UserProfile, 'role' | 'role_keys' | 'is_superadmin' | 'permission_keys'>,
+  permissionKey: string,
+  legacyFallback = false,
+): boolean {
+  if (resolveDashboardPersona(user).isAuditor) return false;
+  if (user.permission_keys === undefined) return legacyFallback;
+  return user.permission_keys.includes('*') || user.permission_keys.includes(permissionKey);
+}
+
 export function canShowDashboardAction(
   user: Pick<UserProfile, 'role' | 'role_keys' | 'is_superadmin' | 'permission_keys'>,
   permissionKey: string,
   legacyFallback: boolean,
 ): boolean {
-  if (resolveDashboardPersona(user).isAuditor) return false;
-  if (user.permission_keys === undefined) return legacyFallback;
-  return user.permission_keys.includes('*') || user.permission_keys.includes(permissionKey);
+  return hasEffectivePermission(user, permissionKey, legacyFallback);
 }
 
 /**
