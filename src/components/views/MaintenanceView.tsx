@@ -62,8 +62,11 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     checklistText: '',
   });
 
-  const canManage = currentUser ? hasEffectivePermission(
+  const canCreate = currentUser ? hasEffectivePermission(
     currentUser, 'maintenances.create', ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role),
+  ) : false;
+  const canUpdate = currentUser ? hasEffectivePermission(
+    currentUser, 'maintenances.update', ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role),
   ) : false;
   const isRequestRole = currentUser ? resolveDashboardPersona(currentUser).isStaff : false;
 
@@ -169,7 +172,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {canManage && (
+          {canCreate && (
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center gap-2 px-4 py-2.5 bg-[#4ABDAC] hover:bg-[#3ca89a] text-white rounded-xl font-bold text-xs shadow-md shadow-[#4ABDAC]/25 transition-all"
@@ -401,7 +404,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                       </button>
                     )}
 
-                    {canManage && onUpdateScheduleStatus && (
+                    {canUpdate && onUpdateScheduleStatus && (
                       <div className="flex items-center gap-1">
                         {sch.status === 'scheduled' && (
                           <button
