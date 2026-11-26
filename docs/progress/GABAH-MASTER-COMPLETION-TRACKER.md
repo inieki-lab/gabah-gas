@@ -562,3 +562,9 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Regression static ditambah untuk approval/create/return permission.
 - Commits: `5864a16f7fad998332177683f717decd9c6d3c40`, `338c5a917221e8da77e6c5c9c46e08ae00a92cca`, `7a86bc672b147b48e2bb0341c3d14ef6ba5ae05f`.
 - CI exact HEAD pending.
+
+
+## 2026-11-26 — Sinkronisasi assertion vendor UI
+
+- CI run `45832620263`: asset-scope static suite 65/66. Satu assertion vendor UI masih memeriksa ekspresi permission lama secara inline, sementara implementasi kini memakai helper bersama `hasEffectivePermission()`.
+- Assertion diperbarui untuk kontrak helper baru. Commit: `70af872b784a46604243017a4a03972dcc95a048`.
