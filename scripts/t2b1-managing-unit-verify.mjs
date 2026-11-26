@@ -183,7 +183,7 @@ async function main() {
 
     // ================= PHASE 2 (restart dengan state phase 1) =================
     // Phase 2 runs without PostgreSQL to verify the JSON file-store roundtrip.
-    s2 = await boot(sp, 39600 + Math.floor(Math.random() * 500), env, { DATABASE_URL: '' });
+    s2 = await boot(sp, 39600 + Math.floor(Math.random() * 500), env, { DATABASE_URL: '', PGHOST: '' });
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const phase2 = (await req(s2.base, 'GET', '/api/assets', { token: admin2 })).json?.data || [];
     const num2 = Object.fromEntries(phase2.map(a => [a.id, a.asset_number]));
