@@ -4,7 +4,7 @@
 **Branch:** `fix/allow-nonoverlap-reserved-loans-2026-11-26`  
 **Base:** `fix/loan-overdue-collision-guard-2026-11-26`  
 **Related work:** PR #336 — overdue loan collision guard  
-**Status:** Implementation and regression added; exact-head CI pending. No database was accessed.
+**Status:** Implementation and regression expanded; exact-head CI pending. No database was accessed.
 
 ## Finding
 
@@ -18,7 +18,8 @@ This contradicted the product rule that collision detection is per physical asse
 - Existing active custody checks remain authoritative: `active`, `borrowed`, and `overdue` loans block another request/approval even if inventory incorrectly says available.
 - Existing date-range collision checks remain authoritative for `approved`, `borrowed`, `active`, and `overdue` records.
 - Approval continues to mark the asset `reserved`.
-- Added `test:loan-reserved-nonoverlap` and registered it in CI. The regression verifies request/approval status gates, custody checks, date-range checks, and the PostgreSQL per-asset `FOR UPDATE` lock.
+- Returning one healthy loan now restores `reserved` (not `available`) if another approved reservation for the same asset still exists; damaged returns remain `damaged`.
+- Added `test:loan-reserved-nonoverlap` and registered it in CI. The regression verifies request/approval status gates, custody checks, date-range checks, return-state preservation, and the PostgreSQL per-asset `FOR UPDATE` lock.
 
 ## Validation boundary
 
@@ -33,6 +34,7 @@ This contradicted the product rule that collision detection is per physical asse
 2. Submit a second request for the same laptop on a non-overlapping date range; it should be accepted.
 3. Submit a third request whose dates overlap either approved reservation; it must be rejected with HTTP 409.
 4. Set a loan to `borrowed` or `overdue` while inventory is stale as `available`; new requests and approvals must remain blocked.
-5. Return the physical asset, then confirm a later non-overlapping request can proceed.
+5. Return the first physical loan while another approved future reservation exists; confirm the asset remains `reserved` and the later approved reservation can be handed over.
+6. Return the final physical loan; confirm the asset becomes `available`.
 
 **Merge policy:** Keep draft; do not merge without exact-head CI, disposable PostgreSQL rehearsal, browser UAT, and owner approval.
