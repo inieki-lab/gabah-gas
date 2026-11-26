@@ -58,6 +58,7 @@ const checks = [
   ['Meeting facility management accepts additional IT/GA capabilities', (services.match(/hasRoomPermission\(actor, 'meeting_facilities\.manage', '(GA|IT)'\)/g) || []).length >= 6],
   ['Director auto-approval follows explicit override capability', /const isAutoApproved = isSuperadminActor\(actor\) \|\| canSetDirectorPriority;/.test(services)],
   ['GA IT read scope dibatasi taxonomy HLT dan HPC', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(services) && /readOnlyItWorkstations/.test(services)],
+  ['Generic asset PATCH cannot bypass lifecycle state transitions', /const allowed = \['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'\]/.test(server) && !/const allowed = \[[^\]]*'status'/.test(server)],
   ['Asset creation authorization is not hardcoded to job-title labels', /Effective permission and explicit owner-domain scope are enforced by/.test(server) && !/if \(actor\.role === 'Karyawan'\)[\s\S]{0,180}wewenang mendaftarkan aset baru/.test(server)],
   ['Tidak ada lagi scope aset berdasarkan lokasi SC/PIBC di resolver utama', !/user\.role === 'Supply Chain'[\s\S]{0,500}owner_division === 'SC'|user\.role === 'PIBC'[\s\S]{0,500}owner_division === 'PIBC'/.test(services)],
   ['Direct asset guard memakai permission GA yang sama', /hasRbacPermission\(String\(actor\.id\), 'assets\.read\.it_workstations'\)/.test(hardening)],
