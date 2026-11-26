@@ -7,7 +7,7 @@ Branch: `ai/chatgpt/asset-loan-lifecycle-audit-main2`
 ## Asset owner authority
 
 - [x] New asset owner is derived from the selected category master, not caller-supplied `owner_division`.
-- [x] Category resolution no longer accepts request owner as a hint, preventing payload input from steering category resolution.
+- [x] Shared-category resolution may use the selected owner as a lookup hint (e.g. MSN/KDR variants), but the final owner is always taken from the resolved taxonomy object; request data is never copied directly into the persisted owner.
 - [x] IT hardware/software and INV-F corporate owner rules remain explicit; other categories use the category's configured owner.
 - [x] Asset-scope regression verifies that payload owner cannot override taxonomy owner.
 
@@ -19,7 +19,7 @@ Branch: `ai/chatgpt/asset-loan-lifecycle-audit-main2`
 - [x] Existing route-level snapshots remain as a second rollback layer for loan, notification, and audit collections if persistence fails unexpectedly.
 - [x] Live HTTP regression verifies a valid first asset plus missing second asset creates no partial loan and no partial audit record.
 - [x] Added source-contract assertions that the route uses the batch preflight service.
-- [x] First CI caught a missing `actor` argument in the batch-service route call; corrected in commit `2bb9d20`.\n- [ ] Follow-up exact-head CI after correction: pending.
+- [x] First CI caught a missing `actor` argument in the batch-service route call; corrected in commit `2bb9d20`.\n- [x] First CI caught a missing authenticated actor argument; corrected and verified by typecheck.\n- [x] Asset managing-unit regression caught a shared-category resolution compatibility issue; restored the resolver hint while keeping the final owner taxonomy-derived.\n- [ ] Follow-up exact-head CI after both corrections: pending.
 - [ ] PostgreSQL multi-instance concurrency/transaction test: not yet verified. Current preflight is process-level and does not replace a database transaction/locking guarantee for concurrent requests.
 
 ## Existing main baseline confirmed
