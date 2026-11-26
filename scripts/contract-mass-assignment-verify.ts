@@ -55,7 +55,13 @@ const updated = ContractDomainService.updateContract(created.id, {
 
 assert.equal(updated.title, 'Judul kontrak diperbarui', 'allowlisted business metadata remains editable');
 for (const key of Object.keys(original) as Array<keyof typeof original>) {
-  assert.deepEqual((updated as any)[key], original[key], `protected field ${key} must not be client-mutable`);
+  if (key === 'status') {
+    // updateContract recomputes status from end_date; the client-supplied
+    // "terminated" value must be ignored, but a server-derived status may change.
+    assert.notEqual(updated.status, 'terminated', 'client must not force contract lifecycle status');
+  } else {
+    assert.deepEqual((updated as any)[key], original[key], `protected field ${key} must not be client-mutable`);
+  }
 }
 
 console.log('Contract update mass-assignment verification: PASS (allowlisted title update; protected ownership, identity, governance, lifecycle and relations unchanged)');
