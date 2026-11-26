@@ -175,6 +175,31 @@ async function main() {
       return ((r.json?.data || []).find(l => l.id === loanId) || {}).status || '(missing)';
     };
 
+    // ---------- Atomic multi-asset request regression ----------
+    const batchAsset1 = await mkAsset('HLT', 'IT', 'LoanAuthz Batch Atomic 1');
+    const beforeBatchLoans = await req(base, 'GET', '/api/loans', { token: admin.token });
+    const beforeBatchAudit = await req(base, 'GET', '/api/audit-logs', { token: admin.token });
+    const beforeLoanCount = (beforeBatchLoans.json?.data || []).length;
+    const beforeAuditCount = (beforeBatchAudit.json?.data || []).length;
+    const invalidBatch = await req(base, 'POST', '/api/loans', {
+      token: karyawan.token,
+      body: {
+        asset_ids: [batchAsset1.id, 'ASSET-ID-DOES-NOT-EXIST'],
+        purpose: 'Atomic batch regression',
+        start_date: isoDatePlus(20),
+        due_date: isoDatePlus(25),
+      },
+    });
+    const afterBatchLoans = await req(base, 'GET', '/api/loans', { token: admin.token });
+    const afterBatchAudit = await req(base, 'GET', '/api/audit-logs', { token: admin.token });
+    const afterLoanCount = (afterBatchLoans.json?.data || []).length;
+    const afterAuditCount = (afterBatchAudit.json?.data || []).length;
+    record('Invalid multi-asset batch creates no partial loan', '400 + unchanged loan count',
+      `HTTP ${invalidBatch.status}; loans ${beforeLoanCount}→${afterLoanCount}`,
+      invalidBatch.status === 400 && beforeLoanCount === afterLoanCount);
+    record('Invalid multi-asset batch creates no partial audit record', 'unchanged audit count',
+      `audit ${beforeAuditCount}→${afterAuditCount}`, beforeAuditCount === afterAuditCount);
+
     // L1 (IT, borrower Karyawan): happy-path workflow, then double-return guard
     const L1 = await mkLoan(karyawan.token, itAsset1.id);
     // L2 (IT, borrower Karyawan): handover authorization matrix + double handover
