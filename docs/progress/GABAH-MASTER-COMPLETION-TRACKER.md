@@ -611,3 +611,9 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Review lanjutan menemukan `getScopedAssets()` juga memasukkan aset loanable pool untuk baseline Karyawan. Setelah filter primary-role maintenance dihapus agar IT tambahan dapat melihat jadwal IT, pool loanable yang tidak ditugaskan berpotensi ikut terlihat.
 - Perbaikan: opsi `includeLoanablePoolForEmployee` ditambahkan ke `getScopedAssets()`; maintenance mematikannya bersama exception workstation read-only. Aset personal yang ditugaskan dan seluruh dynamic owner/unit/location scopes tetap dipertahankan.
 - Static regression ditambah. Commits: `375ff497c4c90aec0aa1c173f658efffc35da1ea`, `70efa3a734b5990816bb15f9ed08d8cab6309c1c`, `546bc73334c29a04358d05168d3373c5c942a424`.
+
+
+## 2026-11-26 — Sinkronisasi assertion scope setelah opsi maintenance
+
+- CI run `45834689485`: dynamic RBAC foundation 124/125. Assertion lama mengharapkan `if (canReadItWorkstations)`; implementasi kini sengaja mensyaratkan `options.includeReadOnlyItWorkstations !== false` agar maintenance dapat mengecualikan workstation IT read-only. Assertion diperbarui sesuai kontrak baru.
+- Commit: `2fb2ef13d400898d61c9f52924205fff296dc09a`.
