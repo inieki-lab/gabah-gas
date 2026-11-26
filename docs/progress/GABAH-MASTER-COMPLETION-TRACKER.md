@@ -348,3 +348,14 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - TAHAP 6 tetap OPEN sampai seluruh pemeriksaan CI dan temuan P0 lain dituntaskan.
 
 **Status merge:** ditahan; tidak ada merge ke `main`.
+
+
+## 2026-11-26 — CI PostgreSQL isolation: organization-model regression
+
+- Branch: `ai/hermes/authorization-endpoint-audit`
+- Finding: CI run `45807458028` passed meeting-room regression (18/18), but organization-model regression reported 4 asset-scope/owner failures. Job logs showed PostgreSQL password-authentication failures immediately before the org-model test. The workflow step did not provision a dedicated database or explicitly set `DATABASE_URL` / `PGPASSWORD`, unlike adjacent live integration tests; the test server therefore could fall back to file-store mode while its assertions expected PostgreSQL Dynamic RBAC.
+- Change: `.github/workflows/ci.yml` now creates isolated `gabah_org_ci` and supplies `postgresql://postgres:postgres@127.0.0.1:5432/gabah_org_ci` plus `PGPASSWORD=postgres` to the organization-model regression.
+- Commit: `6242b8ea5df97233499ebb9f3ea1f524ff4f477f`
+- Validation: workflow rerun triggered by this commit; outcome pending. Do not interpret prior 4 asset assertions as confirmed application defects until this test runs against the intended PostgreSQL-backed policy store.
+- Meeting-room authorization fix remains validated by CI run `45807458028`: 18/18 PASS. Overall workflow remains failed due organization-model step before this CI harness correction.
+- No merge to `main`.
