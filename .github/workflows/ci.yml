@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, ai/hermes/authorization-endpoint-audit]
   pull_request:
-    branches: [main]
+    branches: [main, ai/hermes/authorization-endpoint-audit]
 
 jobs:
   verify:
