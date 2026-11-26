@@ -54,7 +54,7 @@ import { LandingPage } from './components/landing/LandingPage';
 import { LoginPage } from './components/auth/LoginPage';
 import { ChangePasswordModal } from './components/modals/ChangePasswordModal';
 import { AssetImportModal } from './components/modals/AssetImportModal';
-import { CheckCircle2, AlertTriangle, Info, RefreshCw } from 'lucide-react';
+import { CheckCircle2, AlertTriangle, Info, RefreshCw, ShieldCheck } from 'lucide-react';
 
 export default function App() {
   // Authoritative server-backed state
