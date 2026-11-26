@@ -371,3 +371,15 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Validation: new workflow run pending. No application behavior is claimed fixed by this CI-only change; actual T2B assertions must pass on the rerun.
 - Latest verified business suites remain organization model 15/15 and meeting room 18/18 on run `45809903599`.
 - No merge to `main`.
+
+
+## 2026-11-26 — Koreksi mode uji restart T2B-2
+
+- Branch: `ai/hermes/authorization-endpoint-audit`
+- CI run [45810605563](https://github.com/inieki-lab/gabah-gas/actions/runs/45810605563): T2B-1 managing-unit 18/18 PASS; T2B-2 asset-location 21/22 PASS. Satu kegagalan pada 12a: pengujian mengklaim memverifikasi JSON fallback, tetapi kedua fase proses mewarisi `DATABASE_URL` sehingga fase restart justru kembali memakai PostgreSQL.
+- Perubahan: helper boot T2B-2 menerima environment overrides; fase kedua menghapus `DATABASE_URL` agar benar-benar menguji hydrate dari `gabah_state.json`. Tidak ada perubahan perilaku aplikasi atau data.
+- Commit: `d0d5ed4c3e31edb7033a606d261c7cafd81ce3bb`.
+- Verifikasi: menunggu CI baru. Jangan menyatakan T2B-2 lulus sebelum 22/22.
+- Job CI sebelumnya juga membuktikan lint, build, Docker runtime smoke, CR-04/CR-05 PostgreSQL, P0 security, user-directory scope, loan auth, cross-department ticket, contract mass-assignment, meeting room 18/18, organization model 15/15, dan T2B-1 18/18 PASS.
+- T2B-3, menu connectivity, dan maintenance authorization belum dijalankan karena workflow berhenti pada T2B-2.
+- Tidak ada merge ke `main`.
