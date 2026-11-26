@@ -2,9 +2,9 @@
 
 **Repository:** `github.com/inieki-lab/gabah-gas`
 **Branch:** `ai/hermes/authorization-endpoint-audit`
-**Commit kode TAHAP 6 yang diaudit:** `ca4c4db0`
+**Commit implementasi kode terbaru:** `34d0f568`
 **Commit dokumen koreksi:** `03354494`
-**Tip branch sebelum commit dokumen ini:** `039fa80d`
+**Tip branch saat audit lanjutan:** `e5af18ad`
 **Dibuat:** 2026-11-26
 
 ---
@@ -273,3 +273,44 @@ Perubahan kode dan CI yang dipush setelah baseline:
 - Tahap 6 belum selesai; merge ditahan; Tahap 7 belum dimulai.
 
 Pembaruan ini tidak mengubah status hasil test yang belum selesai dan tidak mengklaim runtime PASS.
+
+
+---
+
+## Update lanjutan implementasi dan CI — 26 November 2026
+
+**Tip branch saat update:** `e5af18ad7ac34910370e02112a7100b8f68ea4ba`  
+**Branch:** `ai/hermes/authorization-endpoint-audit`
+
+### Perubahan implementasi yang sudah dipush
+
+| Area | Perubahan | Status |
+|---|---|---|
+| NEU-30 — tiket lintas departemen | Pemeriksaan kesamaan departemen reporter dan kategori tiket dihapus. Kategori resmi IT/GA/SC/PIBC tetap divalidasi sebagai tujuan penanganan. | IMPLEMENTED; test domain baru menunggu hasil CI |
+| NEU-01 — RBAC saat PostgreSQL tidak aktif | Endpoint Dynamic RBAC yang policy store-nya tidak tersedia kini mengembalikan HTTP 503 `RBAC_POLICY_UNAVAILABLE`, bukan 403 palsu dari cache kosong dan bukan allow. | FAIL-CLOSED MITIGATION; Dynamic RBAC file-store belum tersedia |
+| NEU-25 — numbering | Startup sudah sinkronisasi aset setelah hydration dan sinkronisasi ticket/loan/contract setelah persistence init. Test reset kini juga menghapus counter kontrak. | PARTIAL; generator masih in-memory dan belum aman untuk multi-instance |
+| CR-06 — contract mass assignment | `updateContract()` diubah dari denylist menjadi positive allowlist untuk metadata komersial. Ownership, PIC, restricted, status, renewal, document, milestone, identity dan reminder recipient tidak dapat diubah melalui PATCH generik. | IMPLEMENTED; test domain baru menunggu hasil CI |
+
+### Regresi test yang ditemukan dan tindak lanjut
+
+Run awal [45798486540](https://github.com/inieki-lab/gabah-gas/actions/runs/45798486540):
+- Lint, build, Docker image/runtime smoke: PASS.
+- PostgreSQL 17 CR-04/CR-05 integration: **63/63 PASS**, termasuk migration chain, restart persistence, reminder idempotency, dan production fail-fast.
+- P0 security: **22 PASS / 5 FAIL** karena script P0 menjalankan server tanpa `DATABASE_URL`; setelah guard fail-closed, endpoint Dynamic RBAC menjawab 503. Ini merupakan konfigurasi test yang tidak sesuai dengan jalur PostgreSQL yang hendak diuji, bukan alasan untuk membuka fallback allow.
+
+Tindak lanjut:
+- Workflow mengaktifkan branch audit pada trigger push/PR.
+- Live API regression suite diberi database PostgreSQL 17 terisolasi per suite.
+- Ditambahkan `test:ticket-cross-department` untuk Finance→IT, IT→GA, dan penolakan kategori tidak dikenal.
+- Ditambahkan `test:contract-mass-assignment` untuk memastikan hanya field allowlist dapat diubah.
+- [Run terbaru 45798995121](https://github.com/inieki-lab/gabah-gas/actions/runs/45798995121) berjalan pada tip `e5af18ad`; hasil akhirnya belum tersedia pada saat catatan ini dibuat.
+
+### Temuan yang tetap terbuka
+
+1. NEU-01: mode file-store tidak memiliki policy Dynamic RBAC. Endpoint yang dimigrasikan tetap 503 saat PostgreSQL mati. Jangan mengaktifkan fallback allow; bila file-store harus mendukung endpoint tersebut, implementasikan policy source lokal yang eksplisit dan diuji.
+2. NEU-25: sequence/counter in-memory belum menjamin keunikan antar-instance. Perlu allocator transaksional PostgreSQL dan constraint unik; jangan klaim selesai hanya dari sinkronisasi saat startup.
+3. NEU-22, NEU-23, NEU-33: tetap PARTIAL/NOT TESTED sampai ada bukti uji yang sesuai.
+4. CR-04 dan CR-05: integration PostgreSQL 17 sudah 63/63 PASS pada run 45798486540; tetap pantau run terkini untuk memastikan tidak ada regresi dari perubahan selanjutnya.
+5. CR-06: allowlist kontrak sudah diterapkan; endpoint lain tetap perlu pengujian mass-assignment menyeluruh.
+
+**TAHAP 6 belum ditutup. Merge ke main tetap ditahan. TAHAP 7 belum dimulai.**
