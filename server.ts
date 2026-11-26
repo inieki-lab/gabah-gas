@@ -2290,11 +2290,7 @@ async function startServer() {
       const { asset_ids, asset_id } = req.body;
 
       if (Array.isArray(asset_ids) && asset_ids.length > 0) {
-        const createdLoans = [];
-        for (const id of asset_ids) {
-          const newLoan = GabahDomainService.requestLoan({ ...req.body, asset_id: id }, actor);
-          createdLoans.push(newLoan);
-        }
+        const createdLoans = GabahDomainService.requestLoansBatch({ ...req.body, asset_ids }, actor);
         await persistDataStore();
         return res.status(201).json({
           success: true,
