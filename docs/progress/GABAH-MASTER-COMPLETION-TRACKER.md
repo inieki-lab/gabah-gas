@@ -510,3 +510,10 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Diterapkan konsisten pada T2B-1/2/3.
 - Commits: `6762f888f46c20274a7432baba18f13c66468599`, `7c7ae19dd7882582989ecae236f3cbf5e495344b`, `cd4774d0457ff62dd42e5b75ca630594602fe621`.
 - Ini masih diagnosis harness; hasil baru diperlukan untuk membedakan konfigurasi DB yang tersisa dari masalah path/hydration JSON.
+
+
+## 2026-11-26 — Sinkronisasi assertion test role-capability
+
+- CI run `45829932237`: dynamic RBAC foundation 124/125. Satu assertion lama masih mensyaratkan GA read-only workstation ditentukan oleh `user.role === 'GA'`; implementasi baru memang sengaja mengubahnya menjadi permission efektif agar role tambahan pada Karyawan dapat bekerja.
+- Assertion diperbarui untuk memverifikasi `assets.read.it_workstations` tanpa ketergantungan pada role primer. Commit: `e047c0c50526fbea73776d0744de3c111b1d19ca`.
+- T2B JSON restart tetap menunggu hasil instrumentation baru.
