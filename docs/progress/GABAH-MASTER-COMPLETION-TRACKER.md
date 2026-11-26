@@ -517,3 +517,12 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - CI run `45829932237`: dynamic RBAC foundation 124/125. Satu assertion lama masih mensyaratkan GA read-only workstation ditentukan oleh `user.role === 'GA'`; implementasi baru memang sengaja mengubahnya menjadi permission efektif agar role tambahan pada Karyawan dapat bekerja.
 - Assertion diperbarui untuk memverifikasi `assets.read.it_workstations` tanpa ketergantungan pada role primer. Commit: `e047c0c50526fbea73776d0744de3c111b1d19ca`.
 - T2B JSON restart tetap menunggu hasil instrumentation baru.
+
+
+## 2026-11-26 — T2B JSON roundtrip: verifikasi tidak lagi memakai endpoint RBAC saat PostgreSQL off
+
+- Akar masalah terkonfirmasi dari desain keamanan: file-store fallback aktif, tetapi `requireRbacPermission` sengaja fail-closed saat PostgreSQL tidak aktif. Karena itu `GET /api/assets` mengembalikan 503 pada fase restart; test mengubah 503 menjadi array kosong dan salah menyimpulkan 19→0 aset. Ini bukan bukti file JSON kehilangan aset.
+- Keputusan: tidak melonggarkan RBAC atau membuat endpoint bypass untuk tes. Persistence kini mencatat fingerprint SHA-256 non-sensitif untuk snapshot aset, master lokasi, kategori, dan unit saat file-store berhasil hydrate.
+- T2B-1/2/3 fase kedua membandingkan fingerprint startup dengan snapshot fase pertama, dan memeriksa health memastikan benar-benar file-store. Endpoint bisnis tetap fail-closed.
+- Commits: `5d617266971a7a036b3795e8a669f3fef0c43b05` (fingerprint startup), `e6bbdf8d09bdb4283d4ce4cdd7b376ba8b16583e` + `a2e8f9b24d40eeed5bc1750fa94ea3a68cd27ddb` (T2B-1), `1654cd05ee6848355b82ae0fdcbe8e8fb3e21ce4` (T2B-2), `c661fc2acf5497a2f909d49e894b84ef5bccbebc` (T2B-3).
+- Ini mempertahankan kebijakan fail-closed; CI exact HEAD diperlukan untuk membuktikan seluruh fingerprint cocok.
