@@ -568,3 +568,18 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 
 - CI run `45832620263`: asset-scope static suite 65/66. Satu assertion vendor UI masih memeriksa ekspresi permission lama secara inline, sementara implementasi kini memakai helper bersama `hasEffectivePermission()`.
 - Assertion diperbarui untuk kontrak helper baru. Commit: `70af872b784a46604243017a4a03972dcc95a048`.
+
+
+## 2026-11-26 — T2B-3 fixture diselaraskan dengan model lokasi/divisi
+
+- CI run `45833151574`: T2B-1 20/20 PASS dan T2B-2 24/24 PASS. T2B-3 berhenti pada fixture test yang membuat kategori DRN dengan `owner_division='SC'`, lalu mengakses `drnAsset.id` tanpa guard. SC/RPC adalah lokasi, bukan owner division; fixture tersebut sudah usang.
+- Perbaikan: kategori DRN memakai owner division GA dan ekspektasi test diperbarui; akses detail aset kini guarded agar kegagalan create menghasilkan assertion FAIL yang jelas, bukan crash script.
+- Commits: `25a974d4e62501ef0b15cdca85d50312bb8664b6`, `eee9e44235355e7268d7e35b971cea037594587d`.
+- Pada run yang sama, seluruh static checks, typecheck, build, Docker smoke, CR-04/05 63/63, P0 security 40/40, user directory scope, loan auth, meeting room 18/18, organization 15/15, T2B-1 20/20, dan T2B-2 24/24 lulus. T2B-3 perlu run ulang.
+
+## 2026-11-26 — View tambahan memakai permission efektif
+
+- Audit tambahan menemukan Knowledge Base dan Licenses masih memeriksa role primer. Knowledge Base sekarang memisahkan `knowledge.create` dan `knowledge.update`; Licenses memakai `licenses.manage`.
+- Regression UI ditambah untuk kedua modul. Commits: `70cd7688799ef4a8b22980d07f23e615cff7a528`, `c6b45a62dab80c4c5755a8179a59a15c0679feca`, `34bbdc76d9a3f60a95db30aa8e1ffe281e1d3870`, `33b3d7e585ed8ef7bdc3a51c0883d6b9ec89ea1a`.
+- Dashboard persona sekarang juga menganggap wildcard dan permission operasional custom sebagai persona operasional, bukan staf biasa. Commits: `e546067b2db03802800042c6508c007b46ec33bd`, `f91e7c99870c9984bc5297ca9aea5539f2e59bd8`, `59c84faed31e486d8c5dafa9dd6b9ebf0d51af09`, `0547d8f446fe21acb42e95f0c17f6f406a94c3c7`.
+- CI exact HEAD setelah perbaikan T2B-3 masih berjalan.
