@@ -111,17 +111,17 @@ async function startServer() {
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
   // production; JSON/file-store development retains legacy behavior during migration.
   const requireRbacPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
-    // FAIL-CLOSE: Jika PostgreSQL tidak aktif, tetap cek permission secara ketat.
-    // Mode file-store/sebelum migrasi tidak boleh melewati otorisasi sepenuhnya.
+    // Dynamic RBAC policy is PostgreSQL-backed. An empty in-memory cache is
+    // NOT an authorization decision: treating it as a normal denial masks an
+    // unavailable policy source and makes every legitimate user appear forbidden.
+    // Fail closed with 503 until the authoritative policy store is available.
     if (!isPostgresPersistenceActive()) {
-      // Fallback ketat: cek actor dan permission dasar meskipupun PG mati.
-      // Mencegah privilege escalation saat DB mati atau masih dalam migrasi.
-      const actor = (req as any).user as ServerUser | undefined;
-      if (!actor || !hasRbacPermission(actor.id, permissionKey)) {
-        res.status(403).json({ success: false, message: 'Akses ditolak: permission ' + permissionKey + ' tidak diberikan kepada user ini.' });
-        return false;
-      }
-      return true;
+      res.status(503).json({
+        success: false,
+        code: 'RBAC_POLICY_UNAVAILABLE',
+        message: 'Layanan otorisasi sementara tidak tersedia karena PostgreSQL/RBAC policy store tidak aktif.',
+      });
+      return false;
     }
     // PostgreSQL aktif: gunakan RBAC policy dinamis
     const actor = (req as any).user as ServerUser | undefined;
