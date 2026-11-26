@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import { UserRole } from '../types';
 import { AdministrationModal } from './modals/AdministrationModal';
+import { resolveDashboardPersona } from '../dashboard/roleDashboardScope';
 import { AppNavTab, isNavTabAllowedForRole } from '../navigation/roleNavigation';
 
 export type NavTab = AppNavTab;
@@ -81,15 +82,17 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const effectiveRoleKeys = new Set(currentUserRoleKeys.map(key => String(key).trim().toLowerCase()));
-  const isHumas = activeRole === 'Humas' || effectiveRoleKeys.has('humas');
-  const isSekdir = activeRole === 'Sekretaris Direksi' || effectiveRoleKeys.has('sekretaris_direksi');
-  const isIT = activeRole === 'IT' || effectiveRoleKeys.has('it');
-  const isGA = activeRole === 'GA' || effectiveRoleKeys.has('ga');
-  const isAuditor = activeRole === 'Auditor' || effectiveRoleKeys.has('auditor');
-  const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH' || effectiveRoleKeys.has('superadmin');
-  const isStaff = !isSuperAdmin && !isAuditor && !isIT && !isGA
-    && (activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false);
+  const persona = activeRole ? resolveDashboardPersona({
+    role: activeRole,
+    role_keys: currentUserRoleKeys,
+    is_superadmin: currentUserIsSuperAdmin,
+  }) : null;
+  const isHumas = persona?.isHumas ?? false;
+  const isSekdir = persona?.isSekdir ?? false;
+  const isIT = persona?.isIT ?? false;
+  const isGA = persona?.isGA ?? false;
+  const isSuperAdmin = persona?.isSuperadmin ?? false;
+  const isStaff = persona?.isStaff ?? false;
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
