@@ -24,7 +24,7 @@ import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
 import { Sidebar, NavTab } from './components/Sidebar';
-import { isNavTabAllowedForRole } from './navigation/roleNavigation';
+import { getDefaultNavTabForRole, isNavTabAllowedForRole } from './navigation/roleNavigation';
 // API collections are already scoped by the authoritative backend policy.
 import { DashboardView } from './components/views/DashboardView';
 import { AssetsView } from './components/views/AssetsView';
@@ -283,9 +283,13 @@ export default function App() {
 
   // Keep the rendered page inside the authenticated user's navigation policy.
   // This is a UI guard only; server-side authorization remains authoritative.
+  const defaultNavTab = currentUser
+    ? getDefaultNavTabForRole(currentUser.role, currentUser.permission_keys)
+    : null;
+  const hasAccessibleModule = defaultNavTab !== null;
   const activeTab: NavTab = currentUser && isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)
     ? currentTab
-    : 'dashboard';
+    : defaultNavTab || 'dashboard';
 
   const navigateToTab = (tab: NavTab) => {
     if (!currentUser || !isNavTabAllowedForRole(currentUser.role, tab, currentUser.permission_keys)) {
@@ -786,7 +790,15 @@ export default function App() {
             </div>
           )}
 
-          {activeTab === 'dashboard' && (
+          {!hasAccessibleModule && currentUser && currentUser.permission_keys !== undefined && (
+            <div className="max-w-2xl mx-auto mt-12 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-center">
+              <ShieldCheck className="w-8 h-8 text-amber-700 mx-auto mb-3" />
+              <h2 className="text-lg font-bold text-slate-900">Belum ada modul yang diberikan</h2>
+              <p className="text-sm text-slate-600 mt-2">Akun Anda sudah masuk, tetapi belum memiliki permission untuk membuka modul GABAH. Hubungi Superadmin untuk penugasan akses.</p>
+            </div>
+          )}
+
+          {hasAccessibleModule && activeTab === 'dashboard' && (
             <DashboardView
               assets={visibleAssets}
               loans={visibleLoans}
