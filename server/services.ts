@@ -859,7 +859,7 @@ export class GabahDomainService {
     if (outstandingBorrowedLoan) {
       throw Object.assign(new Error('Aset sedang dipinjam dan belum dikembalikan. Pilih barang lain.'), { statusCode: 409 });
     }
-    if (asset.status !== 'available') {
+    if (!['available', 'reserved'].includes(String(asset.status))) {
       throw Object.assign(new Error(`Aset tidak tersedia untuk dipinjam (status saat ini: "${asset.status}").`), { statusCode: 409 });
     }
     if (typeof payload.purpose !== 'string' || payload.purpose.includes('\u0000') || !payload.purpose.trim() || payload.purpose.length > 2000) {
@@ -971,7 +971,7 @@ export class GabahDomainService {
 
     // Revalidate the authoritative asset relation at approval time.
     const asset = db.assets.find(a => a.id === loan.asset_id);
-    if (!asset || !asset.is_loanable || asset.status !== 'available') {
+    if (!asset || !asset.is_loanable || !['available', 'reserved'].includes(String(asset.status))) {
       throw Object.assign(new Error('Aset sudah tidak tersedia atau relasinya tidak valid. Permohonan tidak dapat disetujui.'), { statusCode: 409 });
     }
 
