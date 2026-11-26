@@ -1,38 +1,47 @@
 # GABAH Master Completion Tracker
 
 Updated: 2026-11-27
-Integration base: `main`
-Working branch: `ai/chatgpt/vendor-knowledge-rbac-hardening`
+Integration branch: `main`
+Current HEAD: `2102354077004f23074c87ef99d72c61c694f220`
 
-## Recently merged to main\n\n### Vendor and Knowledge Base Dynamic RBAC\n- PR #341 merged as `20c6e82e9e69f1d8f8fef713a047588bf1dc6bd7`; exact-head CI passed (run `45909210166`).\n- PostgreSQL mode uses Dynamic RBAC for Vendor and Knowledge Base create/update; Vendor owner scopes are checked for old and new owner.\n- Development file-store keeps only its bounded legacy allowlist; production fails fast if PostgreSQL is unavailable.\n\n### Asset owner authority and multi-asset loan preflight\n- PR #344 merged as `040d30288fc4c912294c379a83c680f6ac540f1f`; exact-head CI passed (run `45910357029`).\n- Asset owner is derived from resolved category taxonomy; request payload is not copied directly as the final owner. Shared categories retain supported resolver hints.\n- Multi-asset loans validate all items before the first mutation; route-level rollback remains as a second safeguard.\n- CI runtime loan authorization test passed, and asset managing-unit regression passed.\n- Cross-instance concurrent loan reservation still requires PostgreSQL transaction/locking verification; not claimed complete.\n\n## Current work
+## Recently merged to main
 
-### Authorization: Vendor and Knowledge Base writes
-- [x] Added a Dynamic RBAC guard for Vendor and Knowledge Base write operations.
-- [x] Vendor create/update now require `vendors.create` / `vendors.update` through Dynamic RBAC.
-- [x] Vendor owner-domain checks use Dynamic RBAC scopes in PostgreSQL mode; development file-store retains only the existing narrow IT/GA owner compatibility path.
-- [x] Knowledge Base create/update require `knowledge.create` / `knowledge.update` in PostgreSQL mode; development file-store retains the explicit Superadmin/IT/GA allowlist.
-- [x] Added static contract verification for all four write routes, including production fail-fast on PostgreSQL startup failure and bounded development file-store compatibility.
-- [x] Added the verification script to package scripts and GitHub Actions.
-- [x] Initial CI identified four stale contract assertions; they were corrected to validate the intended PostgreSQL Dynamic RBAC plus bounded development fallback contract.
-- [x] CI then exposed one existing asset-scope contract that confirms file-store compatibility; route behavior and tests now preserve that development contract without changing production PostgreSQL authorization.\n- [x] GitHub Actions passed on source HEAD `87fae15fd17281a363b9e74440c8514d9652bf72` (run `45909210166`).
-- [ ] Runtime PostgreSQL integration and role-by-role UAT: not yet verified.
+### PR #341 — Vendor and Knowledge Base Dynamic RBAC
+- Merge commit: `20c6e82e9e69f1d8f8fef713a047588bf1dc6bd7`
+- Exact-head CI: PASS, run [45909210166](https://github.com/inieki-lab/gabah-gas/actions/runs/45909210166).
+- Vendor create/update and Knowledge Base create/update use Dynamic RBAC permissions in PostgreSQL mode.
+- Vendor owner scopes are checked for both existing and requested owner.
+- Development file-store retains only its bounded legacy allowlist; production startup fails if PostgreSQL is unavailable.
 
-## Prior stabilization work retained for reference
+### PR #344 — Asset owner authority and multi-asset loan preflight
+- Merge commit: `040d30288fc4c912294c379a83c680f6ac540f1f`
+- Exact-head CI: PASS, run [45910357029](https://github.com/inieki-lab/gabah-gas/actions/runs/45910357029).
+- New asset owner is taken from resolved category taxonomy; caller input is not copied directly to the final owner.
+- Shared categories retain supported resolver hints, while final ownership remains taxonomy-derived.
+- Multi-asset loan requests preflight every asset before the first loan, notification, audit entry, or sequence allocation.
+- Existing route-level rollback remains as a second safeguard.
+- Runtime loan authorization and asset managing-unit regressions passed.
 
-Earlier branch `ai/hermes/authorization-endpoint-audit` contains candidate fixes for asset owner derivation, generic asset status mutation, Maintenance authorization, multi-asset loan prevalidation, and numbering-preview labeling. Its latest CI was green on `febb4e7725d5a8b0dc6bf33f98bc01b3c6a1cac8` (run 45907223713), but that branch is 662 commits ahead and 439 behind current `main`. PR #340 was closed without merge to avoid importing a stale/diverged history. Those changes are **not claimed as merged into main**; they must be reviewed and ported individually when needed.
+## Known limitations and outstanding work
 
-## Verification and release gates
+1. **Loan concurrency across multiple app instances:** the preflight prevents partial mutations within one application process. PostgreSQL transaction-level locking/constraint behavior for simultaneous overlapping loan requests still needs a dedicated integration test.
+2. **User and role administration:** continue endpoint audit for profile updates, bulk import, role assignments, and session revocation.
+3. **Role-by-role UAT:** manual browser testing for Superadmin, IT, GA, Auditor, and ordinary staff remains pending.
+4. **Numbering standard:** server-managed numbering rules and sequence CRUD are present. Do not impose a final corporate number format until the company standard is confirmed.
+5. **Production deployment:** no production data changes or deployment have been performed.
 
-- Static contract script: included in CI; result pending.
-- TypeScript/lint, production build, Docker/PostgreSQL integration: pending for this branch.
-- Manual browser UAT for Superadmin, IT, GA, Auditor, and ordinary staff: not verified.
-- No production data changes or deployment performed.
-- No merge to `main` yet.
+## Verification baseline
 
-## Next steps
+- TypeScript/lint: PASS on PR #341 and PR #344 exact-head runs.
+- Production build: PASS on PR #344.
+- Docker image build and runtime smoke (Node 22 + PostgreSQL 17): PASS on PR #344.
+- PostgreSQL fresh-database/persistence integration: PASS on PR #344.
+- Loan authorization and state-transition runtime suite: PASS on PR #344.
+- Asset managing-unit regression: PASS on PR #344.
+- Manual local UAT by the user: pending.
 
-1. Wait for exact-head CI and fix any genuine failures.
-2. Continue independent endpoint audit (user administration, permission assignments, read/export/search/aggregate endpoints).
-3. Review and port any uniquely useful fixes from the closed stale branch into this clean `main`-based branch.
-4. Open PR to `main`; merge only after exact-head CI is green and PR diff is focused.
-5. After merge, provide the exact `main` commit for user testing.
+## Next actions
+
+- Add PostgreSQL concurrency protection/verification for overlapping loan requests.
+- Continue auditing user administration and remaining API read/export/search/aggregate endpoints.
+- Complete role-by-role UAT after the user pulls this `main` commit.
