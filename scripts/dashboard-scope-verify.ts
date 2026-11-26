@@ -107,6 +107,11 @@ assert.equal(itStaffPersona.isDivisionDashboard, true);
 assert.equal(itStaffPersona.divisionLabel, 'IT');
 assert.equal(itStaffPersona.descriptionRole, 'IT');
 assert.equal(itStaffPersona.isIT, true);
+const customAssetOperator = resolveDashboardPersona({
+  ...user, role: 'Karyawan', role_keys: ['karyawan'], permission_keys: ['assets.create'],
+} as UserProfile);
+assert.equal(customAssetOperator.isStaff, false, 'custom asset operator must not receive staff-only dashboard filtering');
+
 
 const humasStaffPersona = resolveDashboardPersona({
   ...user, role: 'Karyawan', role_keys: ['karyawan', 'humas'],
