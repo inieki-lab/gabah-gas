@@ -121,7 +121,12 @@ jobs:
           npm run test:meeting-room
 
       - name: Organization model regression
-        run: npm run test:org-model
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gabah_org_ci
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres gabah_org_ci
+          npm run test:org-model
 
       - name: Asset managing-unit regression
         run: npm run test:t2b1
