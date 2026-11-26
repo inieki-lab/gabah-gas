@@ -434,9 +434,10 @@ export class GabahDomainService {
     const categoryCatalog = (Array.isArray(db.categories) && db.categories.length > 0)
       ? db.categories
       : CANONICAL_TAXONOMY;
-    // The request's owner_division is untrusted input and must not steer
-    // category resolution. Category code/name resolves against the master alone.
-    let taxonomy = resolveTaxonomyByHumanName(rawCategory, undefined, categoryCatalog);
+    // owner_division is only a resolver hint for shared legacy categories
+    // (for example KDR/MSN); the resolved taxonomy object remains the source
+    // of truth for owner. It is never copied directly into resolvedOwnerDivision.
+    let taxonomy = resolveTaxonomyByHumanName(rawCategory, payload.owner_division, categoryCatalog);
     // Kategori nonaktif ditolak sebagai pilihan BARU (400); input kosong tidak
     // ditolak (resolusi default) — lihat fallback aktif di bawah.
     assertCategoryUsableForNewAsset(taxonomy, rawCategory, categoryCatalog);
