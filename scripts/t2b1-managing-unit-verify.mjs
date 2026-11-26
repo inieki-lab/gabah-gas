@@ -33,9 +33,9 @@ const req = async (b, m, p, o = {}) => {
 // dan backfill SQL di server/migrations/007_asset_managing_unit.sql).
 const EXPECTED_BY_DIV = { IT: 'UNIT-IT-MIS', SC: 'UNIT-SC', PIBC: 'UNIT-PIBC', GA: null };
 
-async function boot(sp, port, env) {
+async function boot(sp, port, env, overrides = {}) {
   const c = spawn(process.execPath, [sp], {
-    env: { ...process.env, PORT: String(port), NODE_ENV: 'development', GABAH_INITIAL_ADMIN_PASSWORD: env.ap, GABAH_INITIAL_USER_PASSWORD: env.up, GABAH_TEST_PASSWORD: '' },
+    env: { ...process.env, ...overrides, PORT: String(port), NODE_ENV: 'development', GABAH_INITIAL_ADMIN_PASSWORD: env.ap, GABAH_INITIAL_USER_PASSWORD: env.up, GABAH_TEST_PASSWORD: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let log = '';
@@ -182,7 +182,8 @@ async function main() {
     kill(s1.c); s1 = null;
 
     // ================= PHASE 2 (restart dengan state phase 1) =================
-    s2 = await boot(sp, 39600 + Math.floor(Math.random() * 500), env);
+    // Phase 2 runs without PostgreSQL to verify the JSON file-store roundtrip.
+    s2 = await boot(sp, 39600 + Math.floor(Math.random() * 500), env, { DATABASE_URL: '' });
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const phase2 = (await req(s2.base, 'GET', '/api/assets', { token: admin2 })).json?.data || [];
     const num2 = Object.fromEntries(phase2.map(a => [a.id, a.asset_number]));
