@@ -1,0 +1,38 @@
+# GABAH — Allow Non-Overlapping Reservations on Reserved Assets
+
+**Date:** 26 November 2026  
+**Branch:** `fix/allow-nonoverlap-reserved-loans-2026-11-26`  
+**Base:** `fix/loan-overdue-collision-guard-2026-11-26`  
+**Related work:** PR #336 — overdue loan collision guard  
+**Status:** Implementation and regression added; exact-head CI pending. No database was accessed.
+
+## Finding
+
+The loan request and approval services required `asset.status === 'available'`. However, approving a future-dated loan changes the asset status to `reserved`. That global status check then rejected every later request for the same asset, even when the requested date range did not overlap the already-approved reservation.
+
+This contradicted the product rule that collision detection is per physical asset and per overlapping date range. A reservation for one future window should not block a different, non-overlapping future window. Physical custody remains a separate, unconditional blocker.
+
+## Change
+
+- Request and approval now accept an asset in `available` or `reserved` status.
+- Existing active custody checks remain authoritative: `active`, `borrowed`, and `overdue` loans block another request/approval even if inventory incorrectly says available.
+- Existing date-range collision checks remain authoritative for `approved`, `borrowed`, `active`, and `overdue` records.
+- Approval continues to mark the asset `reserved`.
+- Added `test:loan-reserved-nonoverlap` and registered it in CI. The regression verifies request/approval status gates, custody checks, date-range checks, and the PostgreSQL per-asset `FOR UPDATE` lock.
+
+## Validation boundary
+
+- Source-level regression added; GitHub Actions exact-head result is pending.
+- No local PostgreSQL integration test or browser UAT was run in this session.
+- No loan, asset, borrower, or production database record was changed.
+- This branch is stacked on PR #336 so the overdue-custody protection is included.
+
+## UAT required
+
+1. Approve a future reservation for an IT laptop.
+2. Submit a second request for the same laptop on a non-overlapping date range; it should be accepted.
+3. Submit a third request whose dates overlap either approved reservation; it must be rejected with HTTP 409.
+4. Set a loan to `borrowed` or `overdue` while inventory is stale as `available`; new requests and approvals must remain blocked.
+5. Return the physical asset, then confirm a later non-overlapping request can proceed.
+
+**Merge policy:** Keep draft; do not merge without exact-head CI, disposable PostgreSQL rehearsal, browser UAT, and owner approval.
