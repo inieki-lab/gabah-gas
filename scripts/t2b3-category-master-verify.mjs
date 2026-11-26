@@ -182,7 +182,7 @@ async function main() {
     const disCreate = await req(s1.base, 'POST', '/api/assets', { token: admin, body: { category_name_or_code: 'DRN', name: 'Aset Uji T2B-3 nonaktif' } });
     const listAfter = (await req(s1.base, 'GET', '/api/taxonomy/categories', { token: admin })).json?.data || [];
     const drnRow = listAfter.find(c => c.code === 'DRN');
-    const legacyRead = await req(s1.base, 'GET', `/api/assets/${drnAsset.id}`, { token: admin });
+    const legacyRead = drnAsset?.id ? await req(s1.base, 'GET', `/api/assets/${drnAsset.id}`, { token: admin }) : { status: 0, json: {} };
     rec('7a: kategori nonaktif ditolak sebagai pilihan baru (400)', '400',
       `${disCreate.status}: ${disCreate.json?.message || ''}`, disCreate.status === 400);
     rec('7b: kategori nonaktif tetap terbaca di master (is_active=false) & aset historis tetap tampil',
@@ -206,7 +206,7 @@ async function main() {
     rec('9a: input kategori bebas legacy tetap jatuh ke fallback (tidak error)', '201 & kategori fail-safe',
       `${legacy.status} & code=${legacyAsset?.category_code}`,
       legacy.status === 201 && !!legacyAsset?.category_code);
-    const legacyRead2 = await req(s1.base, 'GET', `/api/assets/${legacyAsset.id}`, { token: admin });
+    const legacyRead2 = legacyAsset?.id ? await req(s1.base, 'GET', `/api/assets/${legacyAsset.id}`, { token: admin }) : { status: 0, json: {} };
     rec('9b: aset tanpa kategori master tetap terbaca (detail & list)', '200 + 200',
       `${legacyRead2.status}`, legacyRead2.status === 200);
 
