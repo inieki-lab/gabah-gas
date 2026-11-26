@@ -105,6 +105,12 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
   const canRejectReservations = hasEffectivePermission(currentUser, 'room_reservations.reject', isSuperAdmin || isGA);
   const canCancelReservations = hasEffectivePermission(currentUser, 'room_reservations.cancel', !isAuditor);
   const canCreateReservations = hasEffectivePermission(currentUser, 'room_reservations.create', !isAuditor);
+  const canOverridePriority = hasEffectivePermission(currentUser, 'room_reservations.override_priority', isSuperAdmin || isSekdir);
+  const canReadITFacilityQueue = hasEffectivePermission(currentUser, 'room_reservations.it_facilities.read', persona.isIT);
+  const canReadDocumentationQueue = hasEffectivePermission(currentUser, 'room_reservations.documentation.read', persona.isHumas);
+  const canReadGAFacilitiesQueue = hasEffectivePermission(currentUser, 'room_reservations.approve', isSuperAdmin || isGA);
+  const canReadConsumptionQueue = canReadGAFacilitiesQueue;
+  const canReadHighPriorityQueue = canOverridePriority || canApproveReservations || isSuperAdmin;
 
   // Stats
   const stats = useMemo(() => {
@@ -312,13 +318,13 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-700">
             {persona.descriptionRole}
           </span>
-          {isSekdir && (
+          {canOverridePriority && (
             <span className="text-amber-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Sparkles className="w-3.5 h-3.5 text-amber-400" />
               Hak Interupsi Direksi Aktif: Berwenang menggeser jadwal Ruang Setra Wangi untuk agenda Direksi & Komisaris.
             </span>
           )}
-          {isHumas && (
+          {canReadDocumentationQueue && (
             <span className="text-sky-300 text-[11px] font-medium ml-1 flex items-center gap-1">
               <Camera className="w-3.5 h-3.5 text-sky-400" />
               Akses Humas: Memantau & menangani order dokumentasi liputan foto/video rapat perusahaan.
@@ -345,7 +351,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               <span>Permintaan Dokumentasi ({stats.documentationCount})</span>
             </button>
           )}
-          {(isGA || isSuperAdmin) && (
+          {canReadConsumptionQueue && (
             <button
               onClick={() => { setActiveTab('reservations'); setCategoryFilter('consumption'); }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1.5 ${
@@ -773,6 +779,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             >
               Semua ({reservations.length})
             </button>
+            {canReadITFacilityQueue && (
             <button
               onClick={() => setCategoryFilter('it_facilities')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
@@ -784,6 +791,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               <Laptop className="w-3.5 h-3.5 text-sky-500" />
               <span>Dukungan IT Support ({stats.itFacilitiesCount})</span>
             </button>
+            )}
+            {canReadGAFacilitiesQueue && (
             <button
               onClick={() => setCategoryFilter('ga_facilities')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
@@ -795,6 +804,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               <Building2 className="w-3.5 h-3.5 text-emerald-500" />
               <span>Sarana GA ({stats.gaFacilitiesCount})</span>
             </button>
+            )}
+            {canReadConsumptionQueue && (
             <button
               onClick={() => setCategoryFilter('consumption')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
@@ -806,6 +817,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               <Coffee className="w-3.5 h-3.5" />
               <span>Order Pantry GA ({stats.consumptionCount})</span>
             </button>
+            )}
+            {canReadDocumentationQueue && (
             <button
               onClick={() => setCategoryFilter('documentation')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
@@ -817,6 +830,8 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               <Camera className="w-3.5 h-3.5" />
               <span>Dokumentasi Humas ({stats.documentationCount})</span>
             </button>
+            )}
+            {canReadHighPriorityQueue && (
             <button
               onClick={() => setCategoryFilter('high_priority')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
@@ -828,6 +843,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
               <Sparkles className="w-3.5 h-3.5" />
               <span>Prioritas Direksi ({stats.highPriorityCount})</span>
             </button>
+            )}
           </div>
 
           {/* Filters & Search */}
