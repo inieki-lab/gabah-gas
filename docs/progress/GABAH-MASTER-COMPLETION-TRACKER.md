@@ -115,4 +115,6 @@
 - **Aturan:** Tidak merge ke main, tidak force push, tidak menghapus branch
 
 ---
-*Tracker ini diperbarui setiap tahap dan menjadi referensi utama status pekerjaan GABAH-GAS.*
+*Tracker ini diperbarui setiap tahap dan menjadi referensi utama status pekerjaan GABAH-GAS.*| NEU-22 | Owner division validasi create asset | 4 | ⚠️ Hanya IT & GA otomatis, divisi lain butuh manual |
+| NEU-23 | Mass assignment di update asset | 4 | ⚠️ Belum ada whitelist field seperti kontrak |
+| NEU-25 | Asset numbering tidak tersinkronisasi | 4 | ⚠️ In-memory, counter reset setelah restart |
