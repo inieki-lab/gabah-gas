@@ -4,7 +4,7 @@
 **Branch:** `ai/hermes/authorization-endpoint-audit`  
 **Commit kode yang diaudit:** `ca4c4db0`  
 **Tip branch sebelum commit dokumen ini:** `039fa80d`  
-**Commit dokumen koreksi:** `<DOC_COMMIT>`  
+**Commit dokumen koreksi:** `03354494`  
 **Sifat:** Koreksi dokumentasi setelah audit independen. Tidak ada perubahan kode aplikasi pada commit dokumen ini.
 
 > **Kesimpulan utama:** TAHAP 6 **belum selesai**. Perbaikan NEU-01 justru menimbulkan regresi runtime pada mode file-store, NEU-30 diimplementasikan dengan aturan yang salah, dan NEU-25 baru terverifikasi sebagian. Lint dan build lulus, tetapi itu **bukan** bukti otorisasi runtime atau E2E.
@@ -266,9 +266,9 @@ Langkah berikutnya sebelum TAHAP 7:
 | `ca4c4db0` | Implementasi P0 (kode) + laporan TAHAP 6 awal |
 | `2d7769cb` | Catatan NEU-01 pada tracker |
 | `039fa80d` | Koreksi HEAD dan status NEU-01 (sebelum koreksi menyeluruh) |
-| `<DOC_COMMIT>` | Koreksi menyeluruh dokumen ini dan tracker |
-| `<SHA_SYNC_COMMIT>` | Sinkronisasi baris SHA dokumen (tanpa perubahan isi lain) |
+| `03354494` | Koreksi menyeluruh dokumen ini dan tracker |
+| commit sinkronisasi setelah `03354494` | Hanya memperbarui baris SHA dokumen (tanpa perubahan isi lain); SHA-nya dapat dilihat dengan `git log -1` |
 
-**Catatan self-reference:** sebuah commit tidak dapat memuat SHA-nya sendiri secara eksak. Karena itu `<DOC_COMMIT>` adalah commit yang memuat isi koreksi ini, sedangkan `<SHA_SYNC_COMMIT>` hanya memperbarui baris SHA. Tip branch setelah push adalah `<SHA_SYNC_COMMIT>`; SHA final juga dilaporkan di jawaban chat dan dapat diverifikasi dengan `git log -1`.
+**Catatan self-reference:** sebuah commit tidak dapat memuat SHA-nya sendiri secara eksak. Karena itu `03354494` adalah commit yang memuat isi koreksi ini, sedangkan commit sinkronisasi setelahnya hanya memperbarui baris SHA. Tip branch setelah push adalah commit sinkronisasi tersebut; SHA final juga dilaporkan di jawaban chat dan dapat diverifikasi dengan `git log -1`.
 
 **Aturan yang tetap dipegang:** tidak merge ke `main`, tidak force-push, tidak reset/rebase, tidak menghapus perubahan lokal, dan tidak memulai TAHAP 7.

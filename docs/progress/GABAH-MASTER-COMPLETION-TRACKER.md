@@ -3,7 +3,7 @@
 **Repository:** `github.com/inieki-lab/gabah-gas`
 **Branch:** `ai/hermes/authorization-endpoint-audit`
 **Commit kode TAHAP 6 yang diaudit:** `ca4c4db0`
-**Commit dokumen koreksi:** `<DOC_COMMIT>`
+**Commit dokumen koreksi:** `03354494`
 **Tip branch sebelum commit dokumen ini:** `039fa80d`
 **Dibuat:** 2026-11-26
 
@@ -229,8 +229,8 @@ TAHAP 6 **tidak boleh ditandai selesai** dan branch **belum layak di-merge**. Li
 8. `ca4c4db0` — TAHAP 6: implementasi kode P0 (NEU-01/22/25/30/33)
 9. `2d7769cb` — Catatan NEU-01 pada tracker
 10. `039fa80d` — Koreksi HEAD dan status NEU-01 (sebelum koreksi menyeluruh)
-11. `<DOC_COMMIT>` — Koreksi menyeluruh laporan TAHAP 6 dan tracker
-12. `<SHA_SYNC_COMMIT>` — Sinkronisasi baris SHA dokumen (tanpa perubahan isi lain)
+11. `03354494` — Koreksi menyeluruh laporan TAHAP 6 dan tracker
+12. commit sinkronisasi setelah `03354494` — Hanya memperbarui baris SHA dokumen (SHA terlihat di `git log -1`)
 
 **Total Files Dibuat:**
 - `docs/progress/phase-01-baseline.md` — Inventarisasi baseline
