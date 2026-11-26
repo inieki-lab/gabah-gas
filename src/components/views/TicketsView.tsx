@@ -411,9 +411,9 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   </div>
 
                   {/* Status action buttons */}
-                  {GabahService.canManageTicket(ticket, currentUser) && (
+                  {(GabahService.canManageTicket(ticket, currentUser, 'update') || GabahService.canManageTicket(ticket, currentUser, 'close')) && (
                     <div className="flex items-center gap-2">
-                      {ticket.status === 'open' && (
+                      {ticket.status === 'open' && GabahService.canManageTicket(ticket, currentUser, 'update') && (
                         <button
                           onClick={() => onUpdateTicketStatus(ticket.id, 'in_progress')}
                           className="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition-all text-xs shadow-xs"
@@ -422,7 +422,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                         </button>
                       )}
 
-                      {ticket.status === 'in_progress' && (
+                      {ticket.status === 'in_progress' && GabahService.canManageTicket(ticket, currentUser, 'close') && (
                         <button
                           onClick={() => setResolvingTicketId(ticket.id)}
                           className="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-bold transition-all text-xs flex items-center gap-1.5 shadow-xs"
