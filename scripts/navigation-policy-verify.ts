@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { ROLE_NAVIGATION, isNavTabAllowedForRole } from '../src/navigation/roleNavigation';
+import { ROLE_NAVIGATION, getDefaultNavTabForRole, isNavTabAllowedForRole } from '../src/navigation/roleNavigation';
 
 const expectedRoles = [
   'Admin GABAH', 'IT', 'GA', 'Sekretaris Direksi', 'Humas',
@@ -56,5 +56,12 @@ assert.ok(isNavTabAllowedForRole('Humas', 'meeting_rooms', ['room_reservations.r
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'reports', ['reports.read']));
 assert.ok(isNavTabAllowedForRole('Custom Role' as any, 'dashboard', ['*']));
 
+
+
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['assets.read']), 'my_assets');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['tickets.read']), 'tickets');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['dashboard.read', 'assets.catalog.read']), 'dashboard');
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, []), null);
+assert.equal(getDefaultNavTabForRole('Custom Role' as any, ['*']), 'dashboard');
 
 console.log('Role navigation policy: PASS (9 roles, explicit allow/deny checks)');
