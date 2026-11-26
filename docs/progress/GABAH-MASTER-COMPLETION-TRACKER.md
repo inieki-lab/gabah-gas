@@ -407,3 +407,13 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - CI untuk ketiga suite pada exact HEAD masih menunggu. Jangan menyatakan roundtrip lulus sebelum seluruh assertion fase restart hijau.
 - Paralel: pemeriksaan source RBAC/navigation menemukan pemisahan yang disengaja antara `assets.read` (ruang kerja personal) dan `assets.catalog.read`/`assets.audit.read` (katalog penuh); tidak mengubah policy ini karena sesuai desain dan permission seed.
 - Tidak ada merge ke `main`.
+
+
+## 2026-11-26 — Efisiensi CI dan audit paralel
+
+- Commit `86d7dab764000b75a812c678bc6ec33a5dd2a97c`: workflow CI kini memakai concurrency group per workflow/ref dan membatalkan run lama yang tertinggal saat commit baru masuk. Tujuannya menghindari beberapa run identik yang menghabiskan runner setelah rangkaian commit perbaikan test harness.
+- Run exact HEAD workflow: `45827461098` (sedang berjalan saat catatan dibuat).
+- Audit source paralel: route check-in/check-out reservasi ruang memang tidak memakai permission gate generik; service domain tetap memvalidasi organizer/otorisasi GA dan status reservasi. Ini dipertahankan karena regresi meeting-room 18/18 PASS.
+- Maintenance GET mengikuti asset scope; mutasi create/update memerlukan permission + owner scope dan PATCH memakai allowlist field. Tidak ada perubahan aplikasi dari pemeriksaan ini.
+- Risiko yang masih terbuka: numbering engine masih menggunakan counter in-memory (asset/ticket/loan/contract), sehingga belum aman untuk beberapa worker/instance bersamaan. Format nomor tidak diubah karena standar perusahaan belum ditetapkan.
+- Tidak ada merge ke `main`.
