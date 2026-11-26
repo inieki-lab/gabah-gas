@@ -2484,9 +2484,15 @@ async function startServer() {
     // Branch names are not owner domains; GA's optional IT workstation
     // read-only permission does not grant access to IT maintenance records.
     const employeeBaseline = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(actor.role);
-    const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor)
-      .filter(asset => !employeeBaseline || asset.assigned_to?.id === actor.id)
-      .filter(asset => actor.role !== 'GA' || String(asset.owner_division).toUpperCase() === 'GA')
+    const postgresMode = isPostgresPersistenceActive();
+    // PostgreSQL dynamic asset scopes already include additional IT/GA roles.
+    // Do not re-apply a primary-role employee filter. Also exclude GA's
+    // read-only IT workstation exception from maintenance operations.
+    const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor, {
+      includeReadOnlyItWorkstations: false,
+    })
+      .filter(asset => postgresMode || !employeeBaseline || asset.assigned_to?.id === actor.id)
+      .filter(asset => postgresMode || actor.role !== 'GA' || String(asset.owner_division).toUpperCase() === 'GA')
       .map(asset => asset.id));
     const filtered = db.maintenances.filter(item => visibleAssetIds.has(item.asset_id));
     return res.json({ success: true, data: filtered });
