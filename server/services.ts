@@ -255,7 +255,7 @@ export class GabahDomainService {
   /**
    * Filter assets based on user's role and division scope
    */
-  static getScopedAssets(user: ServerUser, options: { includeReadOnlyItWorkstations?: boolean } = {}): ServerAsset[] {
+  static getScopedAssets(user: ServerUser, options: { includeReadOnlyItWorkstations?: boolean; includeLoanablePoolForEmployee?: boolean } = {}): ServerAsset[] {
     if (isSuperadminActor(user) || isAuditorActor(user)) return db.assets;
 
     const employeeBaselineRoles = ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'];
@@ -305,7 +305,8 @@ export class GabahDomainService {
     }
 
     const personalAssets = isEmployeeBaseline
-      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
+      ? db.assets.filter(asset => asset.assigned_to?.id === user.id
+        || (options.includeLoanablePoolForEmployee !== false && asset.is_loanable))
       : [];
     const visibleIds = new Set([...personalAssets, ...dynamicAssets].map(asset => asset.id));
     return db.assets.filter(asset => visibleIds.has(asset.id));
