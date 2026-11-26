@@ -166,7 +166,7 @@
 | CR-04 | Migrasi 004 gagal → PG mati | 1 | ❌ Masih bloker utama (PG tidak tersedia) |
 | CR-05 | Reminder kontrak otomatis | 1 | ❌ Masih manual-only |
 | CR-06 | Mass assignment field | 1 | ✅ Maintenance sudah ada whitelist, Contract & Room butuh pengecekan |
-| NEU-01 | `requireRbacPermission` bypass PG mati | 2 | ✅ Sudah diperbaiki di TAHAP 6: fail-closed behavior saat PG down (tidak lagi return true) |
+| NEU-01 | `requireRbacPermission` bypass PG mati | 2 | ⚠️ Diserahankan implementasi fail-closed: function sekarang memeriksa `hasRbacPermission` saat PG down, namun memiliki keterbatasan — jika `policiesByUser` kosong (karena `refreshRbacPolicy()` sudah clear cache), maka semua user akan ditolak akses. Perbaikan ini memerlukan refactoring sistem policy RBAC untuk menambahkan status policy yang eksplisit sebelum fallback. |
 | NEU-03 | File size limit upload | 2 | ✅ Sudah ditambahkan validasi 10MB |
 | NEU-22 | Owner division validasi create asset | 4 | ✅ Sudah divalidasi: divisi non-IT/GA wajib dispesifikasikan di payload |
 | NEU-23 | Mass assignment di update asset | 4 | ⚠️ Whitelist field sudah ada di kode (lihat `allowed` list di PATCH /api/assets/:id), butuh verifikasi end-to-end manual |
