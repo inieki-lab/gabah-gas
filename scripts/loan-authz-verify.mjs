@@ -48,7 +48,9 @@ const loanCreateRouteSource = fs.readFileSync('server.ts', 'utf8')
   .split("app.post('/api/loans'")[1]?.split("app.post('/api/loans/:id/approve'")[0] || '';
 assert.match(loanServiceSource, /static requestLoansBatch\([\s\S]*Full read-only preflight[\s\S]*return assetIds\.map/);
 assert.match(loanCreateRouteSource, /GabahDomainService\.requestLoansBatch\(/);
-record('Multi-asset loan route uses full read-only preflight service', 'requestLoansBatch before mutation', 'service and route contract present', true);
+assert.match(loanCreateRouteSource, /GabahDomainService\.requestLoansBatch\(\{[\s\S]*asset_ids: normalizedAssetIds,[\s\S]*\}, actor\)/,
+  'batch preflight must receive the authenticated actor for borrower and read-only checks');
+record('Multi-asset loan route uses full read-only preflight service and authenticated actor', 'requestLoansBatch before mutation with actor', 'service and route contract present', true);
 
 async function req(base, method, urlPath, { token, body, headers = {} } = {}) {
   const res = await fetch(`${base}${urlPath}`, {
