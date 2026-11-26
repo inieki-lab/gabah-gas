@@ -69,6 +69,9 @@ jobs:
       - name: Role dashboard scope checks
         run: npm run test:dashboard-scope
 
+      - name: Effective role capability UI checks
+        run: npm run test:role-capability-ui
+
       - name: Production build (frontend + server bundle)
         run: npm run build
 
