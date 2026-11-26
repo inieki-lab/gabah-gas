@@ -20,7 +20,7 @@ import {
 import { Loan, Asset, UserProfile, LoanStatus } from '../../types';
 import { GabahService, formatDateTime, exportLoansToCsv } from '../../services/gabahService';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
-import { resolveDashboardPersona } from '../../dashboard/roleDashboardScope';
+import { hasEffectivePermission, resolveDashboardPersona } from '../../dashboard/roleDashboardScope';
 
 interface LoansViewProps {
   loans?: Loan[];
@@ -63,6 +63,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const dashboardPersona = currentUser ? resolveDashboardPersona(currentUser) : null;
   const isEmployee = dashboardPersona?.isStaff ?? false;
   const isAuditor = dashboardPersona?.isAuditor ?? false;
+  const canCreateLoan = currentUser ? hasEffectivePermission(currentUser, 'loans.create', !isAuditor) : false;
+  const canReturnLoan = currentUser ? hasEffectivePermission(currentUser, 'loans.return', !isAuditor) : false;
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeAssets = Array.isArray(assets) ? assets : [];
   const currentUserId = currentUser?.id || '';
@@ -114,7 +116,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateLoan && (
             <button
               id="btn-create-loan"
               onClick={handleOpenCreate}
