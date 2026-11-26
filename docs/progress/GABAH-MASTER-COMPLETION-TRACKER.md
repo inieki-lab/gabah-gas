@@ -475,3 +475,12 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - CI run `45828391750` berhenti pada TypeScript lint: `src/App.tsx(795,16): Cannot find name 'ShieldCheck'`. UI fallback no-access menggunakan ikon yang belum diimpor.
 - Perbaikan: menambahkan import `ShieldCheck` dari `lucide-react` pada commit `62f71e3eaed5f72e207f3ea28828785ee1240c7b`.
 - CI exact commit baru sedang antre; build/typecheck belum dinyatakan lulus.
+
+
+## 2026-11-26 — Rekonsiliasi aset: persistensi dan duplikasi nomor ERP
+
+- Audit endpoint menemukan `POST /api/reconciliation/link` mengubah `corporate_asset_number` dan mencatat audit, tetapi tidak memanggil persistensi. Perubahan dapat hilang setelah restart. Input juga langsung memanggil `.trim()` tanpa memastikan tipe string dan tidak menolak nomor ERP duplikat.
+- Perbaikan: handler menjadi async; validasi asset ID dan tipe nomor ERP, batas panjang 120 karakter, deteksi duplikasi case-insensitive (409), lalu `await persistDataStore()` sebelum sukses. Permission `reconciliation.link` + owner scope aset tetap diwajibkan.
+- P0 security regression ditambah: nomor ERP unik tersimpan dan terbaca ulang, nomor duplikat ditolak, input non-teks ditolak.
+- Commits: `1094a3238d8ff98568437652e2436b36cfe89f3b` (server), `eacd5f232538e2b03533b5b9c746bf1095627fd1` (P0 test).
+- CI exact HEAD masih pending; belum mengklaim lulus.
