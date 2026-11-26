@@ -203,7 +203,7 @@ async function main() {
       a.category_code ?? null, a.is_loanable ?? null,
     ]).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
     const expectedFingerprint = crypto.createHash('sha256').update(JSON.stringify(expectedAssetRows)).digest('hex');
-    const hydration = s2.log().match(/File-store hydration summary: source=standalone; assets=(\\d+); assets_sha256=([a-f0-9]{64})/);
+    const hydration = s2.log().match(/File-store hydration summary: source=standalone; assets=(\d+); assets_sha256=([a-f0-9]{64})/);
     const phase2Count = hydration ? Number(hydration[1]) : 0;
     const phase2Fingerprint = hydration?.[2] || '';
     const sameAssetSnapshot = phase2Count === phase1.length && phase2Fingerprint === expectedFingerprint;
