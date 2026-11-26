@@ -9,7 +9,7 @@ const checks = [
   ['Administration mirrors an authoritative empty user list instead of retaining stale accounts', /setUserList\(Array\.isArray\(users\) \? users : \[\]\)/.test(effect)],
   ['User-list synchronization does not ignore empty arrays', !/users\.length\s*>\s*0/.test(effect)],
   ['User-list synchronization remains reactive to the users prop', /\}, \[users\]\);$/.test(effect)],
-  ['Administration hook declarations remain before the closed-modal early return', source.indexOf('if (!isOpen) return null;') > effectStart && !/\\buse(?:State|Effect|Memo|Callback|Ref|Context|Reducer)\\s*(?:<[^;\\n]*?>)?\\s*\\(/.test(source.slice(source.indexOf('if (!isOpen) return null;')))],
+  ['Administration hook declarations remain before the closed-modal early return', source.indexOf('if (!isOpen) return null;') > effectStart && !['useState(', 'useEffect(', 'useMemo(', 'useCallback(', 'useRef(', 'useContext(', 'useReducer('].some(token => source.slice(source.indexOf('if (!isOpen) return null;')).includes(token))],
 ];
 let failed = 0;
 for (const [name, passed] of checks) {
