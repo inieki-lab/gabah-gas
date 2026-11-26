@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 const services = fs.readFileSync('server/services.ts', 'utf8');
 const migration = fs.readFileSync('server/migrations/107_loan_overdue_collision_guard.sql', 'utf8');
+const modal = fs.readFileSync('src/components/modals/CreateLoanModal.tsx', 'utf8');
 
 const requestStart = services.indexOf('static requestLoan(');
 const approveStart = services.indexOf('static approveLoan(', requestStart);
@@ -14,6 +15,8 @@ const approve = services.slice(approveStart, rejectStart);
 
 assert.match(request, /!\['available', 'reserved'\]\.includes\(String\(asset\.status\)\)/,
   'request may use an available asset or one reserved for a different future window');
+assert.match(modal, /\['available', 'reserved'\]\.includes\(String\(a\.status\)\)/,
+  'loan form must display reserved assets so date-specific conflict checks can evaluate them');
 assert.match(approve, /!\['available', 'reserved'\]\.includes\(String\(asset\.status\)\)/,
   'approval may use a reserved asset only after schedule and custody checks');
 assert.match(request, /outstandingBorrowedLoan[\s\S]*?\['active', 'borrowed', 'overdue'\]/,
@@ -40,6 +43,7 @@ assert.match(migration, /NEW\.start_date < due_date[\s\S]*?NEW\.due_date > start
   'database collision guard must remain date-range based');
 
 console.log('PASS | non-overlapping future reservations may reuse an asset marked reserved');
+console.log('PASS | loan form exposes reserved assets to date-specific conflict checks');
 console.log('PASS | active/borrowed/overdue custody remains an unconditional blocker');
 console.log('PASS | overlapping approved schedules remain rejected by service and database');
 console.log('PASS | per-asset database lock remains in place');
