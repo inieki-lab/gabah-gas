@@ -28,7 +28,18 @@ export function resolveDashboardPersona(user: Pick<UserProfile, 'role' | 'role_k
   const isSekdir = has('sekretaris_direksi', 'Sekretaris Direksi');
   const isGlobalDashboard = isSuperadmin || isAuditor;
   const isDivisionDashboard = !isGlobalDashboard && (isIT || isGA);
-  const isStaff = !isGlobalDashboard && !isDivisionDashboard && (
+  const operationalPermissionKeys = new Set([
+    'assets.create', 'assets.update', 'assets.delete', 'assets.assign', 'assets.move', 'assets.lifecycle',
+    'loans.approve', 'loans.handover',
+    'tickets.update', 'tickets.assign', 'tickets.close',
+    'maintenances.create', 'maintenances.update',
+    'vendors.create', 'vendors.update',
+    'contracts.create', 'contracts.update',
+    'meeting_rooms.update', 'room_reservations.approve', 'room_reservations.reject',
+    'reconciliation.link',
+  ]);
+  const hasOperationalCapability = (user.permission_keys || []).some(key => operationalPermissionKeys.has(key));
+  const isStaff = !isGlobalDashboard && !isDivisionDashboard && !hasOperationalCapability && (
     ['Karyawan', 'Supply Chain', 'PIBC'].includes(user.role) || isHumas || isSekdir
   );
   const descriptionRole: UserRole = isSuperadmin ? 'Admin GABAH'
