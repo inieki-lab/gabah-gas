@@ -1,6 +1,50 @@
 import type { Asset, Loan, Ticket, UserProfile, UserRole } from '../types';
 import { isExactIdentityNameMatch } from '../utils/identityMatching';
 
+
+export interface DashboardPersona {
+  isStaff: boolean;
+  isHumas: boolean;
+  isSekdir: boolean;
+  isIT: boolean;
+  isGA: boolean;
+  isAuditor: boolean;
+  isGlobalDashboard: boolean;
+  isDivisionDashboard: boolean;
+  divisionLabel: string;
+  descriptionRole: UserRole;
+}
+
+/** Resolve dashboard presentation from primary and additional job-function roles. */
+export function resolveDashboardPersona(user: UserProfile): DashboardPersona {
+  const roleKeys = new Set((user.role_keys || []).map(key => String(key).trim().toLowerCase()));
+  const has = (key: string, label: UserRole) => user.role === label || roleKeys.has(key);
+  const isSuperadmin = Boolean(user.is_superadmin) || has('superadmin', 'Admin GABAH');
+  const isAuditor = has('auditor', 'Auditor');
+  const isIT = has('it', 'IT');
+  const isGA = has('ga', 'GA');
+  const isHumas = has('humas', 'Humas');
+  const isSekdir = has('sekretaris_direksi', 'Sekretaris Direksi');
+  const isGlobalDashboard = isSuperadmin || isAuditor;
+  const isDivisionDashboard = !isGlobalDashboard && (isIT || isGA);
+  const isStaff = !isGlobalDashboard && !isDivisionDashboard && (
+    ['Karyawan', 'Supply Chain', 'PIBC'].includes(user.role) || isHumas || isSekdir
+  );
+  const descriptionRole: UserRole = isSuperadmin ? 'Admin GABAH'
+    : isAuditor ? 'Auditor'
+    : isIT ? 'IT'
+    : isGA ? 'GA'
+    : isHumas ? 'Humas'
+    : isSekdir ? 'Sekretaris Direksi'
+    : user.role;
+  return {
+    isStaff, isHumas, isSekdir, isIT, isGA, isAuditor,
+    isGlobalDashboard, isDivisionDashboard,
+    divisionLabel: isIT && isGA ? 'IT / GA' : isIT ? 'IT' : isGA ? 'GA' : 'Unit kerja',
+    descriptionRole,
+  };
+}
+
 /**
  * Presentation scope for operational dashboards.
  * This is not an authorization boundary; API authorization remains server-side.
