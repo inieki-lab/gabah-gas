@@ -103,7 +103,6 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     return true;
   });
 
-  const canManage = GabahService.canManageTickets(currentUser);
 
   // SLA logic moved to reusable <SlaTimer /> component (live countdown, 30s refresh)
 
