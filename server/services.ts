@@ -808,6 +808,92 @@ export class GabahDomainService {
   /**
    * Loan Request & Collision Detection
    */
+  /**
+   * Validate every asset in a multi-asset request before creating any loan,
+   * notification, audit record, or consuming a loan number.
+   */
+  static requestLoansBatch(payload: {
+    asset_ids: string[];
+    borrower_id?: string;
+    purpose: string;
+    start_date: string;
+    due_date: string;
+    borrower_phone?: string;
+  }, actor: ServerUser): ServerLoan[] {
+    if (isReadOnlyActor(actor)) {
+      throw Object.assign(new Error('Akses ditolak: akun ini memiliki kebijakan read-only.'), { statusCode: 403 });
+    }
+    if (!Array.isArray(payload.asset_ids) || payload.asset_ids.length === 0) {
+      throw Object.assign(new Error('Minimal satu aset harus dipilih untuk pengajuan pinjaman.'), { statusCode: 400 });
+    }
+    const assetIds = payload.asset_ids.map(id => typeof id === 'string' ? id.trim() : '');
+    if (assetIds.some(id => !id) || new Set(assetIds).size !== assetIds.length) {
+      throw Object.assign(new Error('Daftar aset pinjaman mengandung ID kosong atau duplikat.'), { statusCode: 400 });
+    }
+
+    const borrowerId = payload.borrower_id === undefined || payload.borrower_id === null
+      ? String(actor.id)
+      : String(payload.borrower_id).trim();
+    if (!borrowerId) throw Object.assign(new Error('ID peminjam tidak valid.'), { statusCode: 400 });
+    if (borrowerId !== actor.id && !isSuperadminActor(actor)) {
+      throw Object.assign(new Error('Pengajuan pinjaman hanya dapat dibuat untuk akun sendiri.'), { statusCode: 403 });
+    }
+    const borrower = db.users.find(user => user.id === borrowerId && user.is_active);
+    if (!borrower) {
+      throw Object.assign(new Error('Pengguna peminjam tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
+    }
+    if (payload.borrower_phone !== undefined
+      && (typeof payload.borrower_phone !== 'string' || payload.borrower_phone.includes('\u0000') || payload.borrower_phone.trim().length > 40)) {
+      throw Object.assign(new Error('Nomor telepon peminjam tidak valid (maksimal 40 karakter).'), { statusCode: 400 });
+    }
+    if (typeof payload.purpose !== 'string' || payload.purpose.includes('\u0000') || !payload.purpose.trim() || payload.purpose.length > 2000) {
+      throw Object.assign(new Error('Tujuan peminjaman wajib diisi (maksimal 2.000 karakter).'), { statusCode: 400 });
+    }
+
+    // Use the same Jakarta-aware parser as the single-item workflow.
+    const start = parseLoanDateTimestamp(payload.start_date);
+    const due = parseLoanDateTimestamp(payload.due_date);
+    if (!Number.isFinite(start) || !Number.isFinite(due) || start >= due) {
+      throw Object.assign(new Error('Jadwal peminjaman tidak valid. Gunakan tanggal YYYY-MM-DD yang benar dan tanggal kembali harus setelah tanggal mulai.'), { statusCode: 400 });
+    }
+
+    // Full read-only preflight: no shared collection or sequence is mutated here.
+    for (const assetId of assetIds) {
+      const asset = db.assets.find(item => item.id === assetId);
+      if (!asset) throw Object.assign(new Error('Aset tidak ditemukan.'), { statusCode: 404 });
+      if (isNonLoanableInfrastructureAsset(asset as any)) {
+        throw Object.assign(new Error('Perangkat infrastruktur/server dan lisensi tidak boleh diajukan melalui peminjaman umum.'), { statusCode: 409 });
+      }
+      if (!asset.is_loanable) {
+        throw Object.assign(new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).'), { statusCode: 409 });
+      }
+      const outstanding = db.loans.find(loan =>
+        loan.asset_id === asset.id && ['active', 'borrowed', 'overdue'].includes(String(loan.status))
+      );
+      if (outstanding) {
+        throw Object.assign(new Error('Aset sedang dipinjam dan belum dikembalikan. Pilih barang lain.'), { statusCode: 409 });
+      }
+      if (asset.status !== 'available') {
+        throw Object.assign(new Error(`Aset tidak tersedia untuk dipinjam (status saat ini: "${asset.status}").`), { statusCode: 409 });
+      }
+      const conflicting = db.loans.find(loan => {
+        if (loan.asset_id !== asset.id || !['approved', 'borrowed'].includes(loan.status)) return false;
+        const existingStart = parseLoanDateTimestamp(loan.start_date);
+        const existingDue = parseLoanDateTimestamp(loan.due_date);
+        return start < existingDue && due > existingStart;
+      });
+      if (conflicting) {
+        throw Object.assign(new Error(`Tabrakan Jadwal! Aset "${asset.name}" (${asset.asset_number}) sudah dipinjam / disetujui pada periode tersebut (${conflicting.start_date.split('T')[0]} s/d ${conflicting.due_date.split('T')[0]}).`), { statusCode: 409 });
+      }
+    }
+
+    return assetIds.map(asset_id => this.requestLoan({
+      ...payload,
+      borrower_id: borrowerId,
+      asset_id,
+    }, actor));
+  }
+
   static requestLoan(payload: {
     asset_id: string;
     borrower_id: string;
