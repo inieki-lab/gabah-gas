@@ -48,6 +48,11 @@ const checks = [
   ['Vendor create and update actions use effective permissions',
     /hasEffectivePermission\(currentUser, 'vendors\.create'/.test(vendors)
     && /hasEffectivePermission\(currentUser, 'vendors\.update'/.test(vendors)],
+  ['Loan approval and return controls use effective permissions, not primary role labels',
+    /user\.permission_keys\.includes\('loans\.approve'\)/.test(gabahService)
+    && /hasEffectivePermission\(currentUser, 'loans\.create'/.test(loans)
+    && /hasEffectivePermission\(currentUser, 'loans\.return'/.test(loans)
+    && /canReturnLoan && \(loan\.status/.test(loans)],
   ['Ticket list trusts backend effective scopes instead of re-filtering by primary role',
     /Array\.isArray\(user\.permission_keys\)\) return user\.permission_keys\.includes\('\*'\) \|\| user\.permission_keys\.includes\('tickets\.read'\)/.test(gabahService)
     && /resolveDashboardPersona\(user\)/.test(gabahService)],
