@@ -121,5 +121,8 @@ const auditorAdditionalPersona = resolveDashboardPersona({
 assert.equal(auditorAdditionalPersona.isGlobalDashboard, true);
 assert.equal(auditorAdditionalPersona.isAuditor, true);
 assert.equal(auditorAdditionalPersona.isStaff, false);
+assert.equal(resolveDashboardPersona({
+  ...user, role: 'Karyawan', role_keys: ['karyawan', 'it', 'auditor'],
+} as UserProfile).descriptionRole, 'Auditor', 'read-only persona takes precedence over operational labels');
 
 console.log('Role dashboard scope: PASS (division, personal, maintenance, contract, and exact identity scopes)');
