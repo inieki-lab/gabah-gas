@@ -1,0 +1,62 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+
+const read = path => fs.readFileSync(path, 'utf8');
+const assets = read('src/components/views/AssetsView.tsx');
+const loans = read('src/components/views/LoansView.tsx');
+const tickets = read('src/components/views/TicketsView.tsx');
+const rooms = read('src/components/views/MeetingRoomsView.tsx');
+const maintenance = read('src/components/views/MaintenanceView.tsx');
+const vendors = read('src/components/views/VendorsView.tsx');
+const dashboard = read('src/components/views/DashboardView.tsx');
+const sidebar = read('src/components/Sidebar.tsx');
+
+const checks = [
+  ['Asset creation and ticket report buttons use effective permissions',
+    /hasEffectivePermission\(\s*currentUser,\s*'assets\.create'/.test(assets)
+    && /hasEffectivePermission\(currentUser, 'tickets\.create'/.test(assets)
+    && /onReportAsset && canReportAsset/.test(assets)],
+  ['Loan view derives self-service scope from primary + additional role persona',
+    /resolveDashboardPersona\(currentUser\)/.test(loans)
+    && /const isEmployee = dashboardPersona\?\.isStaff/.test(loans)
+    && /const isAuditor = dashboardPersona\?\.isAuditor/.test(loans)],
+  ['Ticket queues honor additional IT/GA roles and Auditor read-only',
+    /resolveDashboardPersona\(currentUser\)/.test(tickets)
+    && /const isIT = persona\.isIT/.test(tickets)
+    && /const isGA = persona\.isGA/.test(tickets)
+    && /const isSelfTicketsOnly = persona\.isStaff/.test(tickets)
+    && /hasEffectivePermission\(currentUser, 'tickets\.create'/.test(tickets)],
+  ['Meeting room create, approve, reject, cancel, and room update controls use separate permissions',
+    /'room_reservations\.create'/.test(rooms)
+    && /'room_reservations\.approve'/.test(rooms)
+    && /'room_reservations\.reject'/.test(rooms)
+    && /'room_reservations\.cancel'/.test(rooms)
+    && /'meeting_rooms\.update'/.test(rooms)
+    && /canApproveReservations/.test(rooms)
+    && /canRejectReservations/.test(rooms)],
+  ['Specialist IT/Humas meeting queues require their explicit capabilities',
+    /'room_reservations\.it_facilities\.read'/.test(rooms)
+    && /'room_reservations\.documentation\.read'/.test(rooms)
+    && /canReadITFacilityQueue/.test(rooms)
+    && /canReadDocumentationQueue/.test(rooms)],
+  ['Maintenance create and update actions are separately permission-gated',
+    /'maintenances\.create'/.test(maintenance)
+    && /'maintenances\.update'/.test(maintenance)
+    && /canCreate && \(/.test(maintenance)
+    && /canUpdate && onUpdateScheduleStatus/.test(maintenance)],
+  ['Vendor create and update actions use effective permissions',
+    /hasEffectivePermission\(currentUser, 'vendors\.create'/.test(vendors)
+    && /hasEffectivePermission\(currentUser, 'vendors\.update'/.test(vendors)],
+  ['Dashboard and sidebar share the effective persona resolver',
+    /resolveDashboardPersona\(currentUser\)/.test(dashboard)
+    && /resolveDashboardPersona\(/.test(sidebar)
+    && /currentUserRoleKeys/.test(sidebar)],
+];
+
+let failed = 0;
+for (const [name, pass] of checks) {
+  console.log(`${pass ? 'PASS' : 'FAIL'} | ${name}`);
+  if (!pass) failed++;
+}
+console.log(`TOTAL: ${checks.length} | PASS: ${checks.length - failed} | FAIL: ${failed}`);
+process.exit(failed === 0 ? 0 : 1);
