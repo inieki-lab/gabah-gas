@@ -76,6 +76,12 @@ All source files below were read from the dependency branch at the time of this 
 - Updated all three service guards to block `active`, `approved`, `borrowed`, and `overdue`; added a regression assertion for each method. This is an integrity fix in addition to the original scope audit.
 - Added a source regression assertion for all three service methods. The assertion was reviewed and corrected to inspect each method body and exact four-state allowlist. Exact-head CI for this follow-up is pending. PostgreSQL/browser persona UAT remains required; no production data accessed.
 
+
+### CI compatibility follow-up
+
+- Exact-head CI run `45752907631` exposed one older assertion in `scripts/asset-status-workflow-guard-verify.mjs` that still expected the previous two-state expression (`approved`/ `borrowed`). The implementation and new 14-check scope/custody regression passed; the older assertion was stale.
+- Updated that assertion to require the normalized four-state custody allowlist (`active`, `approved`, `borrowed`, `overdue`). Exact-head CI rerun pending.
+
 ## Checks and evidence
 
 - Source review: completed for the seven files listed above.
