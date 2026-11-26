@@ -370,6 +370,33 @@ function createPayload() {
   };
 }
 
+function logFileStoreHydrationSummary(source: string): void {
+  const byId = (rows: any[]) => rows.sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+  const hash = (rows: any[][]) => crypto.createHash('sha256').update(JSON.stringify(rows)).digest('hex');
+  const assetRows = byId((db.assets || []).map(asset => [
+    asset.id, asset.asset_number, asset.corporate_asset_number ?? null,
+    asset.owner_division, asset.managing_unit_id ?? null, asset.asset_location_id ?? null,
+    asset.category_code ?? null, asset.is_loanable ?? null,
+  ]));
+  const locationRows = byId((db.assetLocations || []).map(location => [
+    location.id, location.name, location.parent_id ?? null, location.is_active,
+  ]));
+  const categoryRows = byId((db.categories || []).map(category => [
+    category.code, category.name, category.main_type, category.owner_division,
+    category.category_type, category.is_loanable_by_default, category.is_active,
+  ]));
+  const unitRows = byId((db.orgUnits || []).map(unit => [
+    unit.id, unit.name, unit.division_code, unit.is_active,
+  ]));
+  console.log(
+    '[GABAH Persistence] File-store hydration summary: ' +
+    `source=${source}; assets=${assetRows.length}; assets_sha256=${hash(assetRows)}; ` +
+    `asset_locations=${locationRows.length}; asset_locations_sha256=${hash(locationRows)}; ` +
+    `categories=${categoryRows.length}; categories_sha256=${hash(categoryRows)}; ` +
+    `org_units=${unitRows.length}; org_units_sha256=${hash(unitRows)}`
+  );
+}
+
 /**
  * CR-04: authoritative migration runner.
  * - Creates a schema_migrations ledger first so the runner itself is repeatable
@@ -653,6 +680,7 @@ export async function initializePersistence(): Promise<void> {
     backfillAssetLocations('file store');
     if (loaded) {
       console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
+      logFileStoreHydrationSummary('standalone');
     } else {
       saveStateToFile(createPayload());
       console.log('[GABAH Persistence] Initialized new persistent local storage file.');
@@ -722,6 +750,7 @@ export async function initializePersistence(): Promise<void> {
   backfillAssetLocations('file fallback');
   if (loaded) {
     console.log('[GABAH Persistence] Successfully hydrated state from local storage file.');
+    logFileStoreHydrationSummary('postgres-fallback');
   } else {
     saveStateToFile(createPayload());
     console.log('[GABAH Persistence] Initialized new persistent local storage file.');
