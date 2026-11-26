@@ -2,7 +2,6 @@
 
 Updated: 2026-11-27
 Integration branch: `main`
-Current HEAD: `012e0b51474acfd92c51554a7a789d60654add02`
 
 ## Recently merged to main
 
