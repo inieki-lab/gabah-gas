@@ -39,6 +39,7 @@ interface SidebarProps {
   userRole?: UserRole;
   currentUserRole?: UserRole;
   currentUserPermissions?: string[];
+  currentUserRoleKeys?: string[];
   currentUserIsSuperAdmin?: boolean;
   pendingLoansCount?: number;
   openTicketsCount?: number;
@@ -69,6 +70,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   userRole,
   currentUserRole,
   currentUserPermissions,
+  currentUserRoleKeys = [],
   currentUserIsSuperAdmin = false,
   pendingLoansCount = 0,
   openTicketsCount = 0,
@@ -79,10 +81,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenAdministration,
 }) => {
   const activeRole = currentUserRole || userRole;
-  const isStaff = activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false;
-  const isHumas = activeRole === 'Humas';
-  const isSekdir = activeRole === 'Sekretaris Direksi';
-  const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH';
+  const effectiveRoleKeys = new Set(currentUserRoleKeys.map(key => String(key).trim().toLowerCase()));
+  const isHumas = activeRole === 'Humas' || effectiveRoleKeys.has('humas');
+  const isSekdir = activeRole === 'Sekretaris Direksi' || effectiveRoleKeys.has('sekretaris_direksi');
+  const isIT = activeRole === 'IT' || effectiveRoleKeys.has('it');
+  const isGA = activeRole === 'GA' || effectiveRoleKeys.has('ga');
+  const isAuditor = activeRole === 'Auditor' || effectiveRoleKeys.has('auditor');
+  const isSuperAdmin = currentUserIsSuperAdmin || activeRole === 'Admin GABAH' || effectiveRoleKeys.has('superadmin');
+  const isStaff = !isSuperAdmin && !isAuditor && !isIT && !isGA
+    && (activeRole ? ['Karyawan', 'Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC'].includes(activeRole) : false);
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
@@ -110,14 +117,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
           icon: isHumas ? Camera : Building2,
           badge: isHumas
             ? (documentationRequestsCount > 0 ? `${documentationRequestsCount} Foto` : null)
-            : (activeRole === 'IT' && itFacilitiesCount > 0)
+            : (isIT && itFacilitiesCount > 0)
             ? `${itFacilitiesCount} IT`
-            : (activeRole === 'GA' || activeRole === 'Admin GABAH') && (gaRequestsCount > 0 || pendingReservationsCount > 0)
+            : (isGA || isSuperAdmin) && (gaRequestsCount > 0 || pendingReservationsCount > 0)
             ? (gaRequestsCount || pendingReservationsCount)
             : null,
           badgeColor: isHumas 
             ? 'bg-sky-600 text-white' 
-            : activeRole === 'IT'
+            : isIT
             ? 'bg-sky-600 text-white'
             : 'bg-emerald-600 text-white',
         },
