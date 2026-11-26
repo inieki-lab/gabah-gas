@@ -71,6 +71,20 @@ const NAV_TAB_PERMISSIONS: Readonly<Record<AppNavTab, readonly string[]>> = {
   reports: ['reports.read'],
 };
 
+
+const DEFAULT_LANDING_ORDER: readonly AppNavTab[] = [
+  'dashboard', 'my_assets', 'meeting_rooms', 'tickets', 'loans',
+  'assets', 'maintenance', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports',
+];
+
+/** Pick the first module the user can actually open; null means no module is assigned. */
+export function getDefaultNavTabForRole(
+  role: UserRole | null | undefined,
+  permissionKeys?: readonly string[],
+): AppNavTab | null {
+  return DEFAULT_LANDING_ORDER.find(tab => isNavTabAllowedForRole(role, tab, permissionKeys)) ?? null;
+}
+
 /**
  * PostgreSQL RBAC permissions are authoritative for the visible menu.
  * The role map is retained only for the file-store compatibility mode where
