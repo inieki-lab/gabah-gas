@@ -35,6 +35,7 @@ export function resolveDashboardPersona(user: Pick<UserProfile, 'role' | 'role_k
     'maintenances.create', 'maintenances.update',
     'vendors.create', 'vendors.update',
     'contracts.create', 'contracts.update',
+    'licenses.manage', 'knowledge.create', 'knowledge.update',
     'meeting_rooms.update', 'room_reservations.approve', 'room_reservations.reject',
     'reconciliation.link',
   ]);
