@@ -14,7 +14,7 @@ Working branch: `ai/chatgpt/vendor-knowledge-rbac-hardening`
 - [x] Added static contract verification for all four write routes, including production fail-fast on PostgreSQL startup failure and bounded development file-store compatibility.
 - [x] Added the verification script to package scripts and GitHub Actions.
 - [x] Initial CI identified four stale contract assertions; they were corrected to validate the intended PostgreSQL Dynamic RBAC plus bounded development fallback contract.
-- [x] CI then exposed one existing asset-scope contract that confirms file-store compatibility; route behavior and tests now preserve that development contract without changing production PostgreSQL authorization.\n- [ ] Follow-up exact-HEAD CI after compatibility correction: pending.
+- [x] CI then exposed one existing asset-scope contract that confirms file-store compatibility; route behavior and tests now preserve that development contract without changing production PostgreSQL authorization.\n- [x] GitHub Actions passed on source HEAD `87fae15fd17281a363b9e74440c8514d9652bf72` (run `45909210166`).
 - [ ] Runtime PostgreSQL integration and role-by-role UAT: not yet verified.
 
 ## Prior stabilization work retained for reference
