@@ -81,15 +81,27 @@ jobs:
 
       - name: P0 security verification (live HTTP assertions)
         env:
-          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gabah_p0_ci
           PGPASSWORD: postgres
-        run: node scripts/p0-security-verify.mjs
+        run: |
+          createdb -h 127.0.0.1 -U postgres gabah_p0_ci
+          node scripts/p0-security-verify.mjs
 
       - name: User directory read scope verification
-        run: node scripts/rbac-scoping-verify.mjs
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gabah_rbac_scope_ci
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres gabah_rbac_scope_ci
+          node scripts/rbac-scoping-verify.mjs
 
       - name: Loan authorization and state transitions
-        run: npm run test:loan-authz
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gabah_loan_ci
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres gabah_loan_ci
+          npm run test:loan-authz
 
       - name: Cross-department ticket creation regression
         run: npm run test:ticket-cross-department
@@ -98,7 +110,12 @@ jobs:
         run: npm run test:contract-mass-assignment
 
       - name: Meeting room reservation regression
-        run: npm run test:meeting-room
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gabah_meeting_ci
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres gabah_meeting_ci
+          npm run test:meeting-room
 
       - name: Organization model regression
         run: npm run test:org-model
@@ -113,7 +130,12 @@ jobs:
         run: npm run test:t2b3
 
       - name: Sidebar menu API connectivity
-        run: node scripts/menu-connectivity-verify.mjs
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gabah_menu_ci
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres gabah_menu_ci
+          node scripts/menu-connectivity-verify.mjs
 
       - name: Maintenance authorization verification (live HTTP assertions)
         run: npm run test:maintenance-authz
