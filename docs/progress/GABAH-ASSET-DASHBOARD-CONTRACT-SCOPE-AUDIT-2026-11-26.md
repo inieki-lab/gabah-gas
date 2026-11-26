@@ -74,7 +74,7 @@ All source files below were read from the dependency branch at the time of this 
 - Endpoint inventory confirms asset bulk import, direct-ID read, assign, move, and lifecycle routes; no separate asset export route was found in the current server route table.
 - The service-level assign/move/lifecycle guards originally blocked only `approved` and `borrowed` loans. The shared dashboard/loan status model also treats `active` and `overdue` as custody states. An overdue asset could therefore have been reassigned, relocated, or lifecycle-mutated through these generic asset services despite remaining in custody.
 - Updated all three service guards to block `active`, `approved`, `borrowed`, and `overdue`; added a regression assertion for each method. This is an integrity fix in addition to the original scope audit.
-- Exact-head CI for this follow-up is pending. PostgreSQL/browser persona UAT remains required; no production data accessed.
+- Added a source regression assertion for all three service methods. The assertion was reviewed and corrected to inspect each method body and exact four-state allowlist. Exact-head CI for this follow-up is pending. PostgreSQL/browser persona UAT remains required; no production data accessed.
 
 ## Checks and evidence
 
