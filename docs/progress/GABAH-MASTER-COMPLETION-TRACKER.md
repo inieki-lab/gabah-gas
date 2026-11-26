@@ -359,3 +359,15 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Validation: workflow rerun triggered by this commit; outcome pending. Do not interpret prior 4 asset assertions as confirmed application defects until this test runs against the intended PostgreSQL-backed policy store.
 - Meeting-room authorization fix remains validated by CI run `45807458028`: 18/18 PASS. Overall workflow remains failed due organization-model step before this CI harness correction.
 - No merge to `main`.
+
+
+## 2026-11-26 — CI isolation for asset master regression suites
+
+- Branch: `ai/hermes/authorization-endpoint-audit`
+- CI run `45809903599`: lint, build, Docker runtime smoke, PostgreSQL 17 CR-04/CR-05, P0 security, directory scope, loan authorization, cross-department tickets, contract mass-assignment, meeting room (18/18), and organization model (15/15) all passed. The workflow then stopped at T2B-1.
+- T2B-1 result on that run: 3/18 PASS, 15 FAIL. The test runner spawned its application without `DATABASE_URL`; Dynamic RBAC endpoints therefore ran without PostgreSQL policy persistence and returned 503/403. Its assertions include privileged CRUD operations and restart/persistence checks, so the execution environment did not match the intended PostgreSQL integration path.
+- Change in `.github/workflows/ci.yml`: provision three independent databases and pass explicit `DATABASE_URL` + `PGPASSWORD` to T2B-1 managing-unit, T2B-2 asset-location, and T2B-3 category-master suites. Each suite now has isolated database state.
+- Commit: `ebaf4e295c1d398e30cd00cf098d7a170d3bab99`.
+- Validation: new workflow run pending. No application behavior is claimed fixed by this CI-only change; actual T2B assertions must pass on the rerun.
+- Latest verified business suites remain organization model 15/15 and meeting room 18/18 on run `45809903599`.
+- No merge to `main`.
