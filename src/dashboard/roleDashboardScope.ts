@@ -38,7 +38,8 @@ export function resolveDashboardPersona(user: Pick<UserProfile, 'role' | 'role_k
     'meeting_rooms.update', 'room_reservations.approve', 'room_reservations.reject',
     'reconciliation.link',
   ]);
-  const hasOperationalCapability = (user.permission_keys || []).some(key => operationalPermissionKeys.has(key));
+  const hasOperationalCapability = (user.permission_keys || []).includes('*')
+    || (user.permission_keys || []).some(key => operationalPermissionKeys.has(key));
   const isStaff = !isGlobalDashboard && !isDivisionDashboard && !hasOperationalCapability && (
     ['Karyawan', 'Supply Chain', 'PIBC'].includes(user.role) || isHumas || isSekdir
   );
