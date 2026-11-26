@@ -91,6 +91,9 @@ jobs:
       - name: Cross-department ticket creation regression
         run: npm run test:ticket-cross-department
 
+      - name: Contract update mass-assignment regression
+        run: npm run test:contract-mass-assignment
+
       - name: Meeting room reservation regression
         run: npm run test:meeting-room
 
