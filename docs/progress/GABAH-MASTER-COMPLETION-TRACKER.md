@@ -4,7 +4,7 @@ Updated: 2026-11-27
 Integration base: `main`
 Working branch: `ai/chatgpt/vendor-knowledge-rbac-hardening`
 
-## Current work
+## Recently merged to main\n\n### Vendor and Knowledge Base Dynamic RBAC\n- PR #341 merged as `20c6e82e9e69f1d8f8fef713a047588bf1dc6bd7`; exact-head CI passed (run `45909210166`).\n- PostgreSQL mode uses Dynamic RBAC for Vendor and Knowledge Base create/update; Vendor owner scopes are checked for old and new owner.\n- Development file-store keeps only its bounded legacy allowlist; production fails fast if PostgreSQL is unavailable.\n\n### Asset owner authority and multi-asset loan preflight\n- PR #344 merged as `040d30288fc4c912294c379a83c680f6ac540f1f`; exact-head CI passed (run `45910357029`).\n- Asset owner is derived from resolved category taxonomy; request payload is not copied directly as the final owner. Shared categories retain supported resolver hints.\n- Multi-asset loans validate all items before the first mutation; route-level rollback remains as a second safeguard.\n- CI runtime loan authorization test passed, and asset managing-unit regression passed.\n- Cross-instance concurrent loan reservation still requires PostgreSQL transaction/locking verification; not claimed complete.\n\n## Current work
 
 ### Authorization: Vendor and Knowledge Base writes
 - [x] Added a Dynamic RBAC guard for Vendor and Knowledge Base write operations.
