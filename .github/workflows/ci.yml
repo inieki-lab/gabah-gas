@@ -129,13 +129,28 @@ jobs:
           npm run test:org-model
 
       - name: Asset managing-unit regression
-        run: npm run test:t2b1
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gabah_t2b1_ci
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres gabah_t2b1_ci
+          npm run test:t2b1
 
       - name: Asset location master regression
-        run: npm run test:t2b2
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gabah_t2b2_ci
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres gabah_t2b2_ci
+          npm run test:t2b2
 
       - name: Asset category master regression
-        run: npm run test:t2b3
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/gabah_t2b3_ci
+          PGPASSWORD: postgres
+        run: |
+          createdb -h 127.0.0.1 -U postgres gabah_t2b3_ci
+          npm run test:t2b3
 
       - name: Sidebar menu API connectivity
         env:
