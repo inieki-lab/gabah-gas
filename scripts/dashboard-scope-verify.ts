@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import type { Asset, Loan, Ticket, UserProfile } from '../src/types';
 import { filterDashboardAssets, filterDashboardLoans, filterDashboardTickets, filterPersonalAssets, filterPersonalLoans, filterMaintenanceForRole, filterContractsForRole } from '../src/dashboard/roleDashboardScope';
 import { isExactIdentityNameMatch } from '../src/utils/identityMatching';
+import { resolveDashboardPersona } from '../src/dashboard/roleDashboardScope';
 
 const asset = (id: string, owner_division: string, category_type: 'IT' | 'GA' | 'License' | 'General') =>
   ({ id, owner_division, category_type } as Asset);
