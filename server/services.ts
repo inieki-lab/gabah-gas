@@ -374,14 +374,11 @@ export class GabahDomainService {
     } else if (taxonomy.code === 'INV-F') {
       // b) All furniture (INV-F) belongs to GA ALWAYS, regardless of where it is physically placed.
       resolvedOwnerDivision = 'GA';
-    } else if (payload.owner_division) {
-      // For non-IT/GA categories (SC, PIBC, etc.), owner_division must be explicitly provided.
-      resolvedOwnerDivision = payload.owner_division;
-    } else {
-      // Jika kategori bukan IT/GA dan owner_division tidak dispesifikasikan,
-      // tolak pembuatan aset karena divisi tujuan tidak ditetapkan.
-      throw new Error(`Owner divisi wajib dipilih untuk kategori "${taxonomy.code}". Silakan tentukan owner_division pada payload.`);
     }
+    // For every non-IT/GA category, ownership comes from the category master.
+    // The request payload must not override this value: otherwise a caller
+    // could create an asset under a different owner than the configured
+    // category, defeating the master as the single source of truth.
 
     const configuredOwner = (db.divisions || []).some(division =>
       division.is_active !== false &&
