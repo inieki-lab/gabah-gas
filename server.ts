@@ -2490,6 +2490,7 @@ async function startServer() {
     // read-only IT workstation exception from maintenance operations.
     const visibleAssetIds = new Set(GabahDomainService.getScopedAssets(actor, {
       includeReadOnlyItWorkstations: false,
+      includeLoanablePoolForEmployee: false,
     })
       .filter(asset => postgresMode || !employeeBaseline || asset.assigned_to?.id === actor.id)
       .filter(asset => postgresMode || actor.role !== 'GA' || String(asset.owner_division).toUpperCase() === 'GA')
