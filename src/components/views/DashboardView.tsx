@@ -23,7 +23,7 @@ import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation }
 import { formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
-import { resolveDashboardPersona } from '../../dashboard/roleDashboardScope';
+import { canShowDashboardAction, resolveDashboardPersona } from '../../dashboard/roleDashboardScope';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -53,6 +53,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const persona = resolveDashboardPersona(currentUser);
   const { isStaff, isHumas, isSekdir, isIT, isAuditor, isGlobalDashboard, isDivisionDashboard, divisionLabel } = persona;
   const isEmployee = isStaff;
+  const canCreateLoan = canShowDashboardAction(currentUser, 'loans.create', true);
+  const canCreateTicket = canShowDashboardAction(currentUser, 'tickets.create', true);
+  const canCreateAsset = canShowDashboardAction(currentUser, 'assets.create', !isEmployee);
   const roleDescriptions: Record<UserRole, string> = {
     'Admin GABAH': 'Pantau tata kelola aset, peminjaman, helpdesk, kontrak, dan kinerja operasional seluruh unit.',
     IT: 'Pantau perangkat komputasi, lisensi software, pemeliharaan, dan antrean dukungan teknologi informasi.',
@@ -161,7 +164,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
-            {!isAuditor && (
+            {canCreateLoan && (
               <button
                 id="btn-quick-loan"
                 onClick={onOpenNewLoanModal}
@@ -171,7 +174,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Pinjam Aset
               </button>
             )}
-            {!isAuditor ? (
+            {canCreateTicket ? (
               <button
                 id="btn-quick-ticket"
                 onClick={onOpenNewTicketModal}
@@ -186,7 +189,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <span>Tiket (Read-Only)</span>
               </div>
             )}
-            {!isEmployee && !isAuditor && (
+            {canCreateAsset && (
               <button
                 id="btn-quick-asset"
                 onClick={onOpenNewAssetModal}
@@ -612,7 +615,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 Tiket Kendala Saya
               </h3>
               <div className="flex items-center gap-2">
-                {!isAuditor && (
+                {canCreateTicket && (
                   <button
                     onClick={onOpenNewTicketModal}
                     className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
@@ -753,7 +756,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {isAuditor ? 'Pemantauan Tiket Helpdesk' : isIT ? 'Antrean Helpdesk TI' : `Tiket Helpdesk ${divisionLabel}`}
                 </h3>
                 <div className="flex items-center gap-2">
-                  {!isAuditor && (
+                  {canCreateTicket && (
                     <button
                       onClick={onOpenNewTicketModal}
                       className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition-colors"
