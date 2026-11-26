@@ -1171,7 +1171,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     // Update live simulated number
     const seqPadded = String(5).padStart(tempNumberingConfig.paddingDigits, '0');
     setSimulatedNumber(`${testDiv}${tempNumberingConfig.separator}${testCode}${tempNumberingConfig.separator}2026${tempNumberingConfig.separator}${seqPadded}`);
-    showToast('Format dan parameter sequence penomoran aset berhasil disimpan!', 'success');
+    showToast('Konfigurasi simulator tersimpan hanya di browser ini; belum mengubah penomoran server.', 'info');
   };
 
   // Notification Rules Handlers
@@ -1292,7 +1292,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { id: 'organization' as AdminSection, label: 'Organization', description: 'Divisi operasional Food Station & struktur departemen', icon: Building2, badge: `${divisions.length} Divisi` },
     { id: 'org_masters' as AdminSection, label: 'Jabatan, Unit & Lokasi', description: 'Master terpisah: Jabatan/Level, Unit, dan Kantor/Lokasi penempatan', icon: Network, badge: `${jobLevels.length} Jabatan` },
     { id: 'master_data' as AdminSection, label: 'Master Data', description: 'Kategori aset, master lokasi gedung PIBC, dan SLA Helpdesk', icon: Database, badge: `${categories.length} Kategori` },
-    { id: 'numbering' as AdminSection, label: 'Asset Numbering', description: 'Format {DIV}-{CODE}-{YEAR}-{SEQ} & simulator sequence', icon: Hash, badge: 'Auto Sync' },
+    { id: 'numbering' as AdminSection, label: 'Asset Numbering', description: 'Simulator lokal; aturan server belum dapat diubah dari panel ini', icon: Hash, badge: 'Preview' },
     { id: 'notifications' as AdminSection, label: 'Notification Center', description: 'Konfigurasi rule pengingat masa garansi, overdue loan, & SLA', icon: Bell, badge: 'Aktif' },
     { id: 'audit_log' as AdminSection, label: 'Audit Log', description: 'Rekam jejak aktivitas sistem, perubahan data, dan IP address', icon: ScrollText, badge: `${auditLogs.length} Log` },
     { id: 'settings' as AdminSection, label: 'System Settings', description: 'Parameter BUMD, standar PSAK 16, dan kebijakan retensi', icon: Settings2, badge: 'Terkonfigurasi' },
@@ -4226,7 +4226,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
               <div className="bg-white p-4 rounded-2xl border border-slate-200">
                 <h3 className="text-base font-black text-slate-900">Asset Numbering & Sequence Engine</h3>
                 <p className="text-xs text-slate-500">
-                  Format otoritatif: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[#206f65] font-bold">{'{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}'}</code>
+                  Format nomor yang saat ini dipakai server: <code className="font-mono bg-slate-100 px-1.5 py-0.5 rounded text-[#206f65] font-bold">{'{OWNER_DIVISION}-{ASSET_CODE}-{YEAR}-{SEQUENCE}'}</code>
+                </p>
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  Mode preview lokal. Perubahan di bawah hanya tersimpan pada browser ini dan belum mengubah sequence maupun nomor yang dibuat server. Pengaturan global menunggu implementasi backend dan persetujuan standar penomoran perusahaan.
                 </p>
               </div>
 
