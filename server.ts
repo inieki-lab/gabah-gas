@@ -414,19 +414,11 @@ async function startServer() {
 
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
   // production; JSON/file-store development retains legacy behavior during migration.
-  // Write endpoints that depend on Dynamic RBAC must fail closed when PostgreSQL
-  // is unavailable. The legacy requireRbacPermission helper intentionally allows
-  // file-store compatibility for older read/workflow paths; do not use it alone
-  // for Vendor or Knowledge Base writes.
-  const requirePostgresRbacPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
-    if (!isPostgresPersistenceActive()) {
-      res.status(503).json({
-        success: false,
-        code: 'RBAC_UNAVAILABLE',
-        message: 'Izin belum dapat diverifikasi karena layanan PostgreSQL/RBAC tidak tersedia. Operasi ditolak sementara.',
-      });
-      return false;
-    }
+  // Dynamic RBAC is authoritative whenever PostgreSQL persistence is active.
+  // File-store remains a development compatibility mode; each migrated write
+  // route must retain its explicit, narrow legacy allowlist and owner checks there.
+  const requireDynamicRbacPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
+    if (!isPostgresPersistenceActive()) return true;
     return requireRbacPermission(req, res, permissionKey);
   };
 
@@ -4281,7 +4273,10 @@ async function startServer() {
 
   app.post('/api/vendors', async (req, res) => {
     const actor = getActor(req);
-    if (!requirePostgresRbacPermission(req, res, 'vendors.create')) return;
+    if (!requireDynamicRbacPermission(req, res, 'vendors.create')) return;
+    if (!isPostgresPersistenceActive() && !isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang dapat mengelola vendor.' });
+    }
     const requestedCategory = String(req.body?.category || '').trim();
     if (!requestedCategory || requestedCategory.includes('\u0000') || Array.from(requestedCategory).length > 80) {
       return res.status(400).json({ success: false, message: 'Kategori vendor wajib diisi (maksimal 80 karakter).' });
@@ -4294,8 +4289,9 @@ async function startServer() {
       return res.status(400).json({ success: false, message: 'Owner vendor wajib dipilih dari master fungsi pemilik yang aktif.' });
     }
     const requestedOwner = String(ownerMaster.code).trim().toUpperCase();
-    const canManageRequestedOwner = isSuperadminActor(actor)
-      || hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors');
+    const canManageRequestedOwner = isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors')
+      : (actor.role === requestedOwner || hasApplicationRole(actor, requestedOwner.toLowerCase().replace(/[^a-z0-9]+/g, '_'))));
     if (!canManageRequestedOwner) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor yang dipilih.' });
     }
@@ -4343,7 +4339,10 @@ async function startServer() {
 
   app.patch('/api/vendors/:id', async (req, res) => {
     const actor = getActor(req);
-    if (!requirePostgresRbacPermission(req, res, 'vendors.update')) return;
+    if (!requireDynamicRbacPermission(req, res, 'vendors.update')) return;
+    if (!isPostgresPersistenceActive() && !isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang dapat mengelola vendor.' });
+    }
     const existingVendor = db.vendors.find(v => v.id === req.params.id);
     if (!existingVendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan.' });
     const existingOwner = String(existingVendor.owner_division || '').trim().toUpperCase();
@@ -4390,10 +4389,12 @@ async function startServer() {
     if (!Number.isFinite(requestedRating) || requestedRating < 1 || requestedRating > 5) {
       return res.status(400).json({ success: false, message: 'Rating vendor harus berada pada rentang 1 sampai 5.' });
     }
-    const canManageExisting = isSuperadminActor(actor)
-      || hasRbacScope(String(actor.id), 'division', existingOwner, 'vendors');
-    const canManageRequested = isSuperadminActor(actor)
-      || hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors');
+    const canManageExisting = isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', existingOwner, 'vendors')
+      : (actor.role === existingOwner || hasApplicationRole(actor, existingOwner.toLowerCase().replace(/[^a-z0-9]+/g, '_'))));
+    const canManageRequested = isSuperadminActor(actor) || (isPostgresPersistenceActive()
+      ? hasRbacScope(String(actor.id), 'division', requestedOwner, 'vendors')
+      : (actor.role === requestedOwner || hasApplicationRole(actor, requestedOwner.toLowerCase().replace(/[^a-z0-9]+/g, '_'))));
     if (!canManageExisting || !canManageRequested) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: scope pengguna tidak mencakup domain vendor ini.' });
     }
@@ -4424,7 +4425,10 @@ async function startServer() {
 
   app.post('/api/knowledge', async (req, res) => {
     const actor = getActor(req);
-    if (!requirePostgresRbacPermission(req, res, 'knowledge.create')) return;
+    if (!requireDynamicRbacPermission(req, res, 'knowledge.create')) return;
+    if (!isPostgresPersistenceActive() && !isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang menulis artikel panduan.' });
+    }
     const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
     const content = typeof req.body.content === 'string' ? req.body.content : '';
     if (!title || !content) {
@@ -4449,7 +4453,10 @@ async function startServer() {
 
   app.patch('/api/knowledge/:id', async (req, res) => {
     const actor = getActor(req);
-    if (!requirePostgresRbacPermission(req, res, 'knowledge.update')) return;
+    if (!requireDynamicRbacPermission(req, res, 'knowledge.update')) return;
+    if (!isPostgresPersistenceActive() && !isSuperadminActor(actor) && !hasApplicationRole(actor, 'it') && !hasApplicationRole(actor, 'ga')) {
+      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengubah artikel.' });
+    }
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     // SECURITY (CR-06): explicit allowlist — view_count/helpful_votes only via dedicated endpoints.
