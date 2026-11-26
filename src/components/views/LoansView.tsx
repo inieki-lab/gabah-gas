@@ -305,7 +305,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                   )}
 
                   {/* Status: Active -> Return inspection */}
-                  {!isAuditor && (loan.status === 'active' || loan.status === 'overdue') &&
+                  {canReturnLoan && (loan.status === 'active' || loan.status === 'overdue') &&
                     (userCanApprove || loan.borrower_id === currentUser.id || isExactIdentityNameMatch(loan.borrower_name, currentUser.name)) && (
                     <button
                       onClick={() => setReturningLoan(loan)}
