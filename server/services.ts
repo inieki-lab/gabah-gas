@@ -883,7 +883,7 @@ export class GabahDomainService {
     // Different assets (e.g. laptop IT + vehicle GA) can be borrowed concurrently by the same user with zero conflict.
     const conflicting = db.loans.find(l => {
       if (l.asset_id !== asset.id) return false;
-      if (!['approved', 'borrowed'].includes(l.status)) return false;
+      if (!['approved', 'borrowed', 'overdue', 'active'].includes(l.status)) return false;
 
       const existingStart = parseLoanDateTimestamp(l.start_date);
       const existingDue = parseLoanDateTimestamp(l.due_date);
@@ -981,7 +981,7 @@ export class GabahDomainService {
     const conflicting = db.loans.find(l => {
       if (l.id === loan.id) return false;
       if (l.asset_id !== loan.asset_id) return false;
-      if (!['approved', 'borrowed'].includes(l.status)) return false;
+      if (!['approved', 'borrowed', 'overdue', 'active'].includes(l.status)) return false;
 
       const existingStart = parseLoanDateTimestamp(l.start_date);
       const existingDue = parseLoanDateTimestamp(l.due_date);
