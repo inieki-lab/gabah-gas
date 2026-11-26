@@ -49,7 +49,7 @@ const moveEnd = services.indexOf('static mutateLifecycle(', moveStart);
 assert.ok(moveStart >= 0 && moveEnd > moveStart, 'moveAsset domain service must exist');
 const moveService = services.slice(moveStart, moveEnd);
 assert.match(moveService, /const activeLoan = \(db\.loans \|\| \[\]\)\.find/);
-assert.match(moveService, /\['approved', 'borrowed'\]\.includes\(loan\.status\)/);
+assert.match(moveService, /\['active', 'approved', 'borrowed', 'overdue'\]\.includes\(String\(loan\.status\)\.toLowerCase\(\)\)/);
 assert.match(moveService, /statusCode: 409/);
 assert.match(moveService, /relokasi fisik ditolak sampai proses pinjaman selesai/);
 
