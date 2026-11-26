@@ -428,3 +428,12 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - CI typecheck/build/dashboard-scope pada exact HEAD masih pending; jangan klaim lulus sebelum workflow selesai.
 - Ini hanya mengubah presentasi dashboard; otorisasi tetap di backend dan tidak diturunkan dari jabatan/lokasi.
 - Tidak ada merge ke `main`.
+
+
+## 2026-11-26 — Konsistensi persona dashboard dan sidebar
+
+- Audit lanjutan menemukan Sidebar masih menentukan label/section/badge dari role primer saja, walau DashboardView telah diperbaiki untuk membaca role tambahan. User Karyawan dengan capability IT/GA berpotensi melihat menu berlabel staf walau memiliki akses operasional.
+- Perubahan: Sidebar kini menerima `role_keys` dari session API dan memakai resolver persona yang sama dengan DashboardView. Section title, label layanan, badge antrean IT/GA, dan visibilitas administrasi memakai persona efektif; menu permission tetap memakai permission keys dari backend.
+- Commits: `d8609181220696b78d7f5b1bdd367253cc2d03f1`, `aaaef1a676a9571f541e2fc283165805800633f1`, `55228837bd7de8ddea714d3ffc61af16def6e5b1`, `bbc6a93a5ccbee60d4175b90fde2fafea27f69a8`.
+- Typecheck/build dan regression persona menunggu CI exact HEAD.
+- Tidak ada perubahan backend authorization; tidak ada merge ke `main`.
