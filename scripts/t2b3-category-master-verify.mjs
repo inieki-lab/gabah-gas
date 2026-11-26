@@ -253,7 +253,7 @@ async function main() {
 
     // ================= PHASE 2 (restart — JSON fallback roundtrip) =================
     // Phase 2 runs without PostgreSQL to verify the JSON file-store roundtrip.
-    s2 = await boot(sp, 39800 + Math.floor(Math.random() * 150), env, { DATABASE_URL: '', PGHOST: '' });
+    s2 = await boot(sp, 39800 + Math.floor(Math.random() * 150), env, { DATABASE_URL: '', PGHOST: '', DOTENV_CONFIG_PATH: '/dev/null' });
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const master2 = ((await req(s2.base, 'GET', '/api/taxonomy/categories', { token: admin2 })).json?.data || [])
       .map(c => `${c.code}|${c.name}|${c.main_type}|${c.owner_division}|${c.category_type}|${c.is_loanable_by_default}|${c.is_active}`)
