@@ -31,6 +31,7 @@ const gabahService = read('src/services/gabahService.ts');
 const dashboardUi = read('src/components/views/DashboardView.tsx');
 
 const checks = [
+  ['New asset owner is resolved from category master, never request owner input', (() => { const start = services.indexOf('static async createAsset('); const end = services.indexOf('static ', start + 20); const createAsset = services.slice(start, end < 0 ? services.length : end); return /resolveTaxonomyByHumanName\(rawCategory, undefined, categoryCatalog\)/.test(createAsset) && /let resolvedOwnerDivision: string = taxonomy\.owner_division/.test(createAsset) && !/else if \(payload\.owner_division\)/.test(createAsset); })()],
   ['Vendor file-store controls honor secondary IT/GA capabilities', vendorUi.includes("GabahService.hasLegacyCapability(currentUser, 'it')") && vendorUi.includes("GabahService.hasLegacyCapability(currentUser, 'ga')") && !vendorUi.includes("['Admin GABAH', 'IT', 'GA'].includes(currentUser.role)")],
   ['Knowledge file-store create/update controls honor secondary IT/GA capabilities', knowledgeUi.includes("GabahService.hasLegacyCapability(currentUser, 'it')") && knowledgeUi.includes("GabahService.hasLegacyCapability(currentUser, 'ga')") && !knowledgeUi.includes("['IT', 'GA'].includes(currentUser.role)")],
 
