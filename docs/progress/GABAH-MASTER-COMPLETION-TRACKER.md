@@ -589,3 +589,10 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 
 - CI run `45833613725` berhenti di TypeScript karena `LicensesView` memakai `hasEffectivePermission` tetapi import helper tidak masuk akibat anchor import yang berbeda dari asumsi patch pertama.
 - Import diperbaiki pada commit `9e218dfab477d7c95982458758f02887ab68d2d8`. Tidak ada perubahan perilaku tambahan.
+
+
+## 2026-11-26 — Meeting type CRUD mengikuti permission migration
+
+- Audit menemukan migrasi 024 memberikan `meeting_types.manage` kepada Superadmin dan GA, tetapi tiga method domain (create/update/delete) masih menolak semua actor selain Superadmin. Permission dan domain policy tidak konsisten.
+- Perbaikan: ketiga method sekarang memeriksa `hasRoomPermission(actor, 'meeting_types.manage', 'Admin GABAH')`; PostgreSQL mengikuti permission efektif, file-store mempertahankan fallback Admin GABAH. Regression static ditambahkan.
+- Commits: `614484bb558d41d155e74165ed8e0c8cc19cbc6a`, `3d8379e427aa289a90b73ca7e640e804347bac5e`.
