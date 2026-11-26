@@ -4,7 +4,7 @@ Updated: 2026-11-27
 Base: `main`
 Branch: `ai/chatgpt/asset-loan-lifecycle-audit`
 
-## Multi-asset loan request
+## Asset owner authority\n\n- [x] New asset owner is now resolved from the selected category master, not from caller-supplied `owner_division`.\n- [x] Taxonomy resolution no longer uses the request owner as a hint, preventing payload input from steering ambiguous category resolution.\n- [x] IT hardware/software and INV-F corporate owner rules remain explicit; other categories use their configured taxonomy owner.\n- [x] Added regression coverage in asset scope policy verification.\n\n## Multi-asset loan request
 
 - [x] Added `GabahDomainService.requestLoansBatch` with a complete read-only preflight before any loan, notification, audit entry, or loan number is created.
 - [x] Preflight validates actor read-only policy, borrower identity/active status, borrower phone, purpose, Jakarta-aware date range, unique asset IDs, asset existence, infrastructure exclusion, pool eligibility, current availability, outstanding physical loans, and confirmed schedule collisions.
