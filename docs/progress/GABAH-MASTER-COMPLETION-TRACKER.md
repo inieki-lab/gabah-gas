@@ -501,3 +501,12 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Static regression ditambah untuk memastikan tidak kembali ke pemeriksaan label role primer.
 - Commits: `c7f1d6d70a1b6c3b01df29cc35fddb196efc2258` (service), `98bee040447f56fcc7a72d655120da675d396799` (test).
 - CI exact HEAD belum selesai.
+
+
+## 2026-11-26 — Instrumentasi tambahan JSON restart T2B
+
+- Koreksi hipotesis sebelumnya: CI `45829480828` tetap menunjukkan T2B-1 fase restart 19→0 meski `DATABASE_URL` dan `PGHOST` sudah dikosongkan. Jadi pengosongan dua variabel itu saja belum membuktikan child process masuk file-store.
+- Perubahan test harness lanjutan: fase restart kini juga menetapkan `DOTENV_CONFIG_PATH=/dev/null` agar file `.env` tidak dapat mengaktifkan ulang konfigurasi PostgreSQL, dan T2B-1 mencatat/mengassert nilai `/api/health.persistence` pada fase kedua.
+- Diterapkan konsisten pada T2B-1/2/3.
+- Commits: `6762f888f46c20274a7432baba18f13c66468599`, `7c7ae19dd7882582989ecae236f3cbf5e495344b`, `cd4774d0457ff62dd42e5b75ca630594602fe621`.
+- Ini masih diagnosis harness; hasil baru diperlukan untuk membedakan konfigurasi DB yang tersisa dari masalah path/hydration JSON.
