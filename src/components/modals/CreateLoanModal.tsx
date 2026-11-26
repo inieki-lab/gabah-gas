@@ -44,8 +44,9 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   preselectedAssetId,
   onRequestLoan,
 }) => {
-  // Only explicitly configured loan-pool assets in the available state may
-  // be requested. "available" alone describes inventory status, not loanability.
+  // Only explicitly configured loan-pool assets in available/reserved states may
+  // be requested. The date-specific conflict check below decides whether a
+  // reserved unit can be requested for this particular window.
   // Revalidate both data sources because props may be stale or broadly scoped.
   const availablePool = useMemo(() => {
     // An explicitly supplied empty loanableAssets list is authoritative; do
@@ -63,7 +64,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
     );
     return source.filter(a =>
       a.is_loanable === true
-      && a.status === 'available'
+      && ['available', 'reserved'].includes(String(a.status))
       && !outstandingBorrowedAssetIds.has(String(a.id))
     );
   }, [loanableAssets, assets, existingLoans]);
