@@ -28,7 +28,8 @@ Added `scripts/legacy-session-inventory-safety-verify.mjs`, npm registration, an
 
 ## Validation boundary
 
-- Source-level safety regression added; exact-head CI run **45716922943** completed **SUCCESS** on commit `7db6ad8679acbc5d88846bb6bf1c7e1ce290ebf8`.
+- Source-level safety regression added; the earlier code commit CI run **45716922943** completed **SUCCESS** on commit `7db6ad8679acbc5d88846bb6bf1c7e1ce290ebf8`.
+- Latest PR head `da31dd5c5fa566bb50958aecc6b1be5bc636a411` was independently checked; exact-head CI run **45717420129** completed **SUCCESS**.
 - No database connection was attempted in this session.
 - No production database or backup was accessed.
 - No session tokens were read, copied, revoked, exported, or deleted.
