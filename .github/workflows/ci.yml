@@ -54,6 +54,9 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: Notification recipient authorization contract checks
+        run: npm run test:notification-recipient-rbac
+
       - name: Branch migration non-destructive safety check
         run: npm run test:branch-migration-safety
 
