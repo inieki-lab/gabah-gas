@@ -104,8 +104,10 @@ async function startServer() {
       supply_chain: 'Supply Chain',
       pibc: 'PIBC',
     };
-    if (actor.role === legacyLabels[roleKey]) return true;
-    return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
+    if (isPostgresPersistenceActive()) {
+      return getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
+    }
+    return actor.role === legacyLabels[roleKey];
   };
 
   // Notification recipient_role stores a functional role label, not a
