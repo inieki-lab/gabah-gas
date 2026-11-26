@@ -383,3 +383,15 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Job CI sebelumnya juga membuktikan lint, build, Docker runtime smoke, CR-04/CR-05 PostgreSQL, P0 security, user-directory scope, loan auth, cross-department ticket, contract mass-assignment, meeting room 18/18, organization model 15/15, dan T2B-1 18/18 PASS.
 - T2B-3, menu connectivity, dan maintenance authorization belum dijalankan karena workflow berhenti pada T2B-2.
 - Tidak ada merge ke `main`.
+
+
+## 2026-11-26 — Konsistensi mode restart T2B-1/2/3
+
+- Branch: `ai/hermes/authorization-endpoint-audit`
+- Temuan: ketiga suite T2B mendeskripsikan fase kedua sebagai verifikasi JSON fallback, tetapi proses kedua sebelumnya tetap mewarisi `DATABASE_URL` dari CI. T2B-2 memperlihatkan ketidaksesuaian tersebut: 21/22 PASS, dengan perbedaan relasi lokasi pada restart PostgreSQL.
+- Perubahan test harness: fungsi `boot()` pada T2B-1, T2B-2, dan T2B-3 kini menerima environment overrides; fase restart kedua secara eksplisit mengosongkan `DATABASE_URL`, sehingga menguji hydrate dari file JSON seperti yang tertulis di test plan. Tidak mengubah kode aplikasi.
+- Commit T2B-2: `d0d5ed4c3e31edb7033a606d261c7cafd81ce3bb`.
+- Commit T2B-1: `64cfafa8582d9041a51dd48c084e47c80c4c8c2a`.
+- Commit T2B-3: `4ab947bf5923efde1469f0285617ddc7d5ae18c6`.
+- CI untuk perubahan ini sedang berjalan; hasil baru belum tersedia. Run sebelumnya: T2B-1 18/18 PASS, T2B-2 21/22 PASS; T2B-3 belum tercapai karena workflow berhenti pada T2B-2.
+- Tidak ada merge ke `main`.
