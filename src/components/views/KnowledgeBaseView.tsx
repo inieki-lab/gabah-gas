@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { hasEffectivePermission } from '../../dashboard/roleDashboardScope';
 import {
   BookOpen,
   Search,
@@ -49,7 +50,10 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
   const [votedArticles, setVotedArticles] = useState<Record<string, number>>({});
   const [copiedText, setCopiedText] = useState<string | null>(null);
 
-  const canWrite = ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const legacyKnowledgeWriter = ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const canCreate = hasEffectivePermission(currentUser, 'knowledge.create', legacyKnowledgeWriter);
+  const canUpdate = hasEffectivePermission(currentUser, 'knowledge.update', legacyKnowledgeWriter);
+  const canWrite = canCreate || canUpdate;
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -222,7 +226,7 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
             Pusat panduan mandiri troubleshooting IT, SOP peminjaman kendaraan, aktivasi lisensi, dan layanan GA.
           </p>
         </div>
-        {canWrite && (
+        {canCreate && (
           <button
             onClick={openCreate}
             className="self-start md:self-auto inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-emerald-600 text-white text-xs font-black hover:bg-emerald-700 transition-colors shadow-sm"
@@ -242,7 +246,7 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
             >
               <ArrowLeft className="w-4 h-4" /> Kembali ke Daftar Artikel
             </button>
-            {canWrite && (
+            {canUpdate && (
               <button
                 onClick={() => openEdit(selectedArticle)}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-slate-300 text-[11px] font-bold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
