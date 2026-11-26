@@ -4,7 +4,7 @@
 **Branch:** `fix/allow-nonoverlap-reserved-loans-2026-11-26`  
 **Base:** `fix/loan-overdue-collision-guard-2026-11-26`  
 **Related work:** PR #336 — overdue loan collision guard  
-**Status:** Regression updated after CI exposed a stale UI eligibility assertion; rerun exact-head CI pending. CI had passed the new non-overlap regression and all loan service/state checks before failing the older pool UI assertion. No database outside disposable CI was accessed.
+**Status:** Regression updated after CI exposed a stale UI eligibility assertion; second CI run also exposed that the first test edit changed its description but not the regex body. Corrected the actual regex to assert the `['available', 'reserved']` status allowlist; third exact-head CI pending. New non-overlap regression and all loan service/state checks passed in both runs. No database outside disposable CI was accessed.
 
 ## Finding
 
@@ -25,7 +25,7 @@ This contradicted the product rule that collision detection is per physical asse
 ## Validation boundary
 
 - New non-overlap source regression passed in CI.
-- First exact-head CI run failed only at the pre-existing `Loanable asset pool UI eligibility regression`: its assertion still required `available` only. Updated that test to expect both `available` and `reserved`; rerun exact-head CI pending.
+- First exact-head CI run failed only at the pre-existing `Loanable asset pool UI eligibility regression`: its assertion still required `available` only. Updated the existing UI assertion itself to expect the exact `available`/`reserved` allowlist; third rerun pending.
 - No local PostgreSQL integration test or browser UAT was run in this session.
 - No loan, asset, borrower, or production database record was changed.
 - This branch is stacked on PR #336 so the overdue-custody protection is included.
