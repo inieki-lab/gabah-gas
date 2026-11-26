@@ -143,16 +143,22 @@ async function main() {
       const post = await req(base, 'POST', '/api/maintenances', {
         token, body: { asset_id: 'AST-HSV-001', title: `RBAC fail-closed ${key}` },
       });
-      record(`POST maintenance ${key} fails closed without PostgreSQL policy`, '503 RBAC_POLICY_UNAVAILABLE',
+      // Auditor write attempts are rejected by the global read-only security
+      // middleware before route-level RBAC availability is evaluated.
+      const expectedWriteStatus = key === 'auditor' ? 403 : 503;
+      const expectedWriteCode = key === 'auditor' ? '' : 'RBAC_POLICY_UNAVAILABLE';
+      record(`POST maintenance ${key} respects read-only/fail-closed policy`,
+        key === 'auditor' ? '403 read-only' : '503 RBAC_POLICY_UNAVAILABLE',
         `HTTP ${post.status} ${post.json?.code || ''}`,
-        post.status === 503 && post.json?.code === 'RBAC_POLICY_UNAVAILABLE');
+        post.status === expectedWriteStatus && (!expectedWriteCode || post.json?.code === expectedWriteCode));
 
       const patch = await req(base, 'PATCH', '/api/maintenances/mnt-002', {
         token, body: { notes: `RBAC fail-closed ${key}` },
       });
-      record(`PATCH maintenance ${key} fails closed without PostgreSQL policy`, '503 RBAC_POLICY_UNAVAILABLE',
+      record(`PATCH maintenance ${key} respects read-only/fail-closed policy`,
+        key === 'auditor' ? '403 read-only' : '503 RBAC_POLICY_UNAVAILABLE',
         `HTTP ${patch.status} ${patch.json?.code || ''}`,
-        patch.status === 503 && patch.json?.code === 'RBAC_POLICY_UNAVAILABLE');
+        patch.status === expectedWriteStatus && (!expectedWriteCode || patch.json?.code === expectedWriteCode));
     }
   } catch (err) {
     console.error('Unexpected failure:', err);
