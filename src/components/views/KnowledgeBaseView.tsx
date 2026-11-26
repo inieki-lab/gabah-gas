@@ -53,7 +53,6 @@ export const KnowledgeBaseView: React.FC<KnowledgeBaseViewProps> = ({
   const legacyKnowledgeWriter = ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
   const canCreate = hasEffectivePermission(currentUser, 'knowledge.create', legacyKnowledgeWriter);
   const canUpdate = hasEffectivePermission(currentUser, 'knowledge.update', legacyKnowledgeWriter);
-  const canWrite = canCreate || canUpdate;
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
