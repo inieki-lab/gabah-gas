@@ -617,3 +617,9 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 
 - CI run `45834689485`: dynamic RBAC foundation 124/125. Assertion lama mengharapkan `if (canReadItWorkstations)`; implementasi kini sengaja mensyaratkan `options.includeReadOnlyItWorkstations !== false` agar maintenance dapat mengecualikan workstation IT read-only. Assertion diperbarui sesuai kontrak baru.
 - Commit: `2fb2ef13d400898d61c9f52924205fff296dc09a`.
+
+
+## 2026-11-26 — Assertion kedua untuk exception workstation GA
+
+- CI run `45835072169`: asset-scope policy 68/69. Assertion tambahan di `asset-scope-policy-verify.mjs` masih mengharapkan bentuk lama `if (canReadItWorkstations)`; assertion dynamic-RBAC sudah diperbarui, tetapi duplikat assertion di suite asset-scope belum.
+- Assertion disinkronkan ke `if (canReadItWorkstations && options.includeReadOnlyItWorkstations !== false)` pada commit `bdd8a7c29824086dc115aef2f4e2236070467d8b`.
