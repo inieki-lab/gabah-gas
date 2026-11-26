@@ -272,3 +272,38 @@ Langkah berikutnya sebelum TAHAP 7:
 **Catatan self-reference:** sebuah commit tidak dapat memuat SHA-nya sendiri secara eksak. Karena itu `03354494` adalah commit yang memuat isi koreksi ini, sedangkan commit sinkronisasi setelahnya hanya memperbarui baris SHA. Tip branch setelah push adalah commit sinkronisasi tersebut; SHA final juga dilaporkan di jawaban chat dan dapat diverifikasi dengan `git log -1`.
 
 **Aturan yang tetap dipegang:** tidak merge ke `main`, tidak force-push, tidak reset/rebase, tidak menghapus perubahan lokal, dan tidak memulai TAHAP 7.
+
+
+---
+
+## Update implementasi lanjutan — 26 November 2026
+
+**Branch:** `ai/hermes/authorization-endpoint-audit`  
+**Baseline sebelum update:** `547ab6bd`  
+**Catatan:** perubahan kode di bawah sudah dipush langsung ke branch. Hasil runtime/CI belum boleh dianggap PASS sampai workflow selesai.
+
+### Perubahan kode yang sudah dipush
+
+| Area | Perubahan | Status |
+|---|---|---|
+| NEU-30 — tiket lintas departemen | Menghapus pembandingan `actor.department` dengan kategori tiket. Kategori resmi IT/GA/SC/PIBC tetap divalidasi dan tetap menjadi penentu antrean. | IMPLEMENTED — runtime test menunggu CI |
+| NEU-01 — RBAC saat PostgreSQL mati | Guard tidak lagi memperlakukan cache kosong sebagai keputusan 403. Endpoint yang membutuhkan Dynamic RBAC mengembalikan HTTP 503 `RBAC_POLICY_UNAVAILABLE` saat PostgreSQL/policy store tidak aktif. Tidak ada fallback allow. | SAFETY MITIGATION — file-store belum menyediakan Dynamic RBAC |
+| NEU-25 — numbering test hygiene | `_resetForTesting()` kini juga membersihkan counter kontrak. Startup server sudah memanggil sinkronisasi tiket, loan, dan kontrak setelah `initializePersistence()`; sinkronisasi aset dilakukan pada seed/hydration. | PARTIAL — belum membuktikan multi-instance/concurrency PostgreSQL |
+
+### CI PostgreSQL 17
+
+Workflow `.github/workflows/ci.yml` sebelumnya hanya berjalan pada push/PR ke `main`. Trigger diperluas agar branch audit ini juga menjalankan pipeline yang sudah ada, termasuk PostgreSQL 17, migration 004/CR-04/CR-05, P0 security, loan authorization, dan regresi modul.
+
+- Run: [GitHub Actions #45798367854](https://github.com/inieki-lab/gabah-gas/actions/runs/45798367854)
+- Commit pemicu: `e0167d127a4f8a4ecc9fa047724de67c16555971`
+- Status saat pencatatan: IN_PROGRESS — bukan PASS.
+
+### Batasan dan pekerjaan terbuka
+
+1. NEU-01: HTTP 503 adalah fail-closed yang eksplisit, bukan implementasi Dynamic RBAC file-store. Mode tanpa PostgreSQL tidak dapat memakai endpoint yang bergantung pada policy database. Perlu keputusan/implementasi policy source lokal yang aman bila mode itu memang harus didukung.
+2. NEU-30: kode reporter-department gate sudah dihapus; bukti runtime lintas departemen masih menunggu hasil CI dan/atau test khusus.
+3. NEU-25: counter masih in-memory. Sinkronisasi saat startup membantu restart satu instance, tetapi belum menjamin keunikan lintas instance. Solusi produksi harus memakai sequence/transactional allocator PostgreSQL dan unique constraints.
+4. NEU-22, NEU-23, NEU-33, CR-04, CR-05, CR-06: belum dinyatakan selesai oleh update ini. Status lama tetap terbuka/partial sampai bukti test tersedia.
+5. Tidak ada klaim lint/build/runtime PASS dari perubahan ini; pipeline sedang berjalan ketika catatan dibuat.
+
+**Merge:** tetap ditahan. **TAHAP 7:** belum dimulai.
