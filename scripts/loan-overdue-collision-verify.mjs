@@ -12,8 +12,9 @@ assert.match(migration, /status IN \('approved', 'borrowed', 'active', 'overdue'
   'database trigger must reject overlaps against existing overdue loans');
 assert.match(migration, /FOR UPDATE/,
   'per-asset lock must remain in place to serialize concurrent approvals');
-assert.match(services, /\['active', 'borrowed', 'overdue'\]/,
-  'server-side stale-asset guard must include overdue loans');
+const overdueDomainChecks = services.split("if (!['approved', 'borrowed', 'overdue', 'active'].includes(l.status)) return false;").length - 1;
+assert.equal(overdueDomainChecks, 2,
+  'request and approval schedule-collision checks must both include overdue loans');
 assert.match(client, /l\.status === 'approved' \|\| l\.status === 'active' \|\| \(l\.status as any\) === 'borrowed' \|\| l\.status === 'overdue'/,
   'client conflict pre-check must include overdue custody');
 assert.match(modal, /\['active', 'borrowed', 'overdue'\]/,
