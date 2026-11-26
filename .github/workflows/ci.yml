@@ -286,6 +286,9 @@ jobs:
       - name: Effective permission UI regression (Superadmin + wildcard)
         run: npm run test:effective-permission-ui
 
+      - name: Overdue loan collision integrity regression
+        run: npm run test:loan-overdue-collision
+
       - name: Loan authorization and state transitions
         run: npm run test:loan-authz
 
