@@ -417,3 +417,14 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Maintenance GET mengikuti asset scope; mutasi create/update memerlukan permission + owner scope dan PATCH memakai allowlist field. Tidak ada perubahan aplikasi dari pemeriksaan ini.
 - Risiko yang masih terbuka: numbering engine masih menggunakan counter in-memory (asset/ticket/loan/contract), sehingga belum aman untuk beberapa worker/instance bersamaan. Format nomor tidak diubah karena standar perusahaan belum ditetapkan.
 - Tidak ada merge ke `main`.
+
+
+## 2026-11-26 — Dashboard mengikuti role tambahan (UI persona)
+
+- Temuan audit: `DashboardView` menentukan tampilan operasional hanya dari `currentUser.role`, padahal API mengirim `role_keys` untuk role/job-function tambahan. Akibatnya user dengan role primer `Karyawan` + role tambahan `IT`/ `GA` dapat memperoleh permission dan menu operasional tetapi tetap masuk dashboard staf; label/antrean IT/GA juga salah.
+- Perubahan: helper `resolveDashboardPersona()` sekarang menyelesaikan persona dari role primer + `role_keys`, termasuk Superadmin/Auditor, IT/GA, Humas/Sekdir, dan staf. Dashboard menggunakan hasil helper untuk layout, deskripsi, quick actions read-only, label divisi, dan panel lisensi/helpdesk.
+- Regression test ditambah untuk Karyawan+IT, Karyawan+Humas, dan Karyawan+Auditor.
+- Commits: `b1289278906c963567b8e263620e22a1c3bf3ce7` (helper), `c5fb7676a7c75c8ebf4968c3e947b581f644b5a8` (dashboard), `067f222de080476a026ff0b25ee65c09494a6451` + `b63b562017e8442afd96d2b6dce179325d12acb7` (tests/import).
+- CI typecheck/build/dashboard-scope pada exact HEAD masih pending; jangan klaim lulus sebelum workflow selesai.
+- Ini hanya mengubah presentasi dashboard; otorisasi tetap di backend dan tidak diturunkan dari jabatan/lokasi.
+- Tidak ada merge ke `main`.
