@@ -649,6 +649,59 @@ export class GabahDomainService {
   /**
    * Loan Request & Collision Detection
    */
+  /**
+   * Create a multi-asset loan request only after every item has passed
+   * validation. This prevents partial loans, notifications, audit records,
+   * and consumed sequence numbers when a later asset is invalid.
+   */
+  static requestLoansBatch(payload: {
+    asset_ids: string[];
+    borrower_id: string;
+    purpose: string;
+    start_date: string;
+    due_date: string;
+  }, actor: ServerUser): ServerLoan[] {
+    if (!Array.isArray(payload.asset_ids) || payload.asset_ids.length === 0) {
+      throw new Error('Minimal satu aset harus dipilih untuk pengajuan pinjaman.');
+    }
+    if (payload.asset_ids.some(id => typeof id !== 'string' || !id.trim())) {
+      throw new Error('Daftar aset pinjaman tidak valid.');
+    }
+    if (new Set(payload.asset_ids).size !== payload.asset_ids.length) {
+      throw new Error('Aset yang sama tidak boleh dipilih lebih dari satu kali.');
+    }
+    if (payload.borrower_id && payload.borrower_id !== actor.id && !isSuperadminActor(actor)) {
+      throw Object.assign(new Error('Pengajuan pinjaman hanya dapat dibuat untuk akun sendiri.'), { statusCode: 403 });
+    }
+    if (typeof payload.purpose !== 'string') {
+      throw new Error('Tujuan peminjaman wajib diisi.');
+    }
+
+    const start = new Date(payload.start_date).getTime();
+    const due = new Date(payload.due_date).getTime();
+    if (isNaN(start) || isNaN(due) || start >= due) {
+      throw new Error('Jadwal peminjaman tidak valid. Tanggal kembali harus setelah tanggal mulai.');
+    }
+
+    // Complete read-only preflight before requestLoan mutates any shared state.
+    for (const assetId of payload.asset_ids) {
+      const asset = db.assets.find(a => a.id === assetId);
+      if (!asset) throw new Error('Aset tidak ditemukan');
+      if (!asset.is_loanable) throw new Error('Aset ini tidak dikonfigurasikan sebagai aset pinjaman (pool).');
+      const conflicting = db.loans.find(loan => {
+        if (loan.asset_id !== asset.id || !['approved', 'borrowed'].includes(loan.status)) return false;
+        const existingStart = new Date(loan.start_date).getTime();
+        const existingDue = new Date(loan.due_date).getTime();
+        return start < existingDue && due > existingStart;
+      });
+      if (conflicting) {
+        throw new Error(`Tabrakan Jadwal! Aset "${asset.name}" (${asset.asset_number}) sudah dipinjam / disetujui pada periode tersebut (${conflicting.start_date.split('T')[0]} s/d ${conflicting.due_date.split('T')[0]}).`);
+      }
+    }
+
+    return payload.asset_ids.map(asset_id => this.requestLoan({ ...payload, asset_id }, actor));
+  }
+
   static requestLoan(payload: {
     asset_id: string;
     borrower_id: string;
