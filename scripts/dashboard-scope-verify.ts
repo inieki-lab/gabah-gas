@@ -114,6 +114,9 @@ assert.equal(customAssetOperator.isStaff, false, 'custom asset operator must not
 assert.equal(resolveDashboardPersona({
   ...user, role: 'Karyawan', role_keys: ['karyawan'], permission_keys: ['*'],
 } as UserProfile).isStaff, false, 'wildcard operator must not receive staff-only dashboard filtering');
+assert.equal(resolveDashboardPersona({
+  ...user, role: 'Karyawan', role_keys: ['karyawan'], permission_keys: ['licenses.manage'],
+} as UserProfile).isStaff, false, 'license operator must not receive staff-only dashboard filtering');
 
 
 const humasStaffPersona = resolveDashboardPersona({
