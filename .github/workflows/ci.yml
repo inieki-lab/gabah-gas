@@ -80,6 +80,9 @@ jobs:
         run: node scripts/cr04-cr05-verify.mjs
 
       - name: P0 security verification (live HTTP assertions)
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          PGPASSWORD: postgres
         run: node scripts/p0-security-verify.mjs
 
       - name: User directory read scope verification
