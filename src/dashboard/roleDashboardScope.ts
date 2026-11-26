@@ -9,6 +9,7 @@ export interface DashboardPersona {
   isIT: boolean;
   isGA: boolean;
   isAuditor: boolean;
+  isSuperadmin: boolean;
   isGlobalDashboard: boolean;
   isDivisionDashboard: boolean;
   divisionLabel: string;
@@ -16,7 +17,7 @@ export interface DashboardPersona {
 }
 
 /** Resolve dashboard presentation from primary and additional job-function roles. */
-export function resolveDashboardPersona(user: UserProfile): DashboardPersona {
+export function resolveDashboardPersona(user: Pick<UserProfile, 'role' | 'role_keys' | 'is_superadmin'>): DashboardPersona {
   const roleKeys = new Set((user.role_keys || []).map(key => String(key).trim().toLowerCase()));
   const has = (key: string, label: UserRole) => user.role === label || roleKeys.has(key);
   const isSuperadmin = Boolean(user.is_superadmin) || has('superadmin', 'Admin GABAH');
@@ -38,7 +39,7 @@ export function resolveDashboardPersona(user: UserProfile): DashboardPersona {
     : isSekdir ? 'Sekretaris Direksi'
     : user.role;
   return {
-    isStaff, isHumas, isSekdir, isIT, isGA, isAuditor,
+    isStaff, isHumas, isSekdir, isIT, isGA, isAuditor, isSuperadmin,
     isGlobalDashboard, isDivisionDashboard,
     divisionLabel: isIT && isGA ? 'IT / GA' : isIT ? 'IT' : isGA ? 'GA' : 'Unit kerja',
     descriptionRole,
