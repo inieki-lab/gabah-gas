@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { Asset, Ticket, AssetCategoryType, TicketPriority, TicketStatus, UserProfile } from '../../types';
 import { formatDateTime, GabahService, exportTicketsToCsv } from '../../services/gabahService';
+import { hasEffectivePermission, resolveDashboardPersona } from '../../dashboard/roleDashboardScope';
 import { SlaTimer } from '../common/SlaTimer';
 
 interface TicketsViewProps {
@@ -59,15 +60,18 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     'Dokumen BAST serah terima perangkat pengganti telah diterbitkan secara resmi melalui GABAH.',
   ];
 
-  const isSuperAdmin = currentUser?.role === 'Admin GABAH';
-  const isIT = currentUser?.role === 'IT';
-  const isGA = currentUser?.role === 'GA';
+  const persona = resolveDashboardPersona(currentUser);
+  const isSuperAdmin = persona.isSuperadmin;
+  const isIT = persona.isIT;
+  const isGA = persona.isGA;
+  // SC/PIBC were legacy role labels; physical location no longer creates a ticket role.
   const isSC = currentUser?.role === 'Supply Chain';
   const isPIBC = currentUser?.role === 'PIBC';
-  const isAuditor = currentUser?.role === 'Auditor';
-  // Self-service roles see their own submissions; operating divisions see the
-  // tickets already authorized for their division by GabahService.
-  const isSelfTicketsOnly = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
+  const isAuditor = persona.isAuditor;
+  // Self-service users see their own submissions; additional IT/GA capabilities
+  // move the employee into the operational queue presentation.
+  const isSelfTicketsOnly = persona.isStaff;
+  const canCreateTicket = hasEffectivePermission(currentUser, 'tickets.create', !isAuditor);
 
   const safeTickets = Array.isArray(tickets) ? tickets : [];
   const baseTickets = safeTickets.filter(t => GabahService.isTicketVisibleToUser(t, currentUser));
@@ -148,7 +152,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <span>Export CSV</span>
           </button>
 
-          {!isAuditor && (
+          {canCreateTicket && (
             <button
               id="btn-create-ticket"
               onClick={handleOpenCreate}
