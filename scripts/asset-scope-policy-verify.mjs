@@ -52,6 +52,7 @@ const checks = [
   ['GA and additional capabilities retain explicitly scoped owner domains', /const dynamicAssets = filterAssetsByDynamicScopes\(db\.assets, user\)/.test(services) && /\.\.\.dynamicAssets, \.\.\.readOnlyItWorkstations/.test(services)],
   ['GA IT read scope memerlukan permission khusus', /hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\)/.test(services)],
   ['GA IT workstation read exception follows effective permission, not primary role', /const canReadItWorkstations = hasRbacPermission\(String\(user\.id\), 'assets\.read\.it_workstations'\);[\s\S]*if \(canReadItWorkstations\)/.test(services) && !/if \(user\.role === 'GA'\)[\s\S]{0,180}assets\.read\.it_workstations/.test(services)],
+  ['Meeting type CRUD follows explicit meeting_types.manage capability', (services.match(/hasRoomPermission\(actor, 'meeting_types\.manage', 'Admin GABAH'\)/g) || []).length === 3],
   ['Meeting facility management accepts additional IT/GA capabilities', (services.match(/hasRoomPermission\(actor, 'meeting_facilities\.manage', '(GA|IT)'\)/g) || []).length >= 6],
   ['Director auto-approval follows explicit override capability', /const isAutoApproved = isSuperadminActor\(actor\) \|\| canSetDirectorPriority;/.test(services)],
   ['GA IT read scope dibatasi taxonomy HLT dan HPC', /\['HLT', 'HPC'\]\.includes\(String\(asset\.category_code/.test(services) && /readOnlyItWorkstations/.test(services)],
