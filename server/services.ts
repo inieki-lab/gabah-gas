@@ -434,7 +434,9 @@ export class GabahDomainService {
     const categoryCatalog = (Array.isArray(db.categories) && db.categories.length > 0)
       ? db.categories
       : CANONICAL_TAXONOMY;
-    let taxonomy = resolveTaxonomyByHumanName(rawCategory, payload.owner_division, categoryCatalog);
+    // The request's owner_division is untrusted input and must not steer
+    // category resolution. Category code/name resolves against the master alone.
+    let taxonomy = resolveTaxonomyByHumanName(rawCategory, undefined, categoryCatalog);
     // Kategori nonaktif ditolak sebagai pilihan BARU (400); input kosong tidak
     // ditolak (resolusi default) — lihat fallback aktif di bawah.
     assertCategoryUsableForNewAsset(taxonomy, rawCategory, categoryCatalog);
@@ -455,9 +457,9 @@ export class GabahDomainService {
     } else if (taxonomy.code === 'INV-F') {
       // b) All furniture (INV-F) belongs to GA ALWAYS, regardless of where it is physically placed.
       resolvedOwnerDivision = 'GA';
-    } else if (payload.owner_division) {
-      resolvedOwnerDivision = payload.owner_division;
     }
+    // For every non-IT/GA category, ownership comes only from the category
+    // master. Request payloads cannot override the configured owner domain.
 
     // SC/PIBC are historical office/location labels, not valid owner domains
     // for new assets. UNASSIGNED is also fail-closed until an owner is reviewed.
