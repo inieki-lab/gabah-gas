@@ -306,6 +306,7 @@ export interface ServerNotification {
   link_type?: 'asset' | 'loan' | 'ticket' | 'reconciliation';
   link_id?: string;
   is_read: boolean;
+  read_at?: string;
   created_at: string;
 }
 
@@ -1955,4 +1956,14 @@ export function seedInitialData() {
 
   // Synchronize Numbering Engine with existing assets
   AssetNumberingEngine.syncFromExistingAssets(db.assets);
+
+  // Synchronize Numbering Engine with existing contract numbers so that
+  // generateContractNumber() does not issue numbers that already exist
+  // (especially important after restart when in-memory sequence resets).
+  const contractNumbers = (db.contracts || []).map(c => c.contract_number).filter(Boolean);
+  AssetNumberingEngine.syncFromExistingRecords({
+    tickets: undefined,
+    loans: undefined,
+    contracts: contractNumbers.map(n => ({ contract_number: n })),
+  });
 }

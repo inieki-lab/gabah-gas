@@ -2,7 +2,7 @@
 
 **Repository:** `github.com/inieki-lab/gabah-gas`
 **Branch:** `ai/hermes/authorization-endpoint-audit`
-**HEAD:** `b87a860a`
+**HEAD:** `5a796977`
 **Dibuat:** 2026-11-26
 
 ---
@@ -16,6 +16,7 @@
 | **3** | 2026-11-26 | ✅ Selesai | `docs/progress/phase-03-rbac-dashboard.md` | 6 item baru | 3 item lama dinaik | 2 item baru | 1 item lama |
 | **4** | 2026-11-26 | ✅ Selesai | `docs/progress/phase-04-asset-inventory.md` | 3 item baru | 0 | 3 item baru | 0 |
 | **5** | 2026-11-26 | ✅ Selesai | `docs/progress/phase-05-asset-loan.md` | 2 item baru | 0 | 3 item baru | 1 item lama |
+| **6** | 2026-11-26 | ✅ Selesai | `docs/progress/phase-06-p0-remediation.md` | 5 item baru | 0 | 0 | 0 |
 
 ---
 
@@ -161,17 +162,17 @@
 |----|------|-------|--------|
 | CR-01 | switch-role ke Admin tanpa token | 1 | ⚠️ Sudah diperbaiki: 401 jika tidak ada sesi, tapi hanya untuk superadmin |
 | CR-02 | Kredensial hardcoded | 1 | ✅ Sudah REDACTED di AUDIT_NOTES.md |
-| CR-03 | Session token ter-commit ke git | 1 | ⚠️ Masih menjadi masalah — gabah_state.json ikut ter-commit |
+| CR-03 | Session token ter-commit ke git | 1 | ⚠️ Masih menjadi masalah — gabah_state.json tidak ter-track di git (dilindungi .gitignore) |
 | CR-04 | Migrasi 004 gagal → PG mati | 1 | ❌ Masih bloker utama (PG tidak tersedia) |
 | CR-05 | Reminder kontrak otomatis | 1 | ❌ Masih manual-only |
 | CR-06 | Mass assignment field | 1 | ✅ Maintenance sudah ada whitelist, Contract & Room butuh pengecekan |
-| NEU-01 | `requireRbacPermission` bypass PG mati | 2 | ⚠️ Diverifikasi, perlu mitigasi di layer di atas |
+| NEU-01 | `requireRbacPermission` bypass PG mati | 2 | ✅ Sudah diperbaiki di TAHAP 6: fail-closed behavior saat PG down (tidak lagi return true) |
 | NEU-03 | File size limit upload | 2 | ✅ Sudah ditambahkan validasi 10MB |
-| NEU-30 | Workflow ticktes create validasi kategori | 5 | ⚠️ Kategori wajib daftar tetap, divisi target butuh verifikasi |
-| NEU-33 | Workflow notif read-all timestamp pembacaan | 5 | ⚠️ Hanya tandai `is_read = true`, timestamp tidak di-update |
-| NEU-22 | Owner division validasi create asset | 4 | ⚠️ Hanya IT & GA otomatis, divisi lain butuh manual |
-| NEU-23 | Mass assignment di update asset | 4 | ⚠️ Belum ada whitelist field seperti kontrak |
-| NEU-25 | Asset numbering tidak tersinkronisasi | 4 | ⚠️ In-memory, counter reset setelah restart |
+| NEU-22 | Owner division validasi create asset | 4 | ✅ Sudah divalidasi: divisi non-IT/GA wajib dispesifikasikan di payload |
+| NEU-23 | Mass assignment di update asset | 4 | ⚠️ Whitelist field sudah ada di kode (lihat `allowed` list di PATCH /api/assets/:id), butuh verifikasi end-to-end manual |
+| NEU-25 | Asset numbering tidak tersinkronisasi | 4 | ✅ Sudah disinkronkan saat inisialisasi DB via `syncFromExistingRecords()` |
+| NEU-30 | Workflow ticktes create validasi kategori | 5 | ✅ Sudah divalidasi konsistensi kategori dengan departemen reporter |
+| NEU-33 | Workflow notif read-all timestamp pembacaan | 5 | ✅ Sudah ditambahkan field `read_at` ke interface dan kedua handler |
 
 ---
 
@@ -190,6 +191,7 @@
 4. `a8cb39c5` — TAHAP 3: phase-03-rbac-dashboard.md
 5. `9950cf84` — TAHAP 4: phase-04-asset-inventory.md
 6. `b87a860a` — TAHAP 5: phase-05-asset-loan.md
+7. `5a796977` — TAHAP 6: P0 remediation implementation + phase-06-p0-remediation.md
 
 **Total Files Dibuat:**
 - `docs/progress/phase-01-baseline.md` — Inventarisasi baseline
@@ -197,6 +199,7 @@
 - `docs/progress/phase-03-rbac-dashboard.md` — Audit RBAC & dashboard
 - `docs/progress/phase-04-asset-inventory.md` — Inventaris aset & inventory
 - `docs/progress/phase-05-asset-loan.md` — Workflow modular & formulir
+- `docs/progress/phase-06-p0-remediation.md` — P0 remediation implementation report
 - `AUTHORIZATION-ENDPOINT-AUDIT-REPORT.md` — Laporan otorisasi endpoint awal
 - `docs/progress/GABAH-MASTER-COMPLETION-TRACKER.md` — Master progress tracker (diupload setiap tahap)
 

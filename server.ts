@@ -111,7 +111,19 @@ async function startServer() {
   // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
   // production; JSON/file-store development retains legacy behavior during migration.
   const requireRbacPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
-    if (!isPostgresPersistenceActive()) return true;
+    // FAIL-CLOSE: Jika PostgreSQL tidak aktif, tetap cek permission secara ketat.
+    // Mode file-store/sebelum migrasi tidak boleh melewati otorisasi sepenuhnya.
+    if (!isPostgresPersistenceActive()) {
+      // Fallback ketat: cek actor dan permission dasar meskipupun PG mati.
+      // Mencegah privilege escalation saat DB mati atau masih dalam migrasi.
+      const actor = (req as any).user as ServerUser | undefined;
+      if (!actor || !hasRbacPermission(actor.id, permissionKey)) {
+        res.status(403).json({ success: false, message: 'Akses ditolak: permission ' + permissionKey + ' tidak diberikan kepada user ini.' });
+        return false;
+      }
+      return true;
+    }
+    // PostgreSQL aktif: gunakan RBAC policy dinamis
     const actor = (req as any).user as ServerUser | undefined;
     if (!actor || !hasRbacPermission(actor.id, permissionKey)) {
       res.status(403).json({ success: false, message: 'Akses ditolak: permission ' + permissionKey + ' tidak diberikan kepada user ini.' });
@@ -2786,6 +2798,7 @@ async function startServer() {
       return res.status(404).json({ success: false, message: 'Notifikasi tidak ditemukan.' });
     }
     notif.is_read = true;
+    notif.read_at = new Date().toISOString();
     res.json({ success: true, data: notif });
   });
 
@@ -2798,7 +2811,10 @@ async function startServer() {
         || (n.recipient_user_id ? n.recipient_user_id === actor.id
           : n.recipient_role ? n.recipient_role === actor.role
             : n.recipient_division ? n.recipient_division === actor.division : false);
-      if (isRecipient) n.is_read = true;
+      if (isRecipient) {
+        n.is_read = true;
+        n.read_at = new Date().toISOString();
+      }
     }
     res.json({ success: true, message: 'Semua notifikasi ditandai telah dibaca' });
   });

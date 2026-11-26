@@ -367,13 +367,19 @@ export class GabahDomainService {
     // Enforce Corporate Rules:
     // a) All IT items (IT-H & IT-S) belong to IT. GA only has read-only access.
     let resolvedOwnerDivision: string = taxonomy.owner_division;
+    // Corporate rules: IT items always belong to IT, furniture always to GA.
     if (taxonomy.main_type === 'IT-H' || taxonomy.main_type === 'IT-S' || taxonomy.category_type === 'IT' || taxonomy.category_type === 'License') {
       resolvedOwnerDivision = 'IT';
     } else if (taxonomy.code === 'INV-F') {
       // b) All furniture (INV-F) belongs to GA ALWAYS, regardless of where it is physically placed.
       resolvedOwnerDivision = 'GA';
     } else if (payload.owner_division) {
+      // For non-IT/GA categories (SC, PIBC, etc.), owner_division must be explicitly provided.
       resolvedOwnerDivision = payload.owner_division;
+    } else {
+      // Jika kategori bukan IT/GA dan owner_division tidak dispesifikasikan,
+      // tolak pembuatan aset karena divisi tujuan tidak ditetapkan.
+      throw new Error(`Owner divisi wajib dipilih untuk kategori "${taxonomy.code}". Silakan tentukan owner_division pada payload.`);
     }
 
     const configuredOwner = (db.divisions || []).some(division =>
@@ -946,6 +952,19 @@ export class GabahDomainService {
     const VALID_TICKET_CATEGORIES = ['IT', 'GA', 'SC', 'PIBC'] as const;
     if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
       throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
+    }
+    // NEU-30: Validasi kategori tiket harus konsisten dengan divisi/tujuan penanganan.
+    // Pastikan kategori sesuai dengan departemen/reporter atau target divisi yang ditetapkan.
+    const reporterDept = String(actor.department || '').trim().toUpperCase();
+    const categoryDivMap: Record<string, string> = {
+      'IT': 'IT',
+      'GA': 'GA',
+      'SC': 'SC',
+      'PIBC': 'PIBC',
+    };
+    const expectedDept = categoryDivMap[payload.category as keyof typeof categoryDivMap];
+    if (expectedDept && reporterDept && !reporterDept.includes(expectedDept) && reporterDept !== expectedDept) {
+      throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak sesuai dengan departemen reporter "${reporterDept}". Kategori "${expectedDept}" diperlukan untuk penanganan ini.`), { statusCode: 400 });
     }
     const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
     if (!VALID_PRIORITIES.includes(payload.priority as any)) {
