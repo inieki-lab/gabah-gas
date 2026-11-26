@@ -17,7 +17,7 @@ export interface DashboardPersona {
 }
 
 /** Resolve dashboard presentation from primary and additional job-function roles. */
-export function resolveDashboardPersona(user: Pick<UserProfile, 'role' | 'role_keys' | 'is_superadmin'>): DashboardPersona {
+export function resolveDashboardPersona(user: Pick<UserProfile, 'role' | 'role_keys' | 'is_superadmin' | 'permission_keys'>): DashboardPersona {
   const roleKeys = new Set((user.role_keys || []).map(key => String(key).trim().toLowerCase()));
   const has = (key: string, label: UserRole) => user.role === label || roleKeys.has(key);
   const isSuperadmin = Boolean(user.is_superadmin) || has('superadmin', 'Admin GABAH');
@@ -44,6 +44,18 @@ export function resolveDashboardPersona(user: Pick<UserProfile, 'role' | 'role_k
     divisionLabel: isIT && isGA ? 'IT / GA' : isIT ? 'IT' : isGA ? 'GA' : 'Unit kerja',
     descriptionRole,
   };
+}
+
+
+/** UI affordances follow effective permissions; backend remains authoritative. */
+export function canShowDashboardAction(
+  user: Pick<UserProfile, 'role' | 'role_keys' | 'is_superadmin' | 'permission_keys'>,
+  permissionKey: string,
+  legacyFallback: boolean,
+): boolean {
+  if (resolveDashboardPersona(user).isAuditor) return false;
+  if (user.permission_keys === undefined) return legacyFallback;
+  return user.permission_keys.includes('*') || user.permission_keys.includes(permissionKey);
 }
 
 /**
