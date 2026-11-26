@@ -338,7 +338,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
           )}
         </div>
         <div className="flex items-center gap-2">
-          {isHumas && (
+          {canReadDocumentationQueue && (
             <button
               onClick={() => { setActiveTab('reservations'); setCategoryFilter('documentation'); }}
               className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors flex items-center gap-1.5 ${
@@ -448,7 +448,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
             )}
           </button>
 
-          {isHumas && (
+          {canReadDocumentationQueue && (
             <button
               onClick={() => {
                 setActiveTab('reservations');
