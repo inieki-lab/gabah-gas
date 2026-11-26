@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import type { Asset, Loan, Ticket, UserProfile } from '../src/types';
 import { filterDashboardAssets, filterDashboardLoans, filterDashboardTickets, filterPersonalAssets, filterPersonalLoans, filterMaintenanceForRole, filterContractsForRole } from '../src/dashboard/roleDashboardScope';
 import { isExactIdentityNameMatch } from '../src/utils/identityMatching';
-import { resolveDashboardPersona } from '../src/dashboard/roleDashboardScope';
+import { canShowDashboardAction, resolveDashboardPersona } from '../src/dashboard/roleDashboardScope';
 
 const asset = (id: string, owner_division: string, category_type: 'IT' | 'GA' | 'License' | 'General') =>
   ({ id, owner_division, category_type } as Asset);
@@ -124,5 +124,11 @@ assert.equal(auditorAdditionalPersona.isStaff, false);
 assert.equal(resolveDashboardPersona({
   ...user, role: 'Karyawan', role_keys: ['karyawan', 'it', 'auditor'],
 } as UserProfile).descriptionRole, 'Auditor', 'read-only persona takes precedence over operational labels');
+
+
+assert.equal(canShowDashboardAction({ ...user, role: 'Karyawan', permission_keys: ['loans.create'] } as UserProfile, 'loans.create', false), true);
+assert.equal(canShowDashboardAction({ ...user, role: 'Karyawan', permission_keys: ['loans.create'] } as UserProfile, 'tickets.create', true), false);
+assert.equal(canShowDashboardAction({ ...user, role: 'Karyawan', role_keys: ['karyawan', 'auditor'], permission_keys: ['*'] } as UserProfile, 'assets.create', true), false);
+assert.equal(canShowDashboardAction({ ...user, role: 'Karyawan' } as UserProfile, 'assets.create', false), false, 'legacy employee fallback hides asset registration');
 
 console.log('Role dashboard scope: PASS (division, personal, maintenance, contract, and exact identity scopes)');
