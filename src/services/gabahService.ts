@@ -650,7 +650,7 @@ export class GabahService {
    */
   static isTicketVisibleToUser(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
-    if (Array.isArray(user.permission_keys)) return true;
+    if (Array.isArray(user.permission_keys)) return user.permission_keys.includes('*') || user.permission_keys.includes('tickets.read');
 
     const persona = resolveDashboardPersona(user);
     if (persona.isGlobalDashboard || persona.isIT) return true;
