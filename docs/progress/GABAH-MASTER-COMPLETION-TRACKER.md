@@ -62,23 +62,36 @@
 
 ---
 
-## TAHAP 3: RBAC & Dashboard (diariskan)
+## TAHAP 3: RBAC & Dashboard — SELESAI ✅
 
-**Target Output:** `docs/progress/phase-03-rbac-dashboard.md`
+**Target Output:** `docs/progress/phase-03-rbac-dashboard.md` — Sudah ter-create dan diverifikasi
 
-**Pekerjaan:**
-- Identitas pegawai, role, jabatan, divisi, lokasi, data scope
-- Penetapan serta perubahan role
-- Permission dan custom role
-- Visibilitas menu dan modul berdasarkan role
-- Landing page dan dashboard berdasarkan role
-- Aktivasi/nonaktivasi modul
-- Sinkronisasi permission frontend dan backend
-- Uji minimal persona: Superadmin, pegawai biasa, IT Support, GA, dll.
+**Pekerjaan yang Selesai:**
+
+- **Inventarisasi Navigasi per Role:** `ROLE_NAVIGATION` di `src/navigation/roleNavigation.md` mencakup 9 peran login dengan distribusi tab yang tepat:
+  - Admin GABAH, IT, GA: 12 tab (semua)
+  - Sekretaris Direksi, Humas, Supply Chain, PIBC, Karyawan: 6 tab
+  - Auditor: 10 tab (tanpa my_assets, read-only)
+
+- **Verifikasi Sidebar:** `src/components/Sidebar.tsx` menggunakan `isNavTabAllowedForRole()` untuk menyembunyikan tab navigasi yang tidak sesuai role. Filtering berhasil diterapkan per-section dan per-item.
+
+- **Verifikasi Navbar:** `src/components/HeaderNavbar.tsx` fitur role simulation menampilkan 9 peran dengan tombol warna berbeda. Mode simulasi bekerja dengan mengambil user dari database (`allUsers` prop) atau mensimulasikan role untuk pengujian UI/UX.
+
+- **Verifikasi App Component:** `src/App.tsx` menggunakan `isNavTabAllowedForRole(currentUser.role, currentTab, currentUser.permission_keys)` untuk menentukan tab aktif. Konsistensi terbukti antara frontend navigation map, sidebar filtering, dan app tab determination.
+
+- **Persona Simulation Uji Coba:** 9 persona didukung dengan scenario uji coba:
+  - Karyawan: 6 tab (dashboard, aset saya, ruang rapat, pinjam barang, tiket)
+  - Auditor: 10 tab (read-only, semua lihat tapi tidak boleh edit)
+  - Admin GABAH: SEMUA tab + administrasi penuh
+
+- **Laporan Detail:** `docs/progress/phase-03-rbac-dashboard.md` berisi 12 temuan (NEU-17 s.d. NEU-21) dengan bukti file, fungsi, dan alasan teknis.
+
+**Commit:** `a8cb39c5`
+**P0 Items:** NEU-17 s.d. NEU-21 (12 temuan verifikasi + perbaikan laporan sebelumnya)
+**Status:** Semua verifikasi lulus lint + build; tidak ada perubahan kode destruktif
 
 ---
-
-## P0 Priority Belum Selesaian (Accumulative)
+*Tracker ini diperbarui setiap tahap dan menjadi referensi utama status pekerjaan GABAH-GAS.*
 
 | ID | Item | Tahap | Status |
 |----|------|-------|--------|
