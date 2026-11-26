@@ -640,3 +640,12 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Commit: `9208e20ab93a808858bcab7d9201179ac9ad3b63` pada branch `ai/hermes/authorization-endpoint-audit`.
 - Status tes: menunggu CI untuk commit ini; belum menyatakan lulus.
 - Berikutnya: verifikasi seluruh 28 assertion T2B-3, lalu lanjut audit terpisah untuk persistence/RBAC dan regresi aset/peminjaman tanpa menunggu semua area hijau.
+
+
+## 2026-11-26 — Asset PATCH tidak dapat melewati lifecycle
+
+- Audit paralel menemukan endpoint umum `PATCH /api/assets/:id` masih menerima field `status` langsung. Ini melewati workflow lifecycle khusus (repair, damaged, cannibalize, disposal, auction) dan pemeriksaan permission `assets.lifecycle`.
+- Perbaikan: `status` dikeluarkan dari whitelist PATCH umum; perubahan status tetap melalui endpoint lifecycle dan workflow pinjaman/penugasan yang memang berwenang mengelola state terkait.
+- Regression static ditambahkan pada `scripts/asset-scope-policy-verify.mjs` untuk memastikan whitelist umum tidak memuat `status`.
+- Commits: `cae6c88610e94a9fba6a917bd70c3abafc3a553b` (server), `34f5547d9e26daaaa5a3d600a9c6fbe881f22fc3` (test).
+- Status CI: menunggu hasil run terbaru; belum dinyatakan lulus.
