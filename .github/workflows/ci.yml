@@ -211,6 +211,9 @@ jobs:
       - name: User administration validation regression
         run: npm run test:user-admin-validation
 
+      - name: Administration empty user-list synchronization regression
+        run: npm run test:admin-empty-user-sync
+
       - name: User bulk-import primary-role regression
         run: npm run test:bulk-import
 

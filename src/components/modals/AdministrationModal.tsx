@@ -301,9 +301,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   });
 
   useEffect(() => {
-    if (users && users.length > 0) {
-      setUserList(users);
-    }
+    // The server is authoritative even when the legitimate result is empty.
+    // Keeping the previous list here resurrected stale/demo users after the
+    // final account was removed or an empty scoped result was returned.
+    setUserList(Array.isArray(users) ? users : []);
   }, [users]);
 
   useEffect(() => {
