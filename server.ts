@@ -3487,7 +3487,7 @@ async function startServer() {
           const createdLoans = GabahDomainService.requestLoansBatch({
             ...req.body,
             asset_ids: normalizedAssetIds,
-          });
+          }, actor);
           await persistDataStore();
       (req as any).__gabahPersisted = true;
           return res.status(201).json({
