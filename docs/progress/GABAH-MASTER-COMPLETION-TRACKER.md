@@ -457,3 +457,14 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Commits: `5b751aef8b62d009eb928a8c8286f3f7df56b306`, `e841eab8889fb20100c2243c1a53c0e237df8c33`, `b1b61e3a98bdb12477a727fe9b2227b228bd969e`.
 - Typecheck/build/navigation regression menunggu CI exact HEAD.
 - Tidak mengubah backend authorization atau data; tidak merge ke `main`.
+
+
+## 2026-11-26 — Notifikasi: role tambahan, self-read, dan persistensi
+
+- Audit perbandingan menemukan branch kerja dan `main` sudah divergen besar: perbandingan GitHub melaporkan branch kerja 551 commit ahead dan 439 commit behind dari `main` (status diverged). Tidak dilakukan merge/rebase/sinkronisasi otomatis karena akan membawa ratusan perubahan lintas fitur ke branch ini.
+- Pada source branch ini ditemukan tiga masalah di notifikasi: penerima role dicocokkan hanya ke `actor.role` primer (mengabaikan role tambahan), PATCH satu notifikasi salah mensyaratkan `notifications.read_all`, dan perubahan status baca tidak dipersistenkan. Filter kata kunci Humas juga dapat menimpa metadata penerima eksplisit.
+- Perbaikan: helper penerima terpusat menghormati user-id → role efektif (termasuk role tambahan) → division; PATCH satu notifikasi memakai `notifications.read`; read-all tetap memakai `notifications.read_all`; kedua operasi menunggu `persistDataStore()`; akses tidak lagi ditebak dari kata kunci judul/pesan.
+- Test kontrak baru `scripts/notification-recipient-rbac-verify.mjs`, package script dan CI step ditambahkan.
+- Commits: `0cd2f7f53fa4d5291f96bf55d1fb0346620fc1d9` (server), `96ecf9e6b5cccf11032de7e25d569cc49b5221ac` (test), `baeade220cce5169ab541f22b0ba9245f05d9896` (package), `b922f3328844351302bba0281e1cdfd3be2c5166` (CI).
+- Ini merupakan port perbaikan spesifik ke branch kerja, bukan merge dari `main`. CI exact HEAD belum selesai.
+- Tidak ada merge ke `main`.
