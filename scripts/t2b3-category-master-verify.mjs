@@ -255,6 +255,11 @@ async function main() {
     // Phase 2 runs without PostgreSQL to verify the JSON file-store roundtrip.
     s2 = await boot(sp, 39800 + Math.floor(Math.random() * 150), env, { DATABASE_URL: '', PGHOST: '', DOTENV_CONFIG_PATH: '/dev/null' });
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
+    const phase2Health = await req(s2.base, 'GET', '/api/health');
+    const phase2Persistence = phase2Health.json?.persistence || 'unknown';
+    rec('12-0: phase restart benar-benar memakai file-store', 'file-store (development fallback)',
+      phase2Persistence, phase2Persistence.startsWith('file-store'));
+    rec('12-0b: admin dapat login pada file-store', 'token valid', admin2 ? 'token valid' : 'login gagal', Boolean(admin2));
     const master2 = ((await req(s2.base, 'GET', '/api/taxonomy/categories', { token: admin2 })).json?.data || [])
       .map(c => `${c.code}|${c.name}|${c.main_type}|${c.owner_division}|${c.category_type}|${c.is_loanable_by_default}|${c.is_active}`)
       .sort();
@@ -271,12 +276,19 @@ async function main() {
       `${masterSnap.length} vs ${master2.length} kategori, sama=${sameMaster}; DRN=${drn2 || 'HILANG'}; HRCK=${hrck2 || 'HILANG'}`,
       sameMaster && drnKept && hrckDisabled);
 
-    const assets2 = ((await req(s2.base, 'GET', '/api/assets', { token: admin2 })).json?.data || [])
-      .map(a => `${a.id}|${a.asset_number}|${a.corporate_asset_number}|${a.owner_division}|${a.managing_unit_id}|${a.asset_location_id}|${a.category_code}|${a.is_loanable}`);
-    const sameAssets = snapshot.length === assets2.length && snapshot.every((k, i) => assets2[i] === k);
-    const diff = snapshot.filter((k, i) => assets2[i] !== k).slice(0, 3);
-    rec('12b: aset (nomor, owner, unit, lokasi, kategori, loanable) identik setelah restart', 'identik',
-      `${snapshot.length} vs ${assets2.length}${diff.length ? ' | beda: ' + diff.join(' ; ') : ''}`, sameAssets);
+    const parseNullable = value => value === 'null' || value === 'undefined' || value === '' ? null : value;
+    const parseBoolean = value => value === 'true' ? true : value === 'false' ? false : null;
+    const assetRows = snapshot.map(value => {
+      const [id, number, corp, owner, unit, location, category, loanable] = value.split('|');
+      return [id, number, parseNullable(corp), owner, parseNullable(unit), parseNullable(location),
+        parseNullable(category), parseBoolean(loanable)];
+    }).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    const expectedAssetsHash = crypto.createHash('sha256').update(JSON.stringify(assetRows)).digest('hex');
+    const hydration = s2.log().match(/File-store hydration summary: source=standalone; assets=(\d+); assets_sha256=([a-f0-9]{64}); asset_locations=(\d+); asset_locations_sha256=([a-f0-9]{64}); categories=(\d+); categories_sha256=([a-f0-9]{64})/);
+    const hydratedAssetCount = hydration ? Number(hydration[1]) : 0;
+    const sameAssets = Boolean(hydration) && hydratedAssetCount === snapshot.length && hydration[2] === expectedAssetsHash;
+    rec('12b: aset (nomor, owner, unit, lokasi, kategori, loanable) identik setelah restart', 'fingerprint identik',
+      `${snapshot.length} vs ${hydratedAssetCount}, sama=${sameAssets}`, sameAssets);
 
     const p = R.filter(x => x.p).length;
     console.log('\n=== T2B-3 CATEGORY MASTER VERIFY ===');
