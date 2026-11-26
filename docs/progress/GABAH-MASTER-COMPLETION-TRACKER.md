@@ -543,3 +543,13 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - CI run `45831683951` berhenti saat typecheck karena fase T2B-1 sempat memiliki deklarasi ganda `phase2Health`, `phase2Persistence`, dan `createdInFile` setelah instrumentation fingerprint ditambahkan. Tidak ada kegagalan aplikasi yang diuji pada run tersebut.
 - Deklarasi ganda dan variabel snapshot lama yang tidak lagi dipakai dibersihkan pada commit `977bc7f3e87b39bdfc2b2b2fcd437aeed29d5b86`.
 - CI exact HEAD baru diperlukan.
+
+
+## 2026-11-26 — Perbaikan filter tiket frontend yang menimpa RBAC backend
+
+- Temuan tambahan: `GabahService.isTicketVisibleToUser()` masih memfilter berdasarkan `user.role` primer setelah API mengembalikan tiket yang sudah dibatasi oleh permission/scope PostgreSQL. Karyawan dengan role tambahan IT/GA/custom scope dapat kehilangan tiket yang sebenarnya sudah diizinkan backend.
+- Perbaikan: pada session dengan `permission_keys`, UI mempercayai daftar tiket hasil scope server (tetap mensyaratkan `tickets.read` atau wildcard). Fallback role lama hanya dipakai saat permission keys tidak tersedia. Auditor tetap tidak dapat melakukan mutasi.
+- `canManageTicket` sekarang membedakan `tickets.update` dan `tickets.close`; tombol mulai kerja dan selesaikan tiket memakai permission masing-masing. Filter create ticket tetap memakai `tickets.create`.
+- Loans create/return juga kini memakai `loans.create` dan `loans.return`; Maintenance create/update telah dipisah.
+- Commits: `960fb7c084189870f36781f016d6c6627ad562af`, `1286efe193212307483a5009188554685139265a`, `e99c9b721e88825c2b460e4f7169ef049b9e5ea5`, `0749ecb79802bc6a11b9c83451821b21cf3bbe16`, `36914c7d483a20548b2605dc5b4d5c486d7138ea`, `aa195b62ac73d11f8521fbc436814269d8d2d858`, `edf215dfbb1549d489428ed49db8b41b9eb8e0c5`, `39384600e24f226ad90c9cdd53c1cdf97c136311`.
+- CI exact HEAD pending.
