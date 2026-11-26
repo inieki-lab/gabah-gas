@@ -1205,7 +1205,14 @@ export class GabahDomainService {
     loan.return_inspected_by_id = actor.id;
     loan.updated_at = new Date().toISOString();
 
-    asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor') ? 'damaged' : 'available';
+    const hasAnotherApprovedReservation = db.loans.some(existing =>
+      existing.id !== loan.id
+      && existing.asset_id === asset.id
+      && existing.status === 'approved'
+    );
+    asset.status = (condition === 'broken' || condition === 'damaged' || condition === 'poor')
+      ? 'damaged'
+      : (hasAnotherApprovedReservation ? 'reserved' : 'available');
     asset.condition = condition;
     // Preserve the recorded physical location. Returning a loan changes custody/status,
     // not the asset's site; a real relocation must use the asset-mutation workflow.
