@@ -10,6 +10,8 @@ const maintenance = read('src/components/views/MaintenanceView.tsx');
 const vendors = read('src/components/views/VendorsView.tsx');
 const dashboard = read('src/components/views/DashboardView.tsx');
 const sidebar = read('src/components/Sidebar.tsx');
+const knowledge = read('src/components/views/KnowledgeBaseView.tsx');
+const licenses = read('src/components/views/LicensesView.tsx');
 const gabahService = read('src/services/gabahService.ts');
 
 const checks = [
@@ -61,6 +63,13 @@ const checks = [
     && /action === 'close' \? 'tickets\.close' : 'tickets\.update'/.test(gabahService)
     && /canManageTicket\(ticket, currentUser, 'update'\)/.test(tickets)
     && /canManageTicket\(ticket, currentUser, 'close'\)/.test(tickets)],
+  ['Knowledge base create and update controls use separate permissions',
+    /hasEffectivePermission\(currentUser, 'knowledge\.create'/.test(knowledge)
+    && /hasEffectivePermission\(currentUser, 'knowledge\.update'/.test(knowledge)
+    && /canCreate && \(/.test(knowledge)
+    && /canUpdate && \(/.test(knowledge)],
+  ['License creation uses effective license management permission',
+    /hasEffectivePermission\(currentUser, 'licenses\.manage'/.test(licenses)],
   ['Dashboard and sidebar share the effective persona resolver',
     /resolveDashboardPersona\(currentUser\)/.test(dashboard)
     && /resolveDashboardPersona\(/.test(sidebar)
