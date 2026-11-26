@@ -299,9 +299,9 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
                         <div className="flex items-center justify-between text-[10px] text-slate-500 pt-2 border-t border-slate-100">
                           <span>{ticket.reporter_name} ({ticket.category})</span>
-                          {GabahService.canManageTicket(ticket, currentUser) && (
+                          {(GabahService.canManageTicket(ticket, currentUser, 'update') || GabahService.canManageTicket(ticket, currentUser, 'close')) && (
                             <div>
-                              {ticket.status === 'open' && (
+                              {ticket.status === 'open' && GabahService.canManageTicket(ticket, currentUser, 'update') && (
                                 <button
                                   onClick={() => onUpdateTicketStatus(ticket.id, 'in_progress')}
                                   className="px-2 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-bold text-[10px] transition-all"
@@ -309,7 +309,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                                   Kerjakan
                                 </button>
                               )}
-                              {ticket.status === 'in_progress' && (
+                              {ticket.status === 'in_progress' && GabahService.canManageTicket(ticket, currentUser, 'close') && (
                                 <button
                                   onClick={() => setResolvingTicketId(ticket.id)}
                                   className="px-2 py-1 bg-emerald-700 hover:bg-emerald-800 text-white rounded font-bold text-[10px] flex items-center gap-1 transition-all"
