@@ -10,6 +10,7 @@ const maintenance = read('src/components/views/MaintenanceView.tsx');
 const vendors = read('src/components/views/VendorsView.tsx');
 const dashboard = read('src/components/views/DashboardView.tsx');
 const sidebar = read('src/components/Sidebar.tsx');
+const gabahService = read('src/services/gabahService.ts');
 
 const checks = [
   ['Asset creation and ticket report buttons use effective permissions',
@@ -47,6 +48,14 @@ const checks = [
   ['Vendor create and update actions use effective permissions',
     /hasEffectivePermission\(currentUser, 'vendors\.create'/.test(vendors)
     && /hasEffectivePermission\(currentUser, 'vendors\.update'/.test(vendors)],
+  ['Ticket list trusts backend effective scopes instead of re-filtering by primary role',
+    /Array\.isArray\(user\.permission_keys\)\) return user\.permission_keys\.includes\('\*'\) \|\| user\.permission_keys\.includes\('tickets\.read'\)/.test(gabahService)
+    && /resolveDashboardPersona\(user\)/.test(gabahService)],
+  ['Ticket update and close controls require their separate permissions',
+    /action: 'update' \| 'close' = 'update'/.test(gabahService)
+    && /action === 'close' \? 'tickets\.close' : 'tickets\.update'/.test(gabahService)
+    && /canManageTicket\(ticket, currentUser, 'update'\)/.test(tickets)
+    && /canManageTicket\(ticket, currentUser, 'close'\)/.test(tickets)],
   ['Dashboard and sidebar share the effective persona resolver',
     /resolveDashboardPersona\(currentUser\)/.test(dashboard)
     && /resolveDashboardPersona\(/.test(sidebar)
