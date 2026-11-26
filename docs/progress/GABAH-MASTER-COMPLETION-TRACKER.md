@@ -631,3 +631,12 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Test diganti untuk mematikan PostgreSQL secara eksplisit (termasuk dotenv), memastikan health menunjukkan file-store, login canonical berhasil, request anonim tetap 401, dan GET/POST/PATCH maintenance dari Admin/IT/GA/Karyawan/Auditor semuanya mendapat 503 `RBAC_POLICY_UNAVAILABLE`. Tidak ada fallback allowlist yang dibuka.
 - Commit: `e0e9c2dc1965c16e00fc727b12a8763e16a609b7`.
 - Dynamic owner-scope behavior PostgreSQL tetap diperiksa melalui static RBAC contract dan live PostgreSQL asset/loan/ticket suites; maintenance fail-closed test hanya memverifikasi saat policy store tidak tersedia.
+
+
+## 2026-11-26 — T2B-3: ownership aset mengikuti master kategori
+
+- Akar masalah T2B-3: `createAsset()` mengambil owner dari master kategori sebagai nilai awal, tetapi untuk kategori selain IT/GA justru mewajibkan `payload.owner_division` dan menimpanya. Akibatnya kategori baru seperti DRN (owner GA) gagal dibuat walaupun master kategori valid; kegagalan ini ikut menyebabkan pengujian historis, guard hapus, loanable default, dan roundtrip master gagal secara berantai.
+- Perbaikan: owner untuk kategori non-IT/GA sekarang tetap berasal dari `taxonomy.owner_division` pada master. Payload tidak boleh menimpa owner kategori. Aturan khusus IT/IT-S dan INV-F tetap dipertahankan.
+- Commit: `9208e20ab93a808858bcab7d9201179ac9ad3b63` pada branch `ai/hermes/authorization-endpoint-audit`.
+- Status tes: menunggu CI untuk commit ini; belum menyatakan lulus.
+- Berikutnya: verifikasi seluruh 28 assertion T2B-3, lalu lanjut audit terpisah untuk persistence/RBAC dan regresi aset/peminjaman tanpa menunggu semua area hijau.
