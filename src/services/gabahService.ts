@@ -667,13 +667,13 @@ export class GabahService {
     return isReporter;
   }
 
-  static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
+  static canManageTicket(ticket: Ticket, user?: UserProfile | null, action: 'update' | 'close' = 'update'): boolean {
     if (!user || !ticket) return false;
     const persona = resolveDashboardPersona(user);
     if (persona.isAuditor) return false;
+    const permissionKey = action === 'close' ? 'tickets.close' : 'tickets.update';
     if (Array.isArray(user.permission_keys)) {
-      const has = (key: string) => user.permission_keys!.includes('*') || user.permission_keys!.includes(key);
-      return has('tickets.update') || has('tickets.assign') || has('tickets.close');
+      return user.permission_keys.includes('*') || user.permission_keys.includes(permissionKey);
     }
     if (persona.isSuperadmin || persona.isIT) return true;
     if (persona.isGA && ticket.category === 'GA') return true;
