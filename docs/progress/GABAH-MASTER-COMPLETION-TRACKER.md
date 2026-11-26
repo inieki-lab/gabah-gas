@@ -666,3 +666,13 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Assertion diperbarui untuk memastikan POST/PATCH wajib memakai `requireRbacPermission` dan tidak lagi mengandung allowlist role legacy.
 - Commit test: `5a61f38ac32b79f5eb70b89406e73fb15423c04d`.
 - Tes ulang menunggu CI baru; belum dinyatakan lulus.
+
+
+## 2026-11-27 — Maintenance CI: precedence Auditor read-only
+
+- CI run `45895072731` gagal hanya pada dua assertion terakhir suite Maintenance (23/25 PASS). Request Auditor POST/PATCH mendapat HTTP 403 dari global security middleware read-only sebelum route-level `requireRbacPermission` dievaluasi; GET tetap mendapat 503 ketika PostgreSQL/RBAC tidak aktif.
+- Implementasi 403 adalah perilaku keamanan yang benar. Test diperbaiki agar mengharapkan 403 untuk write Auditor dan tetap mengharapkan 503 untuk GET Auditor serta GET/POST/PATCH role lain ketika policy store tidak tersedia. Middleware tidak dilonggarkan.
+- Commit test: `59157ee079256467b8cc23663b6c093ad5268c22`.
+- CI untuk commit baru menunggu; belum diklaim lulus.
+- Audit paralel peminjaman menemukan POST batch `/api/loans` memanggil `requestLoan()` satu per satu. Karena setiap pemanggilan langsung menambah loan, notification, audit, dan sequence, aset valid yang diproses lebih dulu berpotensi tertinggal bila aset berikutnya gagal. Perlu pre-validasi seluruh batch sebelum mutasi; belum diubah pada catatan ini.
+- Numbering UI masih localStorage dan belum menjadi konfigurasi server; format final tetap ditahan sampai standar perusahaan disetujui.
