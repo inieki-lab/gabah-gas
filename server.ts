@@ -2190,7 +2190,7 @@ async function startServer() {
     }
 
     // Update mutable fields (not asset_number or owner_division)
-    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'status', 'corporate_asset_number'];
+    const allowed = ['name', 'brand', 'model', 'serial_number', 'specifications', 'location', 'condition', 'notes', 'is_loanable', 'corporate_asset_number'];
     for (const key of allowed) {
       if (req.body[key] !== undefined) {
         (asset as any)[key] = req.body[key];
