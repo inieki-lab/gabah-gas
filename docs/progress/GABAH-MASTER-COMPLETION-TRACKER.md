@@ -2,7 +2,9 @@
 
 **Repository:** `github.com/inieki-lab/gabah-gas`
 **Branch:** `ai/hermes/authorization-endpoint-audit`
-**HEAD:** `2d7769cb`
+**Commit kode TAHAP 6 yang diaudit:** `ca4c4db0`
+**Commit dokumen koreksi:** `<DOC_COMMIT>`
+**Tip branch sebelum commit dokumen ini:** `039fa80d`
 **Dibuat:** 2026-11-26
 
 ---
@@ -16,7 +18,7 @@
 | **3** | 2026-11-26 | ✅ Selesai | `docs/progress/phase-03-rbac-dashboard.md` | 6 item baru | 3 item lama dinaik | 2 item baru | 1 item lama |
 | **4** | 2026-11-26 | ✅ Selesai | `docs/progress/phase-04-asset-inventory.md` | 3 item baru | 0 | 3 item baru | 0 |
 | **5** | 2026-11-26 | ✅ Selesai | `docs/progress/phase-05-asset-loan.md` | 2 item baru | 0 | 3 item baru | 1 item lama |
-| **6** | 2026-11-26 | ✅ Selesai | `docs/progress/phase-06-p0-remediation.md` | 5 item baru | 0 | 0 | 0 |
+| **6** | 2026-11-26 | ❌ **Belum selesai / merge ditahan** | `docs/progress/phase-06-p0-remediation.md` | 5 item (NEU-01, NEU-22, NEU-25, NEU-30, NEU-33); 2 di antaranya masih OPEN/salah | 0 | 0 | 0 |
 
 ---
 
@@ -156,33 +158,65 @@
 
 ---
 
+## TAHAP 6: P0 Remediation — BELUM SELESAI ❌
+
+**Output:** `docs/progress/phase-06-p0-remediation.md`  
+**Commit kode:** `ca4c4db0`  
+**Sifat:** Implementasi P0 + verifikasi. Dokumen ini telah dikoreksi setelah audit independen.
+
+### Status per item:
+
+| Item | Status sebenarnya | Bukti |
+|------|-------------------|-------|
+| **NEU-01** — `requireRbacPermission` saat PG mati | ❌ **FAIL / REGRESI** | `refreshRbacPolicy()` mengosongkan `policiesByUser` lalu return saat PG tidak aktif (`server/rbac-policy.ts:25-28`); `hasRbacPermission()` jadi `false` untuk semua user (`:99-102`). Uji `test:loan-authz`: 12 PASS / 25 FAIL; `assets.create` dan aksi loan sah mendapat 403. |
+| **NEU-22** — validasi `owner_division` | ⚠️ **Defensif saja** | Cabang `else` di `server/services.ts:382` praktis tidak terjangkau karena taxonomy selalu menghasilkan `owner_division` (kanonikal atau master kustom yang wajib diisi). Belum diuji runtime. |
+| **NEU-25** — sinkronisasi numbering | ⚠️ **PARTIAL** | Aset: `syncFromExistingAssets` (pre-existing). Kontrak: `server/db.ts:1964` (baru). Tiket/loan: hanya via `server.ts:41`; `seedInitialData()` mengirim `undefined`. Belum ada uji restart. |
+| **NEU-30** — validasi kategori tiket | ❌ **SALAH / OPEN** | `server/services.ts:956-968` membandingkan kategori dengan `actor.department`. Aturan bisnis: kategori menentukan tim penanganan, bukan departemen pelapor. Karyawan Finance harus bisa membuat tiket IT. |
+| **NEU-33** — `read_at` notifikasi | ⚠️ **Belum diuji runtime** | Interface + dua handler sudah diubah (`server/db.ts:309`, `server.ts:2801,2816`), tetapi belum ada uji runtime. |
+
+### Hasil verifikasi:
+
+- `npm run lint` ✅ lulus (tipe saja).
+- `npm run build` ✅ lulus (bundling saja).
+- `npm run test:loan-authz` ❌ **FAIL 12/37** — membuktikan regresi NEU-01 pada mode file-store.
+- Migration 004 E2E ❌ **BLOCKED** — PostgreSQL 17 tidak tersedia.
+- Uji restart numbering, notifikasi, mass assignment, dan persona lengkap ❌ **NOT TESTED**.
+
+### Kesimpulan:
+
+TAHAP 6 **tidak boleh ditandai selesai** dan branch **belum layak di-merge**. Lint/build bukan bukti runtime/E2E. Perbaikan wajib sebelum TAHAP 7: perbaiki/revert NEU-01, hapus aturan departemen NEU-30, tambahkan uji restart numbering, dan jalankan migration 004 pada PostgreSQL 17.
+
+---
+
 ## P0 Priority Belum Selesaian (Accumulative)
 
 | ID | Item | Tahap | Status |
 |----|------|-------|--------|
 | CR-01 | switch-role ke Admin tanpa token | 1 | ⚠️ Sudah diperbaiki: 401 jika tidak ada sesi, tapi hanya untuk superadmin |
 | CR-02 | Kredensial hardcoded | 1 | ✅ Sudah REDACTED di AUDIT_NOTES.md |
-| CR-03 | Session token ter-commit ke git | 1 | ⚠️ Masih menjadi masalah — gabah_state.json tidak ter-track di git (dilindungi .gitignore) |
+| CR-03 | Session token ter-commit ke git | 1 | ✅ `server/data/gabah_state.json` tidak ter-track; `.gitignore:15-16` melindunginya. Rotasi token repo tidak diperlukan; pengawasan production tetap wajib. |
 | CR-04 | Migrasi 004 gagal → PG mati | 1 | ❌ Masih bloker utama (PG tidak tersedia) |
 | CR-05 | Reminder kontrak otomatis | 1 | ❌ Masih manual-only |
-| CR-06 | Mass assignment field | 1 | ✅ Maintenance sudah ada whitelist, Contract & Room butuh pengecekan |
-| NEU-01 | `requireRbacPermission` bypass PG mati | 2 | ⚠️ Diserahankan implementasi fail-closed: function sekarang memeriksa `hasRbacPermission` saat PG down, namun memiliki keterbatasan — jika `policiesByUser` kosong (karena `refreshRbacPolicy()` sudah clear cache), maka semua user akan ditolak akses. Perbaikan ini memerlukan refactoring sistem policy RBAC untuk menambahkan status policy yang eksplisit sebelum fallback. |
+| CR-06 | Mass assignment field | 1 | ⚠️ Sebagian: maintenance/asset punya whitelist; contract & room belum menyeluruh/diuji E2E |
+| NEU-01 | `requireRbacPermission` bypass PG mati | 2/6 | ❌ **FAIL / REGRESI / OPEN**: perubahan fail-closed memanggil `hasRbacPermission()` saat PG tidak aktif, tetapi `refreshRbacPolicy()` sudah mengosongkan `policiesByUser`. Akibatnya semua user (termasuk Admin GABAH) ditolak 403 pada seluruh endpoint ber-guard. Bukti runtime: `test:loan-authz` 12 PASS / 25 FAIL. Wajib diperbaiki atau di-revert sebelum merge. |
 | NEU-03 | File size limit upload | 2 | ✅ Sudah ditambahkan validasi 10MB |
-| NEU-22 | Owner division validasi create asset | 4 | ✅ Sudah divalidasi: divisi non-IT/GA wajib dispesifikasikan di payload |
+| NEU-22 | Owner division validasi create asset | 4/6 | ⚠️ **Defensif saja**: cabang `else` ditambahkan, tetapi praktis tidak terjangkau karena taxonomy selalu menghasilkan `owner_division`; belum diuji runtime. Jangan diklaim sebagai perbaikan penuh. |
 | NEU-23 | Mass assignment di update asset | 4 | ⚠️ Whitelist field sudah ada di kode (lihat `allowed` list di PATCH /api/assets/:id), butuh verifikasi end-to-end manual |
-| NEU-25 | Asset numbering tidak tersinkronisasi | 4 | ✅ Sudah disinkronkan saat inisialisasi DB via `syncFromExistingRecords()` |
-| NEU-30 | Workflow ticktes create validasi kategori | 5 | ✅ Sudah divalidasi konsistensi kategori dengan departemen reporter |
-| NEU-33 | Workflow notif read-all timestamp pembacaan | 5 | ✅ Sudah ditambahkan field `read_at` ke interface dan kedua handler |
+| NEU-25 | Asset numbering tidak tersinkronisasi | 4/6 | ⚠️ **PARTIAL**: aset via `syncFromExistingAssets`; kontrak via `server/db.ts:1964`; tiket/loan hanya via `server.ts:41` (bukan di `seedInitialData()`). Belum ada uji restart untuk keempat jenis. |
+| NEU-30 | Workflow ticktes create validasi kategori | 5/6 | ❌ **SALAH / OPEN**: implementasi membandingkan kategori dengan departemen reporter. Kategori menentukan tim penanganan, bukan departemen pelapor; tiket lintas departemen yang sah ikut diblokir. Aturan ini harus dihapus. |
+| NEU-33 | Workflow notif read-all timestamp pembacaan | 5/6 | ⚠️ **Terimplementasi, belum diuji runtime**: `read_at` ditambahkan ke interface dan dua handler, tetapi belum ada uji HTTP yang memverifikasi nilainya. |
 
 ---
 
 ## Catatan Akhir
 
-- **Build & Lint:** Lulus (0 error) setiap commit
-- **Test Framework:** Tidak tersedia di environment ini — verifikasi via lint + build + analisis statis
-- **PostgreSQL:** Tidak tersedia di environment audit — migrasi 004 belum terverifikasi E2E
-- **Branch:** `ai/hermes/authorization-endpoint-audit` — semua perubahan tercommit dan dipush
-- **Aturan:** Tidak merge ke main, tidak force push, tidak menghapus branch
+- **Build & Lint:** Lulus (0 error), tetapi hanya membuktikan tipe dan bundling — **bukan** bukti otorisasi/runtime/E2E.
+- **Uji runtime yang dijalankan:** `npm run test:loan-authz` ❌ FAIL 12/37 — regresi NEU-01 pada mode file-store.
+- **Test Framework:** Tidak ada `npm test`; tersedia beberapa skrip verifikasi terarah (`test:loan-authz`, `test:dynamic-rbac-foundation`, dll.). Skrip yang dijalankan dicatat di laporan TAHAP 6.
+- **PostgreSQL:** Tidak tersedia di environment audit — migrasi 004 dan seluruh E2E PostgreSQL belum terverifikasi.
+- **TAHAP 6:** ❌ **Belum selesai / merge ditahan** — NEU-01 regresi, NEU-30 salah, NEU-25 partial, migration 004 blocked.
+- **Branch:** `ai/hermes/authorization-endpoint-audit` — perubahan dokumen dikomit dan dipush; tidak merge ke main.
+- **Aturan:** Tidak merge ke main, tidak force push/reset/rebase, tidak menghapus perubahan lokal, tidak memulai TAHAP 7.
 
 **Total Commit Semua Tahap:**
 1. `0c723186` — TAHAP 1: phase-01-baseline.md
@@ -192,6 +226,11 @@
 5. `9950cf84` — TAHAP 4: phase-04-asset-inventory.md
 6. `b87a860a` — TAHAP 5: phase-05-asset-loan.md
 7. `5a796977` — TAHAP 6: P0 remediation implementation + phase-06-p0-remediation.md
+8. `ca4c4db0` — TAHAP 6: implementasi kode P0 (NEU-01/22/25/30/33)
+9. `2d7769cb` — Catatan NEU-01 pada tracker
+10. `039fa80d` — Koreksi HEAD dan status NEU-01 (sebelum koreksi menyeluruh)
+11. `<DOC_COMMIT>` — Koreksi menyeluruh laporan TAHAP 6 dan tracker
+12. `<SHA_SYNC_COMMIT>` — Sinkronisasi baris SHA dokumen (tanpa perubahan isi lain)
 
 **Total Files Dibuat:**
 - `docs/progress/phase-01-baseline.md` — Inventarisasi baseline
@@ -199,10 +238,10 @@
 - `docs/progress/phase-03-rbac-dashboard.md` — Audit RBAC & dashboard
 - `docs/progress/phase-04-asset-inventory.md` — Inventaris aset & inventory
 - `docs/progress/phase-05-asset-loan.md` — Workflow modular & formulir
-- `docs/progress/phase-06-p0-remediation.md` — P0 remediation implementation report
-- `AUTHORIZATION-ENDPOINT-AUDIT-REPORT.md` — Laporan otorisasi endpoint awal
-- `docs/progress/GABAH-MASTER-COMPLETION-TRACKER.md` — Master progress tracker (diupload setiap tahap)
+- `docs/progress/phase-06-p0-remediation.md` — Laporan P0 remediation (dikoreksi)
+- `docs/progress/GABAH-MASTER-COMPLETION-TRACKER.md` — Master progress tracker
+- `AUTHORIZATION-ENDPOINT-AUDIT-REPORT.md` — Laporan otorisasi endpoint awal; **masih untracked** di working tree dan tidak termasuk commit koreksi ini
 
 --- 
 
-*Tracker ini diperbarui setiap tahap dan menjadi referensi utama status pekerjaan GABAH-GAS. Semua 5 tahap telah selesai dengan laporan yang komprehensif, diverifikasi kode, dan build/lint lulus.*
+*Tracker ini diperbarui setiap tahap dan menjadi referensi utama status pekerjaan GABAH-GAS. TAHAP 1–5 selesai sesuai laporan masing-masing. TAHAP 6 **belum selesai**: lint/build lulus, tetapi regresi NEU-01 dan temuan NEU-30 masih terbuka, NEU-25 baru partial, dan migration 004 masih BLOCKED.*
