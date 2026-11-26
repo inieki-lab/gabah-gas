@@ -25,6 +25,7 @@ import { Asset, Loan, Ticket, UserProfile, UserRole, AuditLog, RoomReservation }
 import { GabahService, formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
+import { isEmployeeFacingDashboardRole } from '../../dashboard/dashboardAudience';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -54,7 +55,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const currentRoleKeys = currentUser?.role_keys || [];
   const isHumas = currentRoleKeys.includes('humas') || currentUser?.role === 'Humas';
   const isSekdir = currentRoleKeys.includes('sekretaris_direksi') || currentUser?.role === 'Sekretaris Direksi';
-  const isStaff = currentUser?.role === 'Karyawan' || isHumas || isSekdir;
+  // Legacy location labels remain compatible as employee-facing accounts; they do not grant division-wide data scope.
+  const isStaff = isEmployeeFacingDashboardRole(currentUser?.role, currentRoleKeys);
   const isAuditor = GabahService.isAuditor(currentUser);
   
   const hasEffectivePermission = (permission: string, legacyRoles: string[] = []): boolean => {
@@ -102,6 +104,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const dashboardTickets = Array.isArray(tickets) ? tickets : [];
   const safeReservations = Array.isArray(roomReservations) ? roomReservations : [];
   const isGlobalDashboard = Boolean(currentUser.is_superadmin) || currentUser.role === 'Admin GABAH' || isAuditor;
+  const ownerAssetCounts = dashboardAssets.reduce<Record<string, number>>((counts, asset) => {
+    const owner = String(asset.owner_division || '').trim().toUpperCase();
+    if (owner) counts[owner] = (counts[owner] || 0) + 1;
+    return counts;
+  }, {});
+  const ownerAssetSummary = Object.entries(ownerAssetCounts)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([owner, count]) => `${owner}${['SC', 'PIBC'].includes(owner) ? ' (legacy owner — review)' : ''}: ${count}`)
+    .join(' • ');
+  const unclassifiedOwnerAssets = dashboardAssets.filter(asset => !String(asset.owner_division || '').trim()).length;
   const isDivisionDashboard = !isGlobalDashboard && hasOperationalManagementAccess;
   
   const visibleOwnerDomains = Array.from(new Set(
@@ -140,6 +152,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="flex items-center gap-1"><Laptop className="w-3 h-3" /> {assignedCount} ditugaskan</span>
             <span className="flex items-center gap-1"><CalendarClock className="w-3 h-3" /> {pendingLoans} menunggu</span>
           </div>
+          {isGlobalDashboard && (
+            <p className="mt-2 text-[11px] text-slate-500">
+              {ownerAssetSummary || 'Belum ada owner terklasifikasi'} • {unclassifiedOwnerAssets} tanpa owner
+            </p>
+          )}
         </div>
       );
     }
@@ -209,6 +226,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
             {isGlobalDashboard ? 'Dashboard KPI' : isDivisionDashboard ? `Dashboard ${divisionLabel}` : 'Dashboard Staf'}
           </h1>
+          {isAuditor && (
+            <p className="mt-2 inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-600">
+              <ShieldCheck className="h-4 w-4" /> Auditor — akses read-only. Aksi perubahan dinonaktifkan.
+            </p>
+          )}
           <p className="text-sm text-slate-500 mt-1">
             {isGlobalDashboard
               ? 'Ringkasan kinerja dan aktivitas terbaru seluruh unit.'
@@ -341,7 +363,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       {/* Role-aware action shortcuts */}
       {isGlobalDashboard && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <button
+          {canCreateLoan && <button
             onClick={onOpenNewLoanModal}
             className="p-4 rounded-2xl bg-white border border-[#E1EBE4] text-left hover:shadow-md transition-shadow"
           >
@@ -350,8 +372,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <h4 className="text-sm font-bold text-slate-900">Ajukan Pinjam</h4>
             <p className="text-xs text-slate-500 mt-1">Buat permohonan peminjaman barang</p>
-          </button>
-          <button
+          </button>}
+          {canCreateTicket && <button
             onClick={onOpenNewTicketModal}
             className="p-4 rounded-2xl bg-white border border-[#E1EBE4] text-left hover:shadow-md transition-shadow"
           >
@@ -360,8 +382,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <h4 className="text-sm font-bold text-slate-900">Beri Laporan</h4>
             <p className="text-xs text-slate-500 mt-1">Buat tiket helpdesk</p>
-          </button>
-          <button
+          </button>}
+          {canCreateAsset && <button
             onClick={onOpenNewAssetModal}
             className="p-4 rounded-2xl bg-white border border-[#E1EBE4] text-left hover:shadow-md transition-shadow"
           >
@@ -370,7 +392,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <h4 className="text-sm font-bold text-slate-900">Daftarkan Aset</h4>
             <p className="text-xs text-slate-500 mt-1">Registrasi aset baru</p>
-          </button>
+          </button>}
           <button
             onClick={() => onNavigate('reports')}
             className="p-4 rounded-2xl bg-white border border-[#E1EBE4] text-left hover:shadow-md transition-shadow"
