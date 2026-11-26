@@ -169,8 +169,6 @@ async function main() {
 
     // ---------- Test E/F phase 1: snapshot numbers + baca JSON fallback ----------
     const phase1 = (await req(s1.base, 'GET', '/api/assets', { token: admin })).json?.data || [];
-    const num1 = Object.fromEntries(phase1.map(a => [a.id, a.asset_number]));
-    const unit1 = Object.fromEntries(phase1.map(a => [a.id, a.managing_unit_id ?? null]));
     let fileAssets = [];
     try { fileAssets = JSON.parse(fs.readFileSync(sf, 'utf8')).assets || []; } catch { }
     const allHaveKey = fileAssets.length > 0 && fileAssets.every(a => Object.prototype.hasOwnProperty.call(a, 'managing_unit_id'));
@@ -184,10 +182,6 @@ async function main() {
     // ================= PHASE 2 (restart dengan state phase 1) =================
     // Phase 2 runs without PostgreSQL to verify the JSON file-store roundtrip.
     s2 = await boot(sp, 39600 + Math.floor(Math.random() * 500), env, { DATABASE_URL: '', PGHOST: '', DOTENV_CONFIG_PATH: '/dev/null' });
-    const phase2Health = await req(s2.base, 'GET', '/api/health');
-    const phase2Persistence = phase2Health.json?.persistence || 'unknown';
-    rec('Phase 2 benar-benar memakai file-store', 'file-store (development fallback)',
-      phase2Persistence, phase2Persistence.startsWith('file-store'));
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const phase2Health = await req(s2.base, 'GET', '/api/health');
     const phase2Persistence = phase2Health.json?.persistence || 'unknown';
@@ -214,7 +208,6 @@ async function main() {
     rec('F2: managing_unit_id selamat lewat hydrate ulang (roundtrip)', 'fingerprint unit identik',
       sameAssetSnapshot ? 'identik' : 'berubah', sameAssetSnapshot);
 
-    const createdInFile = fileAssets.find(a => a.id === created1?.id);
     rec('F3: aset buatan (UNIT-PIBC) tetap setelah restart', 'UNIT-PIBC',
       `${createdInFile?.managing_unit_id}`, sameAssetSnapshot && createdInFile?.managing_unit_id === 'UNIT-PIBC');
 
