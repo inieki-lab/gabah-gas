@@ -953,19 +953,10 @@ export class GabahDomainService {
     if (!VALID_TICKET_CATEGORIES.includes(payload.category as any)) {
       throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak terdaftar. Kategori resmi: ${VALID_TICKET_CATEGORIES.join(', ')}.`), { statusCode: 400 });
     }
-    // NEU-30: Validasi kategori tiket harus konsisten dengan divisi/tujuan penanganan.
-    // Pastikan kategori sesuai dengan departemen/reporter atau target divisi yang ditetapkan.
-    const reporterDept = String(actor.department || '').trim().toUpperCase();
-    const categoryDivMap: Record<string, string> = {
-      'IT': 'IT',
-      'GA': 'GA',
-      'SC': 'SC',
-      'PIBC': 'PIBC',
-    };
-    const expectedDept = categoryDivMap[payload.category as keyof typeof categoryDivMap];
-    if (expectedDept && reporterDept && !reporterDept.includes(expectedDept) && reporterDept !== expectedDept) {
-      throw Object.assign(new Error(`Kategori tiket "${payload.category}" tidak sesuai dengan departemen reporter "${reporterDept}". Kategori "${expectedDept}" diperlukan untuk penanganan ini.`), { statusCode: 400 });
-    }
+    // NEU-30: kategori menentukan antrean/tim penanganan, bukan departemen pelapor.
+    // Semua pegawai yang berwenang membuat tiket boleh melaporkan masalah lintas
+    // departemen (mis. Finance membuat tiket IT). Validasi kategori resmi di atas
+    // tetap mencegah tiket masuk ke antrean yang tidak dikenal.
     const VALID_PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
     if (!VALID_PRIORITIES.includes(payload.priority as any)) {
       throw Object.assign(new Error(`Prioritas "${payload.priority}" tidak valid. Pilihan: ${VALID_PRIORITIES.join(', ')}.`), { statusCode: 400 });
