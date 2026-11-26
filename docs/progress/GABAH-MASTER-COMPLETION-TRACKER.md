@@ -314,3 +314,37 @@ Tindak lanjut:
 5. CR-06: allowlist kontrak sudah diterapkan; endpoint lain tetap perlu pengujian mass-assignment menyeluruh.
 
 **TAHAP 6 belum ditutup. Merge ke main tetap ditahan. TAHAP 7 belum dimulai.**
+
+---
+
+## Update perbaikan ruang rapat — 26 November 2026
+
+**Branch:** `ai/hermes/authorization-endpoint-audit`  
+**Commit implementasi:** `5b7db99897049a2d4091577d92c36c721af660de`
+
+### Temuan CI dan tindakan
+
+Pada GitHub Actions run `45799447862`, pemeriksaan sebelumnya menunjukkan 14/18 PASS dan 4 FAIL pada skenario ruang rapat:
+
+- Organizer yang sah gagal check-in (403).
+- Rapat yang sedang berlangsung tidak terlindungi dari override jadwal (201, seharusnya 409).
+- Organizer yang sah gagal check-out (403).
+- Percobaan check-out kedua menghasilkan 403, bukan konflik status 409.
+
+Akar masalah: route check-in/check-out menerapkan permission gate global sebelum domain service, padahal aturan domain mengizinkan organizer melakukan aksi atas reservasinya sendiri. Domain service sudah memeriksa kepemilikan/izin GA dan state transition.
+
+### Perubahan kode
+
+- Menghapus permission gate global `room_reservations.checkin` dan `room_reservations.checkout` pada dua route.
+- Tetap mewajibkan autentikasi melalui session middleware dan `getActor()`.
+- Otorisasi kepemilikan reservasi/izin GA dan status reservasi tetap ditegakkan di `checkinRoomReservation()` / `checkoutRoomReservation()`.
+- Dengan check-in organizer berhasil, status menjadi `in_use`; pemeriksaan benturan yang sudah ada di `requestRoomReservation()` akan menolak override jadwal yang bertabrakan dengan status `in_use`.
+
+### Verifikasi
+
+- Belum ada hasil CI untuk commit perbaikan saat catatan ini ditulis.
+- Tidak mengklaim 18/18 PASS sebelum workflow terbaru selesai.
+- Uji anon check-in tetap harus 401; pengguna lain tetap harus 403; organizer check-out kedua harus 409.
+- TAHAP 6 tetap OPEN sampai seluruh pemeriksaan CI dan temuan P0 lain dituntaskan.
+
+**Status merge:** ditahan; tidak ada merge ke `main`.
