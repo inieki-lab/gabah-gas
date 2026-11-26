@@ -2891,22 +2891,35 @@ async function startServer() {
     res.json({ success: true, data: reconData });
   });
 
-  app.post('/api/reconciliation/link', (req, res) => {
-    
+  app.post('/api/reconciliation/link', async (req, res) => {
     if (!requireRbacPermission(req, res, 'reconciliation.link')) return;
     const actor = getActor(req);
-    const { assetId, corporateAssetNumber } = req.body;
+    const assetId = typeof req.body?.assetId === 'string' ? req.body.assetId.trim() : '';
+    const rawCorporateNumber = req.body?.corporateAssetNumber;
+    if (rawCorporateNumber !== undefined && rawCorporateNumber !== null && typeof rawCorporateNumber !== 'string') {
+      return res.status(400).json({ success: false, message: 'Nomor aset Accurate harus berupa teks.' });
+    }
+    const corporateAssetNumber = typeof rawCorporateNumber === 'string' ? rawCorporateNumber.trim() : '';
+    if (corporateAssetNumber.length > 120) {
+      return res.status(400).json({ success: false, message: 'Nomor aset Accurate maksimal 120 karakter.' });
+    }
     const asset = db.assets.find(a => a.id === assetId);
     if (!asset) return res.status(404).json({ success: false, message: 'Aset tidak ditemukan' });
     if (!canMutateAssetOwner(actor, asset.owner_division, 'assets.update')) {
       return res.status(403).json({ success: false, message: 'Akses ditolak: Anda tidak memiliki permission dan owner scope untuk mengubah data aset ini.' });
     }
+    const duplicate = corporateAssetNumber
+      ? db.assets.find(a => a.id !== asset.id
+        && String(a.corporate_asset_number || '').trim().toLowerCase() === corporateAssetNumber.toLowerCase())
+      : undefined;
+    if (duplicate) {
+      return res.status(409).json({ success: false, message: `Nomor aset Accurate "${corporateAssetNumber}" sudah terhubung ke aset ${duplicate.asset_number}.` });
+    }
 
-    asset.corporate_asset_number = corporateAssetNumber ? corporateAssetNumber.trim() : null;
+    asset.corporate_asset_number = corporateAssetNumber || null;
     asset.updated_at = new Date().toISOString();
-
     GabahDomainService.recordAudit('RECONCILIATION_LINK', 'Assets', `Menautkan nomor aset Accurate "${corporateAssetNumber}" ke ${asset.asset_number}`, actor, asset.id);
-
+    await persistDataStore();
     res.json({ success: true, data: asset });
   });
 
