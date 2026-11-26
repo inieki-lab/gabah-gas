@@ -447,3 +447,13 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Commits: `05728d384175d27db1cc56122c4062936810d6e6`, `3ceb04a8db0fe3ada45b28f1f9f6a71d899a787d`, `99543f6417adaf339f7ccfa5860acc26cd9fa3aa`, `92be72c417373b3b908e24d59e7605ab78c5bfe8`.
 - Typecheck/build/dashboard regression menunggu CI exact HEAD.
 - Backend authorization tidak berubah; tombol UI bukan pengganti server-side permission guard.
+
+
+## 2026-11-26 — Landing page mengikuti modul yang benar-benar diizinkan
+
+- Temuan audit: App selalu fallback ke tab `dashboard` bila tab aktif tidak diizinkan. Custom role yang hanya memiliki permission modul tertentu (mis. `assets.read` atau `tickets.read`) tetap dipaksa membuka Dashboard yang tidak memiliki permission; bila tidak ada permission sama sekali, UI juga tidak menjelaskan kondisi tersebut.
+- Perubahan: `getDefaultNavTabForRole()` memilih modul pertama yang diizinkan menurut urutan landing yang konsisten (Dashboard, Aset Saya, Ruang Rapat, Tiket, Peminjaman, lalu modul operasional lainnya). Jika tidak ada permission, portal menampilkan pesan bahwa akun belum diberi akses modul, bukan menyamarkan akses dengan Dashboard.
+- Regression tests: custom role dengan assets.read → Aset Saya; tickets.read → Tiket; dashboard.read → Dashboard; permission kosong → null; wildcard → Dashboard.
+- Commits: `5b751aef8b62d009eb928a8c8286f3f7df56b306`, `e841eab8889fb20100c2243c1a53c0e237df8c33`, `b1b61e3a98bdb12477a727fe9b2227b228bd969e`.
+- Typecheck/build/navigation regression menunggu CI exact HEAD.
+- Tidak mengubah backend authorization atau data; tidak merge ke `main`.
