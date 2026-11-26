@@ -3008,6 +3008,10 @@ async function startServer() {
       if (!hasValidContractDocumentSignature(file)) {
         return res.status(400).json({ success: false, message: 'Isi file tidak sesuai dengan tipe dokumen yang diizinkan.' });
       }
+      // SEC-08: Batas ukuran file maksimal 10MB untuk mencegah DoS pada server storage
+      if (file.size > 10 * 1024 * 1024) {
+        return res.status(400).json({ success: false, message: 'Ukuran file terlalu besar. Maksimal 10MB.' });
+      }
       const contract = db.contracts.find(c => c.id === contractId);
       if (!contract) {
         return res.status(404).json({ success: false, message: 'Kontrak tidak ditemukan.' });
