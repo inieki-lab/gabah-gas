@@ -2503,14 +2503,10 @@ async function startServer() {
 
   app.post('/api/maintenances', (req, res) => {
     const actor = getActor(req);
-    // RBAC: mode file-store mempertahankan allowlist legacy (Admin GABAH / IT /
-    // GA) secara eksplisit; mode PostgreSQL beralih ke permission dinamis
-    // `maintenances.create` (Stage 13F, seed 020 mirror daftar yang sama).
-    if (isPostgresPersistenceActive()) {
-      if (!requireRbacPermission(req, res, 'maintenances.create')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengelola jadwal servis.' });
-    }
+    // Maintenance writes require the authoritative RBAC policy store in every
+    // runtime mode. Do not fall back to legacy role-name allowlists when
+    // PostgreSQL is unavailable; requireRbacPermission fails closed with 503.
+    if (!requireRbacPermission(req, res, 'maintenances.create')) return;
     if (!req.body.asset_id) {
       return res.status(400).json({ success: false, message: 'Aset wajib dipilih untuk jadwal pemeliharaan.' });
     }
@@ -2556,13 +2552,10 @@ async function startServer() {
 
   app.patch('/api/maintenances/:id', (req, res) => {
     const actor = getActor(req);
-    // RBAC: file-store mempertahankan allowlist legacy; PostgreSQL beralih ke
-    // permission dinamis `maintenances.update` (Stage 13F, seed 020 mirror).
-    if (isPostgresPersistenceActive()) {
-      if (!requireRbacPermission(req, res, 'maintenances.update')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: hanya Admin GABAH, IT, atau GA yang berwenang mengubah jadwal servis.' });
-    }
+    // Maintenance writes require the authoritative RBAC policy store in every
+    // runtime mode. Do not fall back to legacy role-name allowlists when
+    // PostgreSQL is unavailable; requireRbacPermission fails closed with 503.
+    if (!requireRbacPermission(req, res, 'maintenances.update')) return;
     const schedule = db.maintenances.find(m => m.id === req.params.id);
     if (!schedule) return res.status(404).json({ success: false, message: 'Jadwal servis tidak ditemukan' });
 
