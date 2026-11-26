@@ -207,7 +207,7 @@ async function main() {
 
     // ================= Snapshot untuk roundtrip =================
     const beforeRestart = ((await req(s1.base, 'GET', '/api/assets', { token: admin })).json?.data || [])
-      .map(a => ({ id: a.id, n: a.asset_number, c: a.corporate_asset_number, l: a.asset_location_id, o: a.owner_division, u: a.managing_unit_id }));
+      .map(a => ({ id: a.id, n: a.asset_number, c: a.corporate_asset_number, l: a.asset_location_id, o: a.owner_division, u: a.managing_unit_id, category_code: a.category_code, is_loanable: a.is_loanable }));
     const mastersBefore = (await req(s1.base, 'GET', '/api/master/asset-locations', { token: admin })).json?.data || [];
     kill(s1.c);
     await new Promise(r => setTimeout(r, 400));
@@ -217,29 +217,39 @@ async function main() {
     // bukan mengulang persistence PostgreSQL yang sudah diuji suite integrasi CR-04/CR-05.
     s2 = await boot(sp, 39700 + Math.floor(Math.random() * 200), env, { DATABASE_URL: '', PGHOST: '', DOTENV_CONFIG_PATH: '/dev/null' });
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
-    const assets2 = (await req(s2.base, 'GET', '/api/assets', { token: admin2 })).json?.data || [];
-    const masters2 = (await req(s2.base, 'GET', '/api/master/asset-locations', { token: admin2 })).json?.data || [];
-    const key = (a) => `${a.id}|${a.n}|${a.c}|${a.l}|${a.o}|${a.u}`;
-    const assets2keyed = assets2.map(a => ({ id: a.id, n: a.asset_number, c: a.corporate_asset_number, l: a.asset_location_id, o: a.owner_division, u: a.managing_unit_id }));
-    const sameAssets = beforeRestart.length === assets2keyed.length &&
-      beforeRestart.every(a => assets2keyed.some(b => key(b) === key(a)));
-    const diffSample = beforeRestart
-      .filter(a => !assets2keyed.some(b => key(b) === key(a)))
-      .map(a => {
-        const now = assets2keyed.find(b => b.id === a.id);
-        return now ? `now=${key(now)} (was ${key(a)})` : `hilang: ${key(a)}`;
-      }).slice(0, 3).join(' ; ');
-    rec('12a: JSON fallback mempertahankan relasi lokasi & snapshot aset (restart)', 'identik',
-      `${beforeRestart.length} vs ${assets2keyed.length} aset, sama=${sameAssets}${diffSample ? ' | ' + diffSample : ''}`, sameAssets);
-    const mKey = (l) => `${l.id}|${l.name}|${l.parent_id}|${l.is_active}`;
-    const sameMasters = mastersBefore.length === masters2.length &&
-      mastersBefore.every(l => masters2.some(b => mKey(b) === mKey(l)));
-    rec('12b: master lokasi bertahan lewat hydrate (termasuk yang dinonaktifkan)', 'identik',
-      `${mastersBefore.length} lokasi, sama=${sameMasters}`, sameMasters);
+    const phase2Health = await req(s2.base, 'GET', '/api/health');
+    const phase2Persistence = phase2Health.json?.persistence || 'unknown';
+    rec('12-0: phase restart benar-benar memakai file-store', 'file-store (development fallback)',
+      phase2Persistence, phase2Persistence.startsWith('file-store'));
+    rec('12-0b: admin dapat login pada file-store', 'token valid', admin2 ? 'token valid' : 'login gagal', Boolean(admin2));
 
-    // Idempotensi backfill di boot kedua: tidak ada relasi yang "berubah sendiri"
-    const unmapped2 = assets2.filter(a => a.asset_location_id === undefined).length;
-    rec('12c: backfill idempoten (boot ulang tidak mengubah hasil)', '0 undefined', `undefined=${unmapped2}`, unmapped2 === 0);
+    // RBAC business endpoints intentionally fail closed without PostgreSQL;
+    // compare non-sensitive hydration fingerprints emitted by persistence boot.
+    const assetRows = beforeRestart.map(a => [
+      a.id, a.n, a.c ?? null, a.o, a.u ?? null, a.l ?? null,
+      a.category_code ?? null, a.is_loanable ?? null,
+    ]).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    const expectedAssetsHash = crypto.createHash('sha256').update(JSON.stringify(assetRows)).digest('hex');
+    const locationRows = mastersBefore.map(l => [
+      l.id, l.name, l.parent_id ?? null, l.is_active,
+    ]).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    const expectedLocationsHash = crypto.createHash('sha256').update(JSON.stringify(locationRows)).digest('hex');
+    const hydration = s2.log().match(/File-store hydration summary: source=standalone; assets=(\d+); assets_sha256=([a-f0-9]{64}); asset_locations=(\d+); asset_locations_sha256=([a-f0-9]{64})/);
+    const assetsHydrated = Boolean(hydration)
+      && Number(hydration[1]) === beforeRestart.length
+      && hydration[2] === expectedAssetsHash;
+    const locationsHydrated = Boolean(hydration)
+      && Number(hydration[3]) === mastersBefore.length
+      && hydration[4] === expectedLocationsHash;
+    rec('12a: JSON fallback mempertahankan relasi lokasi & snapshot aset (restart)', 'fingerprint identik',
+      `assets=${hydration?.[1] || 0}/${beforeRestart.length}, sama=${assetsHydrated}`, assetsHydrated);
+    rec('12b: master lokasi bertahan lewat hydrate (termasuk yang dinonaktifkan)', 'fingerprint identik',
+      `lokasi=${hydration?.[3] || 0}/${mastersBefore.length}, sama=${locationsHydrated}`, locationsHydrated);
+
+    // Idempotensi backfill di boot kedua: fingerprint mempertahankan nilai relasi
+    const unmappedBefore = beforeRestart.filter(a => a.l === undefined).length;
+    rec('12c: backfill idempoten (boot ulang tidak mengubah hasil)', '0 undefined',
+      `undefined=${unmappedBefore}`, assetsHydrated && unmappedBefore === 0);
 
     const p = R.filter(x => x.p).length;
     console.log('\n=== T2B-2 ASSET LOCATION VERIFY ===');
