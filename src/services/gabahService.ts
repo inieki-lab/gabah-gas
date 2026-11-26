@@ -1,4 +1,5 @@
 import { isExactIdentityNameMatch } from '../utils/identityMatching';
+import { resolveDashboardPersona } from '../dashboard/roleDashboardScope';
 
 import { Asset, AssetStatus, AssetCondition, Loan, Ticket, UserProfile, UserRole, RoomReservation, MeetingFacilityItem } from '../types';
 
@@ -632,55 +633,50 @@ export class GabahService {
 
   static canManageTickets(user?: UserProfile): boolean {
     if (!user) return false;
-    return ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(user.role);
+    const persona = resolveDashboardPersona(user);
+    if (persona.isAuditor) return false;
+    if (Array.isArray(user.permission_keys)) {
+      return user.permission_keys.includes('*')
+        || ['tickets.update', 'tickets.assign', 'tickets.close'].some(key => user.permission_keys!.includes(key));
+    }
+    return persona.isSuperadmin || persona.isIT || persona.isGA
+      || user.role === 'Supply Chain' || user.role === 'PIBC';
   }
 
   /**
-   * Rule:
-   * "di semua user kecuali IT dan super admin dan GA (jika tiket ditujukan ke GA) 
-   * informasi tiket yg bukan pelapor ybs jgn dimunculkan di menu tiket helpdesk, yg yg muncul hanya tiket nya sendiri"
+   * The API already returns tickets filtered by effective PostgreSQL scopes.
+   * Do not apply a second, role-label filter in the browser: a Karyawan with
+   * additional IT/GA/custom scopes must retain the tickets the server allowed.
    */
   static isTicketVisibleToUser(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
+    if (Array.isArray(user.permission_keys)) return true;
 
-    // 1. IT and Super Admin (Admin GABAH) can see all tickets
-    if (user.role === 'Admin GABAH' || user.role === 'IT') {
-      return true;
-    }
-
-    // 1b. Auditor: strict read-only visibility over ALL tickets (never able to mutate)
-    if (user.role === 'Auditor') {
-      return true;
-    }
-
+    const persona = resolveDashboardPersona(user);
+    if (persona.isGlobalDashboard || persona.isIT) return true;
     const currentUserId = user.id || '';
     const isReporter = Boolean(
       (ticket.reporter_id && ticket.reporter_id === currentUserId) ||
       isExactIdentityNameMatch(ticket.reporter_name, user.name)
     );
-
-    // 2. GA: can see tickets directed to GA (category 'GA'), or tickets reported by GA user themselves
-    if (user.role === 'GA') {
-      return ticket.category === 'GA' || isReporter;
-    }
-
-    // 2b. Operational divisions: see tickets directed to their division plus their own tickets
-    if (user.role === 'Supply Chain') {
-      return (ticket.category as string) === 'SC' || isReporter;
-    }
-    if (user.role === 'PIBC') {
-      return (ticket.category as string) === 'PIBC' || isReporter;
-    }
-
-    // 3. All other users (Karyawan, Humas, Sekretaris Direksi, Supply Chain, PIBC, Auditor, etc.):
-    // ONLY see tickets where they are the reporter
+    if (persona.isGA) return ticket.category === 'GA' || isReporter;
+    // Legacy file-store compatibility only. SC/PIBC office locations are not
+    // inferred as functional roles in PostgreSQL RBAC mode.
+    if (user.role === 'Supply Chain') return (ticket.category as string) === 'SC' || isReporter;
+    if (user.role === 'PIBC') return (ticket.category as string) === 'PIBC' || isReporter;
     return isReporter;
   }
 
   static canManageTicket(ticket: Ticket, user?: UserProfile | null): boolean {
     if (!user || !ticket) return false;
-    if (user.role === 'Admin GABAH' || user.role === 'IT') return true;
-    if (user.role === 'GA' && ticket.category === 'GA') return true;
+    const persona = resolveDashboardPersona(user);
+    if (persona.isAuditor) return false;
+    if (Array.isArray(user.permission_keys)) {
+      const has = (key: string) => user.permission_keys!.includes('*') || user.permission_keys!.includes(key);
+      return has('tickets.update') || has('tickets.assign') || has('tickets.close');
+    }
+    if (persona.isSuperadmin || persona.isIT) return true;
+    if (persona.isGA && ticket.category === 'GA') return true;
     if (user.role === 'Supply Chain' && ticket.category === 'SC') return true;
     if (user.role === 'PIBC' && (ticket.category as any) === 'PIBC') return true;
     return false;
