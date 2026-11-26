@@ -492,3 +492,12 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Commit test: `ed077f7feb4319ad734556213f21e60d2a5df8f9`.
 - Koreksi catatan rekonsiliasi: sebelumnya disebut tidak ada persistensi. Pemeriksaan lebih teliti menunjukkan `recordAudit()` memicu `persistDataStore()` secara asynchronous; masalahnya handler tidak menunggu penyelesaian persistensi sebelum mengembalikan sukses. Handler kini menunggu promise, sekaligus menambah validasi tipe/duplikasi nomor ERP.
 - CI exact HEAD masih menunggu.
+
+
+## 2026-11-26 — Domain services mengikuti role tambahan, bukan label role primer
+
+- Audit lanjutan menemukan tiga hard-code yang bertentangan dengan model primary role + job capabilities: GA workstation read exception hanya aktif jika `user.role === 'GA'`; pengelolaan meeting facilities memeriksa `actor.role` IT/GA; auto-approval agenda Direksi memeriksa label primer Sekretaris Direksi.
+- Perbaikan: IT workstation read-only ditentukan permission efektif `assets.read.it_workstations`; create/update/delete meeting facilities memakai `meeting_facilities.manage` melalui helper `hasRoomPermission` (legacy fallback GA/IT tetap dipertahankan); auto-approval reservasi mengikuti capability `room_reservations.override_priority` yang sudah menjadi dasar prioritas/interupsi.
+- Static regression ditambah untuk memastikan tidak kembali ke pemeriksaan label role primer.
+- Commits: `c7f1d6d70a1b6c3b01df29cc35fddb196efc2258` (service), `98bee040447f56fcc7a72d655120da675d396799` (test).
+- CI exact HEAD belum selesai.
