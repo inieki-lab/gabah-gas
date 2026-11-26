@@ -395,3 +395,15 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Commit T2B-3: `4ab947bf5923efde1469f0285617ddc7d5ae18c6`.
 - CI untuk perubahan ini sedang berjalan; hasil baru belum tersedia. Run sebelumnya: T2B-1 18/18 PASS, T2B-2 21/22 PASS; T2B-3 belum tercapai karena workflow berhenti pada T2B-2.
 - Tidak ada merge ke `main`.
+
+
+## 2026-11-26 — Isolasi PostgreSQL fase JSON restart (lanjutan)
+
+- Temuan dari CI run `45819443903`: T2B-1 13/18 PASS, lima assertion fase restart gagal (19 aset menjadi 0 setelah boot kedua). Bukan kehilangan data yang sudah terbukti di aplikasi: harness hanya mengosongkan `DATABASE_URL`, sementara resolver koneksi juga menganggap `PGHOST` sebagai konfigurasi database independen. Nilai `PGHOST` dari dotenv dapat membuat fase kedua tetap mencoba PostgreSQL.
+- Perubahan: fase restart T2B-1/2/3 kini mengosongkan **keduanya** `DATABASE_URL` dan `PGHOST`, sehingga mode file-store dipilih secara deterministik. Kode aplikasi tidak diubah.
+- Commit T2B-1: `529cacab9debfbca3cd269baa8317976720556bb`.
+- Commit T2B-2: `fc2c8ddc7e9b462d3bf09a31d9b12dc83e0c99f4`.
+- Commit T2B-3: `9e0c1469d3babba7bc0278cfe5980b6b2a2a7fea`.
+- CI untuk ketiga suite pada exact HEAD masih menunggu. Jangan menyatakan roundtrip lulus sebelum seluruh assertion fase restart hijau.
+- Paralel: pemeriksaan source RBAC/navigation menemukan pemisahan yang disengaja antara `assets.read` (ruang kerja personal) dan `assets.catalog.read`/`assets.audit.read` (katalog penuh); tidak mengubah policy ini karena sesuai desain dan permission seed.
+- Tidak ada merge ke `main`.
