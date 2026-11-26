@@ -5,6 +5,8 @@ const server = fs.readFileSync('server.ts', 'utf8');
 const routes = server.slice(server.indexOf('  // Notifications'), server.indexOf('  // Dashboard Stats & Attention Center'));
 
 assert.match(server, /const notificationRoleKey = \(label: string\): string =>/);
+assert.match(server, /if \(isPostgresPersistenceActive\(\)\) \{\s*return getEffectiveRoleKeys\(String\(actor\.id\)\)\.includes\(roleKey\);\s*\}\s*return actor\.role === legacyLabels\[roleKey\];/);
+assert.doesNotMatch(server, /if \(actor\.role === legacyLabels\[roleKey\]\) return true;/);
 assert.match(server, /const isNotificationRecipient = \(actor: ServerUser, notification: any\): boolean =>/);
 assert.match(server, /if \(notification\.recipient_user_id\) return notification\.recipient_user_id === actor\.id;/);
 assert.match(server, /hasApplicationRole\(actor, notificationRoleKey\(notification\.recipient_role\)\)/);
