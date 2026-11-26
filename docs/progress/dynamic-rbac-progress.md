@@ -719,3 +719,13 @@ Keputusan ini memperjelas model organisasi/aset dan **menggantikan asumsi terlal
 - The loan card now displays the actual `owner_division` as the approval authority instead of assuming every non-IT asset belongs to GA.
 - Expanded `scripts/loan-authz-verify.mjs`: Superadmin approval, IT/GA owner-scope approval, denial for Humas without approval authority, and read-model action visibility for Superadmin, borrower, and IT custodian.
 - CI already includes `npm run test:loan-authz`; the expanded test is covered by that gate. Exact-head CI and browser UAT are still pending and must pass before this work is called verified.
+
+
+### Revalidation checkpoint — 2026-11-26
+
+- Rechecked PR #36 (`fix/user-menu-location-rbac-audit`) after the parallel owner-scope, loan, and dashboard work.
+- The branch still contains the Dynamic RBAC menu/action and ticket-routing work, including explicit ticket assignment permission, direct-to-single-IT-support routing, ME unit queue semantics, and server-computed loan `allowed_actions`.
+- The branch is still open and has not been merged. Its current head does not have a workflow run returned by the GitHub commit-run lookup; therefore CI is **unverified**, not PASS.
+- Browser UAT remains required for Superadmin + additional operational role, ordinary employee, IT Support, GA dispatcher, ME dispatcher, Humas, and Sekretaris Direksi.
+- Do not merge this branch solely because its historical regression scripts or comments describe earlier successful checks. Reconcile with current `main`, trigger exact-head CI, and resolve merge conflicts before integration.
+- No production database or user data was accessed or modified.
