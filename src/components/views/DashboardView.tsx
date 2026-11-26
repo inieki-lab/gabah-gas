@@ -552,13 +552,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <p className="text-xs text-slate-500 max-w-md mx-auto">
                     Anda belum memiliki pengajuan peminjaman aset saat ini. Anda dapat meminjam mobil dinas, laptop cadangan, atau ruangan rapat.
                   </p>
-                  <button
-                    onClick={onOpenNewLoanModal}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Ajukan Peminjaman Sekarang
-                  </button>
+                  {canCreateLoan && (
+                    <button
+                      onClick={onOpenNewLoanModal}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-all shadow-xs"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Ajukan Peminjaman Sekarang
+                    </button>
+                  )}
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -639,12 +641,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <p className="text-[11px] text-slate-500">
                   Seluruh perangkat dan fasilitas Anda dalam kondisi prima.
                 </p>
-                <button
-                  onClick={onOpenNewTicketModal}
-                  className="mt-2 text-xs font-bold text-emerald-700 hover:underline inline-block"
-                >
-                  + Lapor Kendala Baru
-                </button>
+                {canCreateTicket && (
+                  <button
+                    onClick={onOpenNewTicketModal}
+                    className="mt-2 text-xs font-bold text-emerald-700 hover:underline inline-block"
+                  >
+                    + Lapor Kendala Baru
+                  </button>
+                )}
               </div>
             ) : (
               <div className="space-y-3">
