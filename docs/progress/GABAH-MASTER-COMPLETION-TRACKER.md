@@ -604,3 +604,10 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Perbaikan: `getScopedAssets()` menerima opsi `includeReadOnlyItWorkstations`; route maintenance mematikannya. Pada PostgreSQL, daftar maintenance mengikuti dynamic asset scopes tanpa filter primary-role employee/GA. Fallback file-store mempertahankan filter legacy.
 - Regression static memverifikasi pemisahan scope ini. Commits: `56ae83b617263d09c462e935564bfc39823ac9f2` (domain service), `919527da89a0f06be6fb01dfb5710c0dfe92d1f3` (route), `934823e7a78d0ffce9404fce6cf75bfdb201fe9e` (test).
 - Live maintenance auth suite tetap memverifikasi legacy fallback; PostgreSQL dynamic behavior diuji melalui static contract dan akan diverifikasi lagi di CI.
+
+
+## 2026-11-26 — Maintenance tidak mewarisi visibilitas pool peminjaman
+
+- Review lanjutan menemukan `getScopedAssets()` juga memasukkan aset loanable pool untuk baseline Karyawan. Setelah filter primary-role maintenance dihapus agar IT tambahan dapat melihat jadwal IT, pool loanable yang tidak ditugaskan berpotensi ikut terlihat.
+- Perbaikan: opsi `includeLoanablePoolForEmployee` ditambahkan ke `getScopedAssets()`; maintenance mematikannya bersama exception workstation read-only. Aset personal yang ditugaskan dan seluruh dynamic owner/unit/location scopes tetap dipertahankan.
+- Static regression ditambah. Commits: `375ff497c4c90aec0aa1c173f658efffc35da1ea`, `70efa3a734b5990816bb15f9ed08d8cab6309c1c`, `546bc73334c29a04358d05168d3373c5c942a424`.
