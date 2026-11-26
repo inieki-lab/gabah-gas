@@ -22,6 +22,12 @@
 - No local browser test, PostgreSQL test, or production data change was performed.
 - This work does not delete user records. It corrects stale UI state when the server's authoritative result is empty.
 
+
+## CI compatibility note
+
+- The first exact-head CI run (`45756205575`) reached the asset lifecycle regression and failed because the stacked base still contained an older assertion expecting only `approved` and `borrowed`. The asset custody implementation and the 14 new asset/dashboard/contract checks passed.
+- Updated the inherited assertion on this branch to expect the four custody states (`active`, `approved`, `borrowed`, `overdue`) in the normalized status comparison. Rerun pending.
+
 ## Next steps
 
 1. Verify exact-head CI and fix any regression exposed by the pipeline.
