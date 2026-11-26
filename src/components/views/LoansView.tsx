@@ -20,6 +20,7 @@ import {
 import { Loan, Asset, UserProfile, LoanStatus } from '../../types';
 import { GabahService, formatDateTime, exportLoansToCsv } from '../../services/gabahService';
 import { isExactIdentityNameMatch } from '../../utils/identityMatching';
+import { resolveDashboardPersona } from '../../dashboard/roleDashboardScope';
 
 interface LoansViewProps {
   loans?: Loan[];
@@ -59,8 +60,9 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'damaged'>('good');
   const [returnNotes, setReturnNotes] = useState<string>('');
 
-  const isEmployee = ['Karyawan', 'Sekretaris Direksi', 'Humas'].includes(currentUser?.role || '');
-  const isAuditor = currentUser?.role === 'Auditor';
+  const dashboardPersona = currentUser ? resolveDashboardPersona(currentUser) : null;
+  const isEmployee = dashboardPersona?.isStaff ?? false;
+  const isAuditor = dashboardPersona?.isAuditor ?? false;
   const safeLoans = Array.isArray(loans) ? loans : [];
   const safeAssets = Array.isArray(assets) ? assets : [];
   const currentUserId = currentUser?.id || '';
