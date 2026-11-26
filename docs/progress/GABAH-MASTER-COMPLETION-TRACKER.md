@@ -649,3 +649,12 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Regression static ditambahkan pada `scripts/asset-scope-policy-verify.mjs` untuk memastikan whitelist umum tidak memuat `status`.
 - Commits: `cae6c88610e94a9fba6a917bd70c3abafc3a553b` (server), `34f5547d9e26daaaa5a3d600a9c6fbe881f22fc3` (test).
 - Status CI: menunggu hasil run terbaru; belum dinyatakan lulus.
+
+
+## 2026-11-27 — Maintenance write endpoints fail-closed
+
+- CI run `45839442103` menunjukkan T2B-3 kategori aset sudah lulus `28/28`, tetapi suite Maintenance auth gagal `10/25`. GET sudah memakai `requireRbacPermission`, sedangkan POST/PATCH masih memakai allowlist role legacy saat PostgreSQL/RBAC tidak aktif.
+- Ini inkonsistensi otorisasi nyata: role-name fallback memungkinkan Admin/IT melakukan write pada file-store, sementara kontrak endpoint maintenance mensyaratkan policy RBAC PostgreSQL dan fail-closed. Respons 201/200 pada Admin/IT membuktikan fallback berjalan; 403 untuk role lain juga tidak konsisten dengan fail-closed 503.
+- Perbaikan: POST `maintenances.create` dan PATCH `maintenances.update` sekarang selalu melewati `requireRbacPermission`; ketika policy store tidak tersedia, request ditolak 503 `RBAC_POLICY_UNAVAILABLE`, tanpa allowlist role legacy.
+- Commit: `e0e33f7003102f29f396d91cee6934576ef8bb0a`.
+- Status tes: menunggu CI baru; belum dinyatakan lulus.
