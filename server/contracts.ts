@@ -203,30 +203,25 @@ export const ContractDomainService = {
     if (!contract) throw new Error('Kontrak tidak ditemukan');
     if (!canEditContract(actor, contract)) throw new Error('Akses ditolak: bukan PIC/divisi pemilik kontrak.');
 
-    // SECURITY (CR-06): protected fields — these govern identity, ownership,
-    // governance flags, and the authoritative lifecycle of the contract and can
-    // only change through their dedicated, authorized endpoints (create with
-    // division check, addDocument, addMilestone, decideRenewal, reminder sweep).
-    const protectedFields: Array<keyof ServerContract> = [
-      'id',
-      'contract_number',
-      'created_by',
-      'created_by_name',
-      'created_at',
-      'owner_division',
-      'owner_division_label',
-      'pic_user_id',
-      'pic_name',
-      'restricted',
-      'status',
-      'renewal_outcome',
-      'replaced_by_contract_id',
-      'parent_contract_id',
-      'documents',
-      'milestones',
+    // SECURITY (CR-06): positive allowlist. A denylist silently permits newly
+    // added ServerContract fields to become writable by API callers. Only ordinary
+    // commercial metadata may be edited here; identity, ownership, PIC, status,
+    // renewal decisions, reminder recipients, documents and milestones use their
+    // dedicated server-side workflows.
+    const allowedFields: Array<keyof ServerContract> = [
+      'contract_type',
+      'title',
+      'vendor_name',
+      'start_date',
+      'end_date',
+      'notice_period_days',
+      'contract_value',
+      'auto_renewal',
+      'renewal_notes',
+      'notes',
+      'reminder_config',
     ];
-    for (const key of Object.keys(updates) as Array<keyof ServerContract>) {
-      if (protectedFields.includes(key)) continue;
+    for (const key of allowedFields) {
       if (updates[key] !== undefined) (contract as any)[key] = updates[key];
     }
 
