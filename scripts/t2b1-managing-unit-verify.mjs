@@ -189,31 +189,43 @@ async function main() {
     rec('Phase 2 benar-benar memakai file-store', 'file-store (development fallback)',
       phase2Persistence, phase2Persistence.startsWith('file-store'));
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
-    const phase2 = (await req(s2.base, 'GET', '/api/assets', { token: admin2 })).json?.data || [];
-    const num2 = Object.fromEntries(phase2.map(a => [a.id, a.asset_number]));
-    const unit2 = Object.fromEntries(phase2.map(a => [a.id, a.managing_unit_id ?? null]));
+    const phase2Health = await req(s2.base, 'GET', '/api/health');
+    const phase2Persistence = phase2Health.json?.persistence || 'unknown';
+    rec('Phase 2 benar-benar memakai file-store', 'file-store (development fallback)',
+      phase2Persistence, phase2Persistence.startsWith('file-store'));
+    rec('Phase 2 admin login tersedia', 'token valid', admin2 ? 'token valid' : 'login gagal', Boolean(admin2));
 
-    const numsStable = phase1.length === phase2.length && phase1.every(a => num2[a.id] === num1[a.id]);
-    rec('E: asset number identik setelah restart + backfill ulang (idempoten)', 'tidak berubah',
-      numsStable ? `${phase1.length} aset identik` : `mismatch ${phase1.length}→${phase2.length}`,
-      numsStable);
+    // Business API guards intentionally fail closed without PostgreSQL. Verify
+    // actual hydration via the non-sensitive startup fingerprint instead.
+    const expectedAssetRows = phase1.map(a => [
+      a.id, a.asset_number, a.corporate_asset_number ?? null,
+      a.owner_division, a.managing_unit_id ?? null, a.asset_location_id ?? null,
+      a.category_code ?? null, a.is_loanable ?? null,
+    ]).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
+    const expectedFingerprint = crypto.createHash('sha256').update(JSON.stringify(expectedAssetRows)).digest('hex');
+    const hydration = s2.log().match(/File-store hydration summary: source=standalone; assets=(\\d+); assets_sha256=([a-f0-9]{64})/);
+    const phase2Count = hydration ? Number(hydration[1]) : 0;
+    const phase2Fingerprint = hydration?.[2] || '';
+    const sameAssetSnapshot = phase2Count === phase1.length && phase2Fingerprint === expectedFingerprint;
 
-    const unitsStable = phase1.every(a => unit2[a.id] === unit1[a.id]);
-    rec('F2: managing_unit_id selamat lewat hydrate ulang (roundtrip)', 'identik',
-      unitsStable ? 'identik' : 'berubah', unitsStable);
+    rec('E: asset number identik setelah restart + backfill ulang (idempoten)', 'snapshot aset identik',
+      `phase1=${phase1.length}, hydrated=${phase2Count}, fingerprint=${sameAssetSnapshot ? 'sama' : 'berbeda'}`,
+      sameAssetSnapshot);
+    rec('F2: managing_unit_id selamat lewat hydrate ulang (roundtrip)', 'fingerprint unit identik',
+      sameAssetSnapshot ? 'identik' : 'berubah', sameAssetSnapshot);
 
-    const created2After = phase2.find(a => a.id === created1?.id);
+    const createdInFile = fileAssets.find(a => a.id === created1?.id);
     rec('F3: aset buatan (UNIT-PIBC) tetap setelah restart', 'UNIT-PIBC',
-      `${created2After?.managing_unit_id}`, created2After?.managing_unit_id === 'UNIT-PIBC');
+      `${createdInFile?.managing_unit_id}`, sameAssetSnapshot && createdInFile?.managing_unit_id === 'UNIT-PIBC');
 
-    const gaAfter = phase2.find(a => a.id === gaSeed?.id);
+    const gaInFile = fileAssets.find(a => a.id === gaSeed?.id);
     rec('F4: aset GA tetap null (tidak ditebak ulang saat hydrate)', 'null',
-      `${gaAfter?.managing_unit_id}`, gaAfter && gaAfter.managing_unit_id === null);
+      `${gaInFile?.managing_unit_id}`, sameAssetSnapshot && gaInFile && gaInFile.managing_unit_id === null);
 
-    const itSeedAfter = phase2.filter(a => a.owner_division === 'IT');
+    const itInFile = fileAssets.filter(a => a.owner_division === 'IT');
     rec('F5: aset IT tetap UNIT-IT-MIS setelah restart', 'semua UNIT-IT-MIS',
-      `${itSeedAfter.filter(a => a.managing_unit_id === 'UNIT-IT-MIS').length}/${itSeedAfter.length}`,
-      itSeedAfter.length > 0 && itSeedAfter.every(a => a.managing_unit_id === 'UNIT-IT-MIS'));
+      `${itInFile.filter(a => a.managing_unit_id === 'UNIT-IT-MIS').length}/${itInFile.length}`,
+      sameAssetSnapshot && itInFile.length > 0 && itInFile.every(a => a.managing_unit_id === 'UNIT-IT-MIS'));
 
     kill(s2.c); s2 = null;
 
