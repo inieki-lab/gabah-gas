@@ -94,4 +94,31 @@ assert.deepEqual(filterContractsForRole(contracts, gaUser).map(x => x.id), ['ga-
 assert.deepEqual(filterContractsForRole(contracts, user).map(x => x.id), ['pic-contract']);
 assert.equal(filterContractsForRole(contracts, { ...user, role: 'Auditor' } as UserProfile).length, contracts.length);
 
+
+
+// Additional job-function roles must drive the dashboard persona even when
+// the primary employment role remains Karyawan.
+const itStaffPersona = resolveDashboardPersona({
+  ...user, role: 'Karyawan', role_keys: ['karyawan', 'it'],
+} as UserProfile);
+assert.equal(itStaffPersona.isStaff, false);
+assert.equal(itStaffPersona.isDivisionDashboard, true);
+assert.equal(itStaffPersona.divisionLabel, 'IT');
+assert.equal(itStaffPersona.descriptionRole, 'IT');
+assert.equal(itStaffPersona.isIT, true);
+
+const humasStaffPersona = resolveDashboardPersona({
+  ...user, role: 'Karyawan', role_keys: ['karyawan', 'humas'],
+} as UserProfile);
+assert.equal(humasStaffPersona.isStaff, true);
+assert.equal(humasStaffPersona.isHumas, true);
+assert.equal(humasStaffPersona.descriptionRole, 'Humas');
+
+const auditorAdditionalPersona = resolveDashboardPersona({
+  ...user, role: 'Karyawan', role_keys: ['karyawan', 'auditor'],
+} as UserProfile);
+assert.equal(auditorAdditionalPersona.isGlobalDashboard, true);
+assert.equal(auditorAdditionalPersona.isAuditor, true);
+assert.equal(auditorAdditionalPersona.isStaff, false);
+
 console.log('Role dashboard scope: PASS (division, personal, maintenance, contract, and exact identity scopes)');
