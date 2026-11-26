@@ -1067,7 +1067,7 @@ export const MeetingRoomsView: React.FC<MeetingRoomsViewProps> = ({
                             </button>
 
                             {/* GA / Admin Approve / Reject */}
-                            {canApproveReservations && r.status === 'pending_approval' && (
+                            {(canApproveReservations || canRejectReservations) && r.status === 'pending_approval' && (
                               <>
                                 {canApproveReservations && (
                                   <button
