@@ -215,7 +215,7 @@ async function main() {
     // ================= PHASE 2 (restart — JSON fallback roundtrip) =================
     // Phase 2 sengaja tanpa DATABASE_URL: verifikasi roundtrip JSON file-store,
     // bukan mengulang persistence PostgreSQL yang sudah diuji suite integrasi CR-04/CR-05.
-    s2 = await boot(sp, 39700 + Math.floor(Math.random() * 200), env, { DATABASE_URL: '', PGHOST: '' });
+    s2 = await boot(sp, 39700 + Math.floor(Math.random() * 200), env, { DATABASE_URL: '', PGHOST: '', DOTENV_CONFIG_PATH: '/dev/null' });
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const assets2 = (await req(s2.base, 'GET', '/api/assets', { token: admin2 })).json?.data || [];
     const masters2 = (await req(s2.base, 'GET', '/api/master/asset-locations', { token: admin2 })).json?.data || [];
