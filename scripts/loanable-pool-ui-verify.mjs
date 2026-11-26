@@ -12,7 +12,7 @@ const checks = [
   ['An explicitly empty loanable asset list remains authoritative instead of falling back to stale assets', /const source = Array\.isArray\(loanableAssets\)[\s\S]*?\? loanableAssets/.test(source)],
   ['Loan form hides borrowed, active, and overdue assets even when inventory props are stale', /outstandingBorrowedAssetIds[\s\S]*?\['active', 'borrowed', 'overdue'\][\s\S]*?!outstandingBorrowedAssetIds\.has\(String\(a\.id\)\)/.test(source)],
   ['Loan form recalculates eligibility when existing loan data changes', /\}, \[loanableAssets, assets, existingLoans\]\)/.test(source)],
-  ['Both asset sources pass through the same loanability and available/reserved-status filter', /return source\.filter\(a =>[\s\S]*?a\.is_loanable === true[\s\S]*?a\.status === 'available'/.test(source)],
+  ['Both asset sources pass through the same loanability and available/reserved-status filter', /return source\.filter\(a =>[\s\S]*?a\.is_loanable === true[\s\S]*?\['available', 'reserved'\]\.includes\(String\(a\.status\)\)/.test(source)],
   ['Available inventory alone is not treated as loanable', !/a\.is_loanable \|\| a\.status === 'available'/.test(source)],
   ['IT loan catalog includes laptop, PC, monitor and portable presentation peripherals', ['HLT', 'HPC', 'HMON', 'HHDM', 'HPTR', 'HADP', 'HDCK', 'HKEY', 'HWEB', 'HAUD', 'HUSB', 'HEXT'].every(code => taxonomy.includes(`code: '${code}'`))],
   ['GA projector is a loanable GA asset while CCTV is GA-owned but not loanable by default', /code: 'GPRJ'[\s\S]{0,250}owner_division: 'GA'[\s\S]{0,250}is_loanable_by_default: true/.test(taxonomy) && /code: 'GCCTV'[\s\S]{0,250}owner_division: 'GA'[\s\S]{0,250}is_loanable_by_default: false/.test(taxonomy)],
