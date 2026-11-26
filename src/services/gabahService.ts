@@ -617,15 +617,18 @@ export class GabahService {
   }
 
   static canApproveLoan(user?: UserProfile, loan?: Loan | null): boolean {
-    if (!user) return false;
-    if (user.role === 'Admin GABAH') return true;
-    if (!loan) return false;
-    
-    // Strict Authority: IT approves IT assets (laptop/hardware), GA approves GA assets (kendaraan/operasional),
-    // Supply Chain approves SC assets, PIBC approves PIBC assets
+    if (!user || !loan) return false;
+    const persona = resolveDashboardPersona(user);
+    if (persona.isAuditor) return false;
+    if (Array.isArray(user.permission_keys)) {
+      // The API already limits the loan list by effective module scope. The
+      // approval endpoint independently enforces writable owner scope.
+      return user.permission_keys.includes('*') || user.permission_keys.includes('loans.approve');
+    }
+    if (persona.isSuperadmin) return true;
     const ownerDiv = loan.owner_division || (loan.category_type === 'IT' ? 'IT' : 'GA');
-    if (user.role === 'IT' && ownerDiv === 'IT') return true;
-    if (user.role === 'GA' && ownerDiv === 'GA') return true;
+    if (persona.isIT && ownerDiv === 'IT') return true;
+    if (persona.isGA && ownerDiv === 'GA') return true;
     if (user.role === 'Supply Chain' && ownerDiv === 'SC') return true;
     if (user.role === 'PIBC' && ownerDiv === 'PIBC') return true;
     return false;
