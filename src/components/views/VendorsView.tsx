@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Vendor, UserProfile } from '../../types';
 import { gabahApi } from '../../services/gabahApi';
+import { hasEffectivePermission } from '../../dashboard/roleDashboardScope';
 
 interface VendorsViewProps {
   vendors: Vendor[];
@@ -50,12 +51,9 @@ export const VendorsView: React.FC<VendorsViewProps> = ({
     });
     return () => { active = false; };
   }, []);
-  const legacyVendorManager = currentUser.permission_keys === undefined
-    && ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
-  const canCreate = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH'
-    || currentUser.permission_keys?.includes('vendors.create') === true || legacyVendorManager;
-  const canUpdate = currentUser.is_superadmin === true || currentUser.role === 'Admin GABAH'
-    || currentUser.permission_keys?.includes('vendors.update') === true || legacyVendorManager;
+  const legacyVendorManager = ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role);
+  const canCreate = hasEffectivePermission(currentUser, 'vendors.create', legacyVendorManager);
+  const canUpdate = hasEffectivePermission(currentUser, 'vendors.update', legacyVendorManager);
   const [formOpen, setFormOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ ...emptyForm });
