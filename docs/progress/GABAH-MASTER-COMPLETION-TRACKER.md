@@ -676,3 +676,26 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - CI untuk commit baru menunggu; belum diklaim lulus.
 - Audit paralel peminjaman menemukan POST batch `/api/loans` memanggil `requestLoan()` satu per satu. Karena setiap pemanggilan langsung menambah loan, notification, audit, dan sequence, aset valid yang diproses lebih dulu berpotensi tertinggal bila aset berikutnya gagal. Perlu pre-validasi seluruh batch sebelum mutasi; belum diubah pada catatan ini.
 - Numbering UI masih localStorage dan belum menjadi konfigurasi server; format final tetap ditahan sampai standar perusahaan disetujui.
+
+
+## 2026-11-27 — Parallel: atomic loan batch, numbering UI truthfulness, endpoint review
+
+### Peminjaman multi-aset
+- `server/services.ts`: menambahkan `requestLoansBatch()`. Semua asset ID, duplikasi, status loanable, borrower self-service, tanggal, dan konflik jadwal divalidasi terlebih dahulu sebelum service membuat loan/notifikasi/audit atau memakai sequence.
+- `server.ts`: POST `/api/loans` untuk `asset_ids` kini memakai service batch tersebut, bukan loop mutasi langsung.
+- `scripts/loan-authz-verify.mjs`: menambah regresi HTTP untuk batch berisi satu aset valid dan satu ID tidak valid; memastikan HTTP 400 dan jumlah loan/audit tidak berubah.
+- Commits: `1a55c4a` (service preflight), `601c3cc` (route), `0cfdece` (regression test).
+- Catatan: atomicity ini mencakup validasi bisnis dalam proses aplikasi; transaksi database lintas penyimpanan tetap perlu diverifikasi pada arsitektur persistence PostgreSQL.
+
+### Penomoran
+- `AdministrationModal.tsx`: konfigurasi yang disimpan di browser kini secara eksplisit disebut preview lokal; toast tidak lagi mengklaim mengubah sequence server. Menu diberi status Preview, dan ada peringatan bahwa perubahan belum memengaruhi nomor produksi.
+- Tidak ada format atau sequence nomor produksi yang diubah. Standar perusahaan masih menunggu persetujuan.
+- Commit: `1439359`.
+
+### Audit keamanan paralel
+- Ditemukan fallback berbasis nama role pada vendor POST/PATCH dan knowledge POST/PATCH ketika PostgreSQL tidak aktif, sedangkan route GET memakai permission RBAC. Belum diubah karena perlu matriks kompatibilitas file-store dan tes regresi tersendiri; tandai sebagai kandidat hardening berikutnya, jangan dianggap sudah fail-closed.
+- GET `/api/users` juga memakai fallback role eksplisit di file-store; POST user tetap dibatasi Superadmin.
+
+### CI dan status
+- Run `45907144668` menguji branch setelah perubahan loan dan numbering; pada saat catatan ini dibuat masih berjalan. Belum ada klaim PASS.
+- Branch: `ai/hermes/authorization-endpoint-audit`. Tidak ada merge ke `main`.
