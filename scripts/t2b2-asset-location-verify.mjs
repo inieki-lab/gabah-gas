@@ -34,9 +34,9 @@ const req = async (b, m, p, o = {}) => {
   return { status: r.status, json: j };
 };
 
-async function boot(sp, port, env) {
+async function boot(sp, port, env, overrides = {}) {
   const c = spawn(process.execPath, [sp], {
-    env: { ...process.env, PORT: String(port), NODE_ENV: 'development', GABAH_INITIAL_ADMIN_PASSWORD: env.ap, GABAH_INITIAL_USER_PASSWORD: env.up, GABAH_TEST_PASSWORD: '' },
+    env: { ...process.env, ...overrides, PORT: String(port), NODE_ENV: 'development', GABAH_INITIAL_ADMIN_PASSWORD: env.ap, GABAH_INITIAL_USER_PASSWORD: env.up, GABAH_TEST_PASSWORD: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let log = '';
@@ -213,7 +213,9 @@ async function main() {
     await new Promise(r => setTimeout(r, 400));
 
     // ================= PHASE 2 (restart — JSON fallback roundtrip) =================
-    s2 = await boot(sp, 39700 + Math.floor(Math.random() * 200), env);
+    // Phase 2 sengaja tanpa DATABASE_URL: verifikasi roundtrip JSON file-store,
+    // bukan mengulang persistence PostgreSQL yang sudah diuji suite integrasi CR-04/CR-05.
+    s2 = await boot(sp, 39700 + Math.floor(Math.random() * 200), env, { DATABASE_URL: '' });
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const assets2 = (await req(s2.base, 'GET', '/api/assets', { token: admin2 })).json?.data || [];
     const masters2 = (await req(s2.base, 'GET', '/api/master/asset-locations', { token: admin2 })).json?.data || [];
