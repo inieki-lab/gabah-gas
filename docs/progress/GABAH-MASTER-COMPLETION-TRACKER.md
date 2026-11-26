@@ -623,3 +623,11 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 
 - CI run `45835072169`: asset-scope policy 68/69. Assertion tambahan di `asset-scope-policy-verify.mjs` masih mengharapkan bentuk lama `if (canReadItWorkstations)`; assertion dynamic-RBAC sudah diperbarui, tetapi duplikat assertion di suite asset-scope belum.
 - Assertion disinkronkan ke `if (canReadItWorkstations && options.includeReadOnlyItWorkstations !== false)` pada commit `bdd8a7c29824086dc115aef2f4e2236070467d8b`.
+
+
+## 2026-11-26 — Maintenance auth live test mengikuti kebijakan fail-closed
+
+- Review CI mengungkap `maintenance-authz-verify.mjs` masih menguji allowlist legacy IT/GA pada file-store, padahal semua endpoint maintenance sudah wajib memakai `requireRbacPermission` PostgreSQL dan secara eksplisit mengembalikan 503 saat policy store tidak aktif. Test lama pasti salah secara kontrak.
+- Test diganti untuk mematikan PostgreSQL secara eksplisit (termasuk dotenv), memastikan health menunjukkan file-store, login canonical berhasil, request anonim tetap 401, dan GET/POST/PATCH maintenance dari Admin/IT/GA/Karyawan/Auditor semuanya mendapat 503 `RBAC_POLICY_UNAVAILABLE`. Tidak ada fallback allowlist yang dibuka.
+- Commit: `e0e9c2dc1965c16e00fc727b12a8763e16a609b7`.
+- Dynamic owner-scope behavior PostgreSQL tetap diperiksa melalui static RBAC contract dan live PostgreSQL asset/loan/ticket suites; maintenance fail-closed test hanya memverifikasi saat policy store tidak tersedia.
