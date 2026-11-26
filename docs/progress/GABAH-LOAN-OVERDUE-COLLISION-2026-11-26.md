@@ -3,7 +3,7 @@
 **Date:** 26 November 2026  
 **Branch:** `fix/loan-overdue-collision-guard-2026-11-26`  
 **Base:** `main`  
-**Status:** Implementation committed; exact-head GitHub CI passed (120/120 steps) on `f3d346dafabda9d9947e344646ff8dd1ead4071a`, run `45733915096`.
+**Status:** Implementation committed; latest exact-head GitHub CI passed on `77280891d55dc6b72850de27b16ad74c9b6ba2ee`, run `45736777501`. Earlier CI run `45733915096` was for a prior commit, not the latest head.
 
 ## Finding
 
