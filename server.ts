@@ -108,8 +108,10 @@ async function startServer() {
     return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
   };
 
-  // Permission guard for migrated endpoints. PostgreSQL policy is authoritative in
-  // production; JSON/file-store development retains legacy behavior during migration.
+  // Permission guard for migrated endpoints. PostgreSQL Dynamic RBAC is the
+  // authoritative policy source. File-store mode may serve only endpoints that
+  // retain an explicit legacy authorization path; migrated endpoints fail closed
+  // with 503 while the policy database is unavailable.
   const requireRbacPermission = (req: express.Request, res: express.Response, permissionKey: string): boolean => {
     // Dynamic RBAC policy is PostgreSQL-backed. An empty in-memory cache is
     // NOT an authorization decision: treating it as a normal denial masks an
