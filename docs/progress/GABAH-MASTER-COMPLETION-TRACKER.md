@@ -583,3 +583,9 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Regression UI ditambah untuk kedua modul. Commits: `70cd7688799ef4a8b22980d07f23e615cff7a528`, `c6b45a62dab80c4c5755a8179a59a15c0679feca`, `34bbdc76d9a3f60a95db30aa8e1ffe281e1d3870`, `33b3d7e585ed8ef7bdc3a51c0883d6b9ec89ea1a`.
 - Dashboard persona sekarang juga menganggap wildcard dan permission operasional custom sebagai persona operasional, bukan staf biasa. Commits: `e546067b2db03802800042c6508c007b46ec33bd`, `f91e7c99870c9984bc5297ca9aea5539f2e59bd8`, `59c84faed31e486d8c5dafa9dd6b9ebf0d51af09`, `0547d8f446fe21acb42e95f0c17f6f406a94c3c7`.
 - CI exact HEAD setelah perbaikan T2B-3 masih berjalan.
+
+
+## 2026-11-26 — Import helper pada LicensesView
+
+- CI run `45833613725` berhenti di TypeScript karena `LicensesView` memakai `hasEffectivePermission` tetapi import helper tidak masuk akibat anchor import yang berbeda dari asumsi patch pertama.
+- Import diperbaiki pada commit `9e218dfab477d7c95982458758f02887ab68d2d8`. Tidak ada perubahan perilaku tambahan.
