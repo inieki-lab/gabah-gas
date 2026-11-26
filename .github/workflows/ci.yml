@@ -83,6 +83,9 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: Vendor and Knowledge Base fail-closed authorization contract
+        run: npm run test:vendor-knowledge-rbac-fail-closed
+
       - name: Dynamic RBAC module scope fail-closed regression
         run: npm run test:rbac-module-scope-fail-closed
 
