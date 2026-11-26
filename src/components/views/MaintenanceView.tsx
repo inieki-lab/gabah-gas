@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { hasEffectivePermission, resolveDashboardPersona } from '../../dashboard/roleDashboardScope';
 import {
   Wrench,
   Calendar,
@@ -61,8 +62,10 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     checklistText: '',
   });
 
-  const canManage = ['Admin GABAH', 'IT', 'GA'].includes(currentUser?.role || '');
-  const isRequestRole = ['Sekretaris Direksi', 'Humas', 'Supply Chain', 'PIBC', 'Karyawan'].includes(currentUser?.role || '');
+  const canManage = currentUser ? hasEffectivePermission(
+    currentUser, 'maintenances.create', ['Admin GABAH', 'IT', 'GA'].includes(currentUser.role),
+  ) : false;
+  const isRequestRole = currentUser ? resolveDashboardPersona(currentUser).isStaff : false;
 
   // Filtered schedules
   const filteredSchedules = schedules.filter((sch) => {
