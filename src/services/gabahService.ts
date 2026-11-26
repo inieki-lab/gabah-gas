@@ -611,7 +611,7 @@ export class GabahService {
     const activeReservations = existingLoans.filter(l => {
       if (l.id === excludeLoanId) return false;
       if (l.asset_id !== assetId) return false;
-      return l.status === 'approved' || l.status === 'active' || (l.status as any) === 'borrowed';
+      return l.status === 'approved' || l.status === 'active' || (l.status as any) === 'borrowed' || l.status === 'overdue';
     });
 
     for (const loan of activeReservations) {
