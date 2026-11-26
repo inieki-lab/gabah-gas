@@ -3340,7 +3340,9 @@ async function startServer() {
   app.post('/api/room-reservations/:id/checkin', (req, res) => {
     try {
       
-    if (!requireRbacPermission(req, res, 'room_reservations.checkin')) return;
+    // Organizer or explicitly authorized GA may check in; the domain service
+    // enforces ownership/permission and reservation state. Keep authentication
+    // at the session middleware, not a blanket permission gate here.
     const actor = getActor(req);
       const checkedIn = GabahDomainService.checkinRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedIn });
@@ -3352,7 +3354,8 @@ async function startServer() {
   app.post('/api/room-reservations/:id/checkout', (req, res) => {
     try {
       
-    if (!requireRbacPermission(req, res, 'room_reservations.checkout')) return;
+    // Organizer or explicitly authorized GA may check out; domain service
+    // enforces ownership/permission and requires status=in_use.
     const actor = getActor(req);
       const checkedOut = GabahDomainService.checkoutRoomReservation(req.params.id, actor);
       res.json({ success: true, data: checkedOut });
