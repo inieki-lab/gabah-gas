@@ -484,3 +484,11 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - P0 security regression ditambah: nomor ERP unik tersimpan dan terbaca ulang, nomor duplikat ditolak, input non-teks ditolak.
 - Commits: `1094a3238d8ff98568437652e2436b36cfe89f3b` (server), `eacd5f232538e2b03533b5b9c746bf1095627fd1` (P0 test).
 - CI exact HEAD masih pending; belum mengklaim lulus.
+
+
+## 2026-11-26 — Penyesuaian regression setelah perubahan notifikasi
+
+- CI run `45829149118`: test kontrak notifikasi baru 5/5 PASS, tetapi asset-scope static regression lama 62/63 karena masih mengharuskan pencocokan penerima dengan `actor.role` primer. Test tersebut diperbarui agar memverifikasi helper penerima multi-role dan pemisahan `notifications.read` vs `notifications.read_all`.
+- Commit test: `ed077f7feb4319ad734556213f21e60d2a5df8f9`.
+- Koreksi catatan rekonsiliasi: sebelumnya disebut tidak ada persistensi. Pemeriksaan lebih teliti menunjukkan `recordAudit()` memicu `persistDataStore()` secara asynchronous; masalahnya handler tidak menunggu penyelesaian persistensi sebelum mengembalikan sukses. Handler kini menunggu promise, sekaligus menambah validasi tipe/duplikasi nomor ERP.
+- CI exact HEAD masih menunggu.
