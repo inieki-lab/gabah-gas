@@ -46,7 +46,7 @@ record('Loan list file-store scope honors secondary role_keys', 'IT/GA functiona
 const loanServiceSource = fs.readFileSync('server/services.ts', 'utf8');
 const loanCreateRouteSource = fs.readFileSync('server.ts', 'utf8')
   .split("app.post('/api/loans'")[1]?.split("app.post('/api/loans/:id/approve'")[0] || '';
-assert.match(loanServiceSource, /static requestLoansBatch\([\s\S]*Complete read-only preflight[\s\S]*return assetIds\.map/);
+assert.match(loanServiceSource, /static requestLoansBatch\([\s\S]*Full read-only preflight[\s\S]*return assetIds\.map/);
 assert.match(loanCreateRouteSource, /GabahDomainService\.requestLoansBatch\(/);
 record('Multi-asset loan route uses full read-only preflight service', 'requestLoansBatch before mutation', 'service and route contract present', true);
 
