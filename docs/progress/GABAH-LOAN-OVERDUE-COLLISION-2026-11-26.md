@@ -31,7 +31,7 @@ An overdue loan means the physical unit has not been returned. It must remain un
 ## Validation
 
 - Source-level regression added for trigger, row lock, server guard, and client pre-check.
-- Exact-head GitHub CI: pending.
+- First CI attempt exposed malformed JSON in the new package script registration (`EJSONPARSE`); corrected immediately in commit `00dd801d2f4bab3a8a59893ceef4b844107421ca`.\n- Exact-head CI for the corrected commit: awaiting GitHub Actions.
 - Local runtime/PostgreSQL rehearsal and browser UAT: not run in this session.
 
 ## UAT still required
