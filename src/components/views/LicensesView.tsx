@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Asset, UserProfile } from '../../types';
 import { formatRupiah, formatDate, calculateDaysRemaining } from '../../services/gabahService';
+import { hasEffectivePermission } from '../../dashboard/roleDashboardScope';
 
 interface LicensesViewProps {
   assets?: Asset[];
