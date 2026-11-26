@@ -596,3 +596,11 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Audit menemukan migrasi 024 memberikan `meeting_types.manage` kepada Superadmin dan GA, tetapi tiga method domain (create/update/delete) masih menolak semua actor selain Superadmin. Permission dan domain policy tidak konsisten.
 - Perbaikan: ketiga method sekarang memeriksa `hasRoomPermission(actor, 'meeting_types.manage', 'Admin GABAH')`; PostgreSQL mengikuti permission efektif, file-store mempertahankan fallback Admin GABAH. Regression static ditambahkan.
 - Commits: `614484bb558d41d155e74165ed8e0c8cc19cbc6a`, `3d8379e427aa289a90b73ca7e640e804347bac5e`.
+
+
+## 2026-11-26 — Maintenance visibility tidak lagi memotong role tambahan
+
+- Audit endpoint `GET /api/maintenances` menemukan filter kedua berdasarkan primary role `Karyawan` yang hanya mengizinkan aset assigned_to sendiri, sehingga menghapus IT/GA schedules yang sudah diizinkan dynamic asset scope. Selain itu GA dapat menerima IT workstation sebagai read-only asset, tetapi exception tersebut tidak boleh membuka maintenance IT.
+- Perbaikan: `getScopedAssets()` menerima opsi `includeReadOnlyItWorkstations`; route maintenance mematikannya. Pada PostgreSQL, daftar maintenance mengikuti dynamic asset scopes tanpa filter primary-role employee/GA. Fallback file-store mempertahankan filter legacy.
+- Regression static memverifikasi pemisahan scope ini. Commits: `56ae83b617263d09c462e935564bfc39823ac9f2` (domain service), `919527da89a0f06be6fb01dfb5710c0dfe92d1f3` (route), `934823e7a78d0ffce9404fce6cf75bfdb201fe9e` (test).
+- Live maintenance auth suite tetap memverifikasi legacy fallback; PostgreSQL dynamic behavior diuji melalui static contract dan akan diverifikasi lagi di CI.
