@@ -40,9 +40,9 @@ const req = async (b, m, p, o = {}) => {
   return { status: r.status, json: j };
 };
 
-async function boot(sp, port, env) {
+async function boot(sp, port, env, overrides = {}) {
   const c = spawn(process.execPath, [sp], {
-    env: { ...process.env, PORT: String(port), NODE_ENV: 'development', GABAH_INITIAL_ADMIN_PASSWORD: env.ap, GABAH_INITIAL_USER_PASSWORD: env.up, GABAH_TEST_PASSWORD: '' },
+    env: { ...process.env, ...overrides, PORT: String(port), NODE_ENV: 'development', GABAH_INITIAL_ADMIN_PASSWORD: env.ap, GABAH_INITIAL_USER_PASSWORD: env.up, GABAH_TEST_PASSWORD: '' },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   let log = '';
@@ -252,7 +252,8 @@ async function main() {
     await new Promise(r => setTimeout(r, 400));
 
     // ================= PHASE 2 (restart — JSON fallback roundtrip) =================
-    s2 = await boot(sp, 39800 + Math.floor(Math.random() * 150), env);
+    // Phase 2 runs without PostgreSQL to verify the JSON file-store roundtrip.
+    s2 = await boot(sp, 39800 + Math.floor(Math.random() * 150), env, { DATABASE_URL: '' });
     const admin2 = await login(s2.base, 'admin@foodstation.co.id', env.ap);
     const master2 = ((await req(s2.base, 'GET', '/api/taxonomy/categories', { token: admin2 })).json?.data || [])
       .map(c => `${c.code}|${c.name}|${c.main_type}|${c.owner_division}|${c.category_type}|${c.is_loanable_by_default}|${c.is_active}`)
