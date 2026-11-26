@@ -19,7 +19,7 @@ Branch: `ai/chatgpt/asset-loan-lifecycle-audit-main2`
 - [x] Existing route-level snapshots remain as a second rollback layer for loan, notification, and audit collections if persistence fails unexpectedly.
 - [x] Live HTTP regression verifies a valid first asset plus missing second asset creates no partial loan and no partial audit record.
 - [x] Added source-contract assertions that the route uses the batch preflight service.
-- [ ] Exact-head CI: pending.
+- [x] First CI caught a missing `actor` argument in the batch-service route call; corrected in commit `2bb9d20`.\n- [ ] Follow-up exact-head CI after correction: pending.
 - [ ] PostgreSQL multi-instance concurrency/transaction test: not yet verified. Current preflight is process-level and does not replace a database transaction/locking guarantee for concurrent requests.
 
 ## Existing main baseline confirmed
