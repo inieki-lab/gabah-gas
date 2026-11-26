@@ -437,3 +437,13 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Commits: `d8609181220696b78d7f5b1bdd367253cc2d03f1`, `aaaef1a676a9571f541e2fc283165805800633f1`, `55228837bd7de8ddea714d3ffc61af16def6e5b1`, `bbc6a93a5ccbee60d4175b90fde2fafea27f69a8`.
 - Typecheck/build dan regression persona menunggu CI exact HEAD.
 - Tidak ada perubahan backend authorization; tidak ada merge ke `main`.
+
+
+## 2026-11-26 — Quick action dashboard mengikuti permission efektif
+
+- Temuan lanjutan: beberapa tombol quick action di Dashboard hanya disembunyikan berdasarkan label Auditor/staf, bukan permission efektif. User custom/Karyawan tanpa `loans.create`, `tickets.create`, atau `assets.create` masih dapat melihat tombol yang akhirnya ditolak backend; sebaliknya role tambahan yang sah tidak selalu memperoleh affordance yang sesuai.
+- Perubahan: helper `canShowDashboardAction()` memeriksa wildcard/permission keys saat tersedia, memakai fallback legacy hanya saat permission keys undefined, dan selalu menolak aksi untuk persona Auditor. Tombol quick action dan empty-state peminjaman/tiket kini memakai helper yang sama.
+- Regression test mencakup permission granted, permission absent, wildcard pada Auditor, dan fallback staf legacy.
+- Commits: `05728d384175d27db1cc56122c4062936810d6e6`, `3ceb04a8db0fe3ada45b28f1f9f6a71d899a787d`, `99543f6417adaf339f7ccfa5860acc26cd9fa3aa`, `92be72c417373b3b908e24d59e7605ab78c5bfe8`.
+- Typecheck/build/dashboard regression menunggu CI exact HEAD.
+- Backend authorization tidak berubah; tombol UI bukan pengganti server-side permission guard.
