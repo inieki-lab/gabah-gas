@@ -208,6 +208,34 @@ async function main() {
         token: adminToken,
         body: { category_name_or_code: 'HLT', name: 'P0 Maint Laptop', owner_division: 'IT' },
       });
+      // Reconciliation link must validate input, reject duplicate ERP numbers,
+      // and persist the authoritative asset mutation before reporting success.
+      if (assetId && asset2.json?.data?.id) {
+        const reconNumber = `P0-RECON-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
+        const linked = await req(base, 'POST', '/api/reconciliation/link', {
+          token: adminToken,
+          body: { assetId, corporateAssetNumber: reconNumber },
+        });
+        const reread = await req(base, 'GET', `/api/assets/${assetId}`, { token: adminToken });
+        record('CR-06 reconciliation link persists unique ERP number', '200 + number retained on read',
+          `HTTP ${linked.status}/${reread.status}`,
+          linked.status === 200 && reread.status === 200 && reread.json?.data?.corporate_asset_number === reconNumber);
+
+        const duplicateLink = await req(base, 'POST', '/api/reconciliation/link', {
+          token: adminToken,
+          body: { assetId: asset2.json.data.id, corporateAssetNumber: reconNumber },
+        });
+        record('CR-06 reconciliation rejects duplicate ERP number', '409', `HTTP ${duplicateLink.status}`, duplicateLink.status === 409);
+
+        const invalidLink = await req(base, 'POST', '/api/reconciliation/link', {
+          token: adminToken,
+          body: { assetId, corporateAssetNumber: { injected: true } },
+        });
+        record('CR-06 reconciliation rejects non-text ERP number', '400', `HTTP ${invalidLink.status}`, invalidLink.status === 400);
+      } else {
+        record('CR-06 reconciliation link setup', 'two assets created', 'asset setup failed', false);
+      }
+
       const mnt = await req(base, 'POST', '/api/maintenances', {
         token: adminToken,
         body: { asset_id: asset2.json?.data?.id, title: 'P0 Servis', scheduled_date: '2026-10-15' },
