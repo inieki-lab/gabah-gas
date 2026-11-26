@@ -108,6 +108,32 @@ async function startServer() {
     return isPostgresPersistenceActive() && getEffectiveRoleKeys(String(actor.id)).includes(roleKey);
   };
 
+  // Notification recipient_role stores a functional role label, not a
+  // primary profile label. Preserve additional RBAC role assignments.
+  const notificationRoleKey = (label: string): string => {
+    const normalized = String(label || '').trim().toLowerCase()
+      .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    const aliases: Record<string, string> = {
+      admin_gabah: 'superadmin',
+      super_admin: 'superadmin',
+      superadmin: 'superadmin',
+      sekretaris_direksi: 'sekretaris_direksi',
+      supply_chain: 'supply_chain',
+    };
+    return aliases[normalized] || normalized;
+  };
+
+  const isNotificationRecipient = (actor: ServerUser, notification: any): boolean => {
+    if (isSuperadminActor(actor)) return true;
+    // Explicit user recipient takes precedence over role/division fallbacks.
+    if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
+    if (notification.recipient_role) {
+      return hasApplicationRole(actor, notificationRoleKey(notification.recipient_role));
+    }
+    if (notification.recipient_division) return notification.recipient_division === actor.division;
+    return false;
+  };
+
   // Permission guard for migrated endpoints. PostgreSQL Dynamic RBAC is the
   // authoritative policy source. File-store mode may serve only endpoints that
   // retain an explicit legacy authorization path; migrated endpoints fail closed
@@ -2766,58 +2792,38 @@ async function startServer() {
 
   // Notifications
   app.get('/api/notifications', (req, res) => {
-    
     if (!requireRbacPermission(req, res, 'notifications.read')) return;
     const actor = getActor(req);
-    const isRecipient = (notification: any): boolean => {
-      if (isSuperadminActor(actor)) return true;
-      // Explicit user recipient takes precedence over role/division fallbacks.
-      if (notification.recipient_user_id) return notification.recipient_user_id === actor.id;
-      if (notification.recipient_role) return notification.recipient_role === actor.role;
-      if (notification.recipient_division) return notification.recipient_division === actor.division;
-      return false;
-    };
-    const filtered = db.notifications.filter(n => {
-      const isPhotoNotification = n.recipient_role === 'Humas' ||
-        (n.title && (n.title.toLowerCase().includes('foto') || n.title.toLowerCase().includes('dokumentasi humas') || n.title.toLowerCase().includes('liputan foto'))) ||
-        (n.message && (n.message.toLowerCase().includes('peliputan foto') || n.message.toLowerCase().includes('dokumentasi foto')));
-      if (isPhotoNotification && actor.role !== 'Humas' && !isSuperadminActor(actor)) return false;
-      return isRecipient(n);
-    });
+    // Recipient metadata is authoritative. Do not infer access from title or
+    // message keywords; explicit user/role/division targeting takes precedence.
+    const filtered = db.notifications.filter(n => isNotificationRecipient(actor, n));
     res.json({ success: true, data: filtered });
   });
 
-  app.patch('/api/notifications/:id/read', (req, res) => {
-    if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
-    
+  app.patch('/api/notifications/:id/read', async (req, res) => {
+    // Marking one notification read is a recipient self-service action.
+    if (!requireRbacPermission(req, res, 'notifications.read')) return;
     const actor = getActor(req);
     const notif = db.notifications.find(n => n.id === req.params.id);
-    const isRecipient = isSuperadminActor(actor)
-      || (notif?.recipient_user_id ? notif.recipient_user_id === actor.id
-        : notif?.recipient_role ? notif.recipient_role === actor.role
-          : notif?.recipient_division ? notif.recipient_division === actor.division : false);
-    if (!notif || !isRecipient) {
+    if (!notif || !isNotificationRecipient(actor, notif)) {
       return res.status(404).json({ success: false, message: 'Notifikasi tidak ditemukan.' });
     }
     notif.is_read = true;
     notif.read_at = new Date().toISOString();
+    await persistDataStore();
     res.json({ success: true, data: notif });
   });
 
-  app.post('/api/notifications/read-all', (req, res) => {
-    
+  app.post('/api/notifications/read-all', async (req, res) => {
     if (!requireRbacPermission(req, res, 'notifications.read_all')) return;
     const actor = getActor(req);
     for (const n of db.notifications) {
-      const isRecipient = isSuperadminActor(actor)
-        || (n.recipient_user_id ? n.recipient_user_id === actor.id
-          : n.recipient_role ? n.recipient_role === actor.role
-            : n.recipient_division ? n.recipient_division === actor.division : false);
-      if (isRecipient) {
+      if (isNotificationRecipient(actor, n)) {
         n.is_read = true;
         n.read_at = new Date().toISOString();
       }
     }
+    await persistDataStore();
     res.json({ success: true, message: 'Semua notifikasi ditandai telah dibaca' });
   });
 
