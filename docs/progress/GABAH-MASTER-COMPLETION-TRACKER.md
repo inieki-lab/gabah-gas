@@ -536,3 +536,10 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 - Regression static baru `scripts/role-capability-ui-verify.mjs` (8 kontrak) ditambahkan ke package dan CI.
 - Commits utama: `a7aae95545fad6a5199138ebdab63461fcfd5fae`, `4caca0fac57939a5a450360b569b6e1c69fb993f`, `976aca61acced1f2857090d566cbf5e4bcd0a27b`, `de4b40098e2c79ccd7d4d34c8abdf82189c97cd8`, `c4d0b8e443c8e513b2c31e9d21697da42e6bd082`, `171e0da9ec36dd779215f26b0c0bce6e17dcb3e3`, `eacec6161bf9fde927bf79484e7eb8b9a203fbf5`, `ef34ed8694b5c9a3a3e97355a02f957f59a00e74`, `35f77aa65ac291f62e3e877dc244e2ff385fa9b4`, `dc7e68b3e517652111167c478e53bdce8c1ab6e3`, `e99a0f07db96eb03698f275d0620c312d0348a6c`, `dc5b92431f7c0af0229ae70c108741f6fd7029d8`, `fb8d99bdf346dd40cdf335dc6dd79e6b6feb7233`, `5a6878dce699c537757836a4e9e92a86fa937871`, `c5811ee61014d188196e5b608b9887a6a95b2412`.
 - CI exact HEAD pending; backend authorization remains authoritative.
+
+
+## 2026-11-26 — Koreksi duplikasi deklarasi pada T2B-1 harness
+
+- CI run `45831683951` berhenti saat typecheck karena fase T2B-1 sempat memiliki deklarasi ganda `phase2Health`, `phase2Persistence`, dan `createdInFile` setelah instrumentation fingerprint ditambahkan. Tidak ada kegagalan aplikasi yang diuji pada run tersebut.
+- Deklarasi ganda dan variabel snapshot lama yang tidak lagi dipakai dibersihkan pada commit `977bc7f3e87b39bdfc2b2b2fcd437aeed29d5b86`.
+- CI exact HEAD baru diperlukan.
