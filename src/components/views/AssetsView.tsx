@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { hasEffectivePermission } from '../../dashboard/roleDashboardScope';
 import { 
   Package, 
   Search, 
@@ -149,7 +150,12 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
     });
   }, [safeAssets, selectedDivision, selectedCategory, selectedStatus, searchQuery]);
 
-  const canCreateAsset = currentUser.role === 'Admin GABAH' || currentUser.role === 'IT' || currentUser.role === 'GA' || currentUser.role === 'Supply Chain' || currentUser.role === 'PIBC';
+  const canCreateAsset = hasEffectivePermission(
+    currentUser,
+    'assets.create',
+    ['Admin GABAH', 'IT', 'GA', 'Supply Chain', 'PIBC'].includes(currentUser.role),
+  );
+  const canReportAsset = hasEffectivePermission(currentUser, 'tickets.create', currentUser.role !== 'Auditor');
 
   return (
     <div className="space-y-6">
@@ -478,7 +484,7 @@ export const AssetsView: React.FC<AssetsViewProps> = ({
                         >
                           <QrCode className="w-4 h-4" />
                         </button>
-                        {onReportAsset && currentUser?.role !== 'Auditor' && (
+                        {onReportAsset && canReportAsset && (
                           <button
                             onClick={() => onReportAsset(asset)}
                             className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-600 hover:text-rose-700 transition-colors"
