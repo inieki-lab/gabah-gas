@@ -65,6 +65,13 @@ const checks = [
     /UPDATE divisions[\s\S]*?UPPER\(BTRIM\(code\)\) IN \('SC', 'PIBC'\)/i.test(migration)
       && /UPDATE asset_categories[\s\S]*?UPPER\(BTRIM\(owner\.code\)\) IN \('SC', 'PIBC'\)/i.test(migration)
       && !/\bDELETE\s+FROM\s+(divisions|asset_categories|assets|contracts)\b/i.test(migration)],
+  ['asset assign, move, and lifecycle reject all active custody states including overdue',
+    ['assignAsset', 'moveAsset', 'mutateLifecycle'].every(method => {
+      const start = services.indexOf(`${method}(`);
+      const end = services.indexOf('\\n  /**', start);
+      const body = services.slice(start, end === -1 ? services.length : end);
+      return /\\['active', 'approved', 'borrowed', 'overdue'\\]\\.includes\\(String\\(loan\\.status\\)\\.toLowerCase\\(\\)\\)/.test(body);
+    })],
   ['asset and contract owner filter controls derive from server-returned records, not role labels or asset-number prefixes',
     /\.map\(asset => String\(asset\.owner_division/.test(assetsUi)
       && !/asset_number.*(?:startsWith|substring|slice)/.test(assetsUi)
