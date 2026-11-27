@@ -43,3 +43,11 @@ The Administration → Roles → Sidebar Menu controls did not fully model the s
 
 - Implementation and test commits are on the branch above; retrieve current exact HEAD from GitHub before review.
 - Next: wait for exact-head CI, fix any regression, then UAT the role editor using a disposable custom role. Do not merge to `main` without explicit owner approval.
+
+
+## Typecheck correction
+
+- CI run #3917 found that the existing RBAC permission list inferred `Set<unknown>` because the API catalogue's key field is untyped at this component boundary.
+- Typed the set as `Set<string>` and normalized each key to a string before passing it to the pure helper.
+- Fix commit: `0c1a633d9ec24bb1792b4ec084f41df26c816432`.
+- Exact-head CI rerun pending.
