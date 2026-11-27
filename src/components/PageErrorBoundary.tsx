@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface PageErrorBoundaryProps {
   children: ReactNode;
+  resetKey: string;
 }
 
 interface PageErrorBoundaryState {
