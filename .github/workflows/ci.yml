@@ -226,6 +226,9 @@ jobs:
       - name: Administration master fetch ignores stale async responses
         run: npm run test:admin-master-fetch-cancellation
 
+      - name: Administration category owner choices exclude retired location domains
+        run: npm run test:admin-category-owner-options
+
       - name: User bulk-import primary-role regression
         run: npm run test:bulk-import
 
