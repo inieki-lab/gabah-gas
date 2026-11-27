@@ -50,3 +50,12 @@ The same function also retained seeded data when the server legitimately returne
 - Regression contract diperluas untuk memastikan banner dan retry action ada.
 - Ini belum membuktikan browser UAT; pastikan banner tidak menutupi halaman dan retry berhasil pada UAT.
 - Latest code/test commits before this worklog update: `ce8aaa307116dd1745bf9737b71bb1a08e533f17` and `813a9a1653c9362a6932808bbbfd18d0ad125281`.
+
+
+## Exact-head CI result and correction
+
+- CI run `46001020681` (run #3884) on prior head `d1f3e70263cbd0443a038b22517c189cf9af539c` failed at the existing `test:effective-permission-ui` step.
+- The failure was an outdated assertion that still required `gabahApi.getUsers().catch(() => [])`. That assertion encoded the old behavior this change intentionally removes.
+- All steps before that regression passed, including TypeScript typecheck, production build, Docker image build, runtime smoke, and PostgreSQL integration; later steps were skipped after the failure.
+- Removed the stale assertion. New test commit: `ca8c75b7dff36dca89fb0ffba9bfe64f11a930b5`.
+- Exact-head CI must rerun on this new commit; no PASS is claimed yet.
