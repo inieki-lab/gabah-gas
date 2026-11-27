@@ -69,6 +69,9 @@ class GabahApiClient {
     const json = await res.json().catch(() => ({}));
     if (!res.ok || json.success === false) {
       const err: any = new Error(json.message || `Request gagal: ${res.statusText}`);
+      err.status = res.status;
+      err.code = json.code;
+      err.module_key = json.module_key;
       err.conflict = json.conflict;
       err.can_override = json.can_override;
       throw err;
