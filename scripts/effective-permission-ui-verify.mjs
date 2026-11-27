@@ -39,7 +39,10 @@ for (const transient of ["setSelectedAssetForDetail(null)","setSelectedAssetForE
 console.log('PASS: role switch, login, and logout clear role-scoped data and invalidate stale in-flight refreshes.');
 
 
-const refreshSource = app.slice(app.indexOf('const refreshData = useCallback'));
+const refreshStart = app.indexOf('const refreshData = useCallback');
+const refreshEnd = app.indexOf("\n  useEffect(() => {\n    async function initAuth()", refreshStart);
+assert.ok(refreshStart >= 0 && refreshEnd > refreshStart, 'refreshData function boundaries must be present');
+const refreshSource = app.slice(refreshStart, refreshEnd);
 assert.match(refreshSource, /Promise\.allSettled\(\[/, 'refreshData must distinguish empty success from request failure');
 assert.match(refreshSource, /result\.status === 'fulfilled'[\s\S]*?setCollection\(result\.value\)/, 'a successful empty response must replace stale seeded data');
 assert.match(refreshSource, /Failed to refresh \$\{collectionName\}; keeping last known data\./, 'failed requests must be reported instead of masquerading as empty results');
