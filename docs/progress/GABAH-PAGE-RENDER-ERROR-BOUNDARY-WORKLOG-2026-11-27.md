@@ -133,3 +133,12 @@ The original PR #354 branch had a failed CI attempt and did not receive a fresh 
 - Updated the regression to assert the derived-state reset contract.
 - Boundary commit: `1497d2b20eab4d529d684f451b00cf8e436556ce`; test commit: `c75b9ad55ea8a3ca60ab08c0513c521da3de9bbf`.
 - Exact-head CI pending.
+
+
+## Constructor initialization correction
+
+- CI run #3924 found that a class-field initializer referenced `this.props` before TypeScript considered props initialized.
+- Moved initial `resetKey` state assignment into the class constructor after `super(props)`; the derived-state reset remains unchanged.
+- Updated regression assertion to require constructor-based initialization.
+- Boundary commit: `4a063788a6eac12f7a9a3b30420c29caf158f1b3`; test commit: `f9e9146121cf0b0e795ace51bcd022dfc6d796e7`.
+- Exact-head CI pending.
