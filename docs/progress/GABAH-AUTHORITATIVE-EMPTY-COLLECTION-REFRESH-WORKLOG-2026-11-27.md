@@ -77,3 +77,13 @@ The same function also retained seeded data when the server legitimately returne
 - Regression added for this distinction.
 - Latest commits: App `47a02e4ddaae49267af0545a571c0e08b010068b`, API client `0d123bc9c263754c835c85b0278cfb123be3f7f8`, test `d10a0f646752365228733e1aa00089c18e823119`.
 - Exact-head CI must rerun.
+
+
+## Remove startup demo seeds from authoritative collections
+
+- Further review found that preserving last-known data after a failed API call could still preserve initial demo seed arrays on the very first login.
+- Removed startup seed values for operational vendor, knowledge-base, and maintenance collections; these now start empty and are populated only by successful API responses.
+- Failed requests retain actual last-known state only when one exists; first-load failures leave the collection empty and display the data-load warning.
+- Added regression assertions that these three collections do not initialize from mock/demo data.
+- Latest App commit: `758228d44256d88c8889f5ed1e8e30b4a33d916b`; test commit: `10bcd96411c85e68f43b601cf31364ff6b90364a`.
+- Exact-head CI must rerun.
