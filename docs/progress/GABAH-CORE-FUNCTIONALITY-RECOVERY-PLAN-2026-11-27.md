@@ -1,0 +1,69 @@
+# GABAH Core Functionality Recovery Plan
+
+**Tanggal:** 27 November 2026  
+**Status:** Rencana kerja aktif; audit dan implementasi berjalan bertahap/paralel.  
+**Branch dokumentasi:** `audit/core-functionality-recovery-plan-2026-11-27`  
+**Baseline:** `main` at `4f10d7a3aada9f41cd9e6cd2abe980b52054839e`
+
+## Tujuan
+
+Memulihkan fungsi inti aplikasi berdasarkan keluhan UAT terbaru: sejumlah menu terlihat tetapi tidak bekerja, halaman tidak terbuka/blank, atau proses berhenti pada status loading. Keberhasilan CI saja tidak dianggap bukti bahwa alur browser telah berfungsi.
+
+## Urutan prioritas dan kriteria selesai
+
+| Tahap | Area | Pemeriksaan wajib | Kriteria selesai |
+|---|---|---|---|
+| 0 | Inventaris & baseline | Petakan seluruh menu/sidebar, NavTab, route/render switch, module key, role, API, serta status implementasi dan tes | Matriks menu-ke-halaman-ke-permission tersedia; setiap menu punya pemilik dan status |
+| 1 | Bootstrap aplikasi | Login, restore session, current user, fetch module status, initial data, error/loading state | Login berakhir pada dashboard; tidak ada loading permanen; kegagalan API menampilkan error/retry yang jelas |
+| 2 | Navigasi & render halaman | Klik semua menu, perubahan currentTab, fallback route, active module gating, modal administrasi | Setiap menu yang diizinkan membuka halaman yang benar; tidak ada tab dead-end, blank screen, atau redirect tak terduga |
+| 3 | RBAC & module lifecycle | Role assignments, effective permissions, location/data scopes, active modules, sidebar visibility, backend guards | Menu dan tindakan cocok dengan permission/scope; UI dan API konsisten; deny-by-default tetap berlaku |
+| 4 | Operasi & formulir | Create/read/update/delete yang relevan, validasi, loading/success/error, approval/rejection, refresh data | Aksi utama berfungsi end-to-end; tidak ada tombol inert atau sukses palsu |
+| 5 | API & integritas data | Endpoint yang dipanggil tiap halaman, status/error mapping, schema/migration, transaksi, konflik data | Kontrak frontend-backend cocok; kegagalan ditangani eksplisit; data tidak hilang/terduplikasi |
+| 6 | Uji lintas persona | Superadmin, Admin GABAH, staf IT, GA, staf biasa, dan pengguna lokasi RPC/PIBC/HO sesuai akun uji yang tersedia | Skenario positif dan negatif lulus per role; akses lintas owner/lokasi tidak bocor |
+| 7 | Stabilitas & rilis | Build, lint, unit/integration/regression CI, smoke test browser/UAT, dokumentasi blocker | Tidak ada blocker kritis; bukti tes terikat ke exact commit; PR siap direview, tidak merge ke main tanpa persetujuan |
+
+## Strategi paralel
+
+Pekerjaan dibagi ke jalur independen dan tidak menunggu CI jalur lain:
+
+1. **Jalur A — Bootstrap dan navigasi:** App root, Sidebar, roleNavigation, module loading, tab-to-view rendering.
+2. **Jalur B — RBAC dan module access:** permission metadata, active modules, scope, menu visibility, backend enforcement.
+3. **Jalur C — Halaman dan operasi:** view/modal/form handlers, API client, data refresh, error/loading state.
+4. **Jalur D — Uji dan dokumentasi:** matriks menu/role/API, regression tests, hasil CI, catatan blocker dan keputusan.
+
+Sebelum dua jalur mengubah file yang sama, perubahan dikoordinasikan atau ditumpuk berdasarkan dependency. Tidak membuat klaim bahwa jalur selesai hanya karena CI belum merah atau test source-level lulus.
+
+## Aturan perubahan dan bukti
+
+- Perbaiki aplikasi yang ada; jangan rebuild atau mengganti arsitektur tanpa alasan yang terbukti.
+- Setiap kelompok perubahan memakai branch khusus, regression test yang relevan, dan worklog.
+- Jalankan pemeriksaan/CI tiap branch segera; pekerjaan independen tetap berjalan tanpa menunggu CI branch lain.
+- Catat exact branch, HEAD SHA, file berubah, tes yang benar-benar dijalankan, hasil, dan blocker.
+- Bedakan source inspection, automated tests, CI, dan browser/UAT. Jangan menyamakan satu dengan lainnya.
+- Jangan menghapus data, volume, branch, atau mengubah database pengguna.
+- Jangan merge ke `main` tanpa persetujuan eksplisit pemilik proyek.
+- Standar penomoran aset masih menunggu keputusan perusahaan; tidak menjadi bagian pemulihan ini.
+
+## Kondisi awal dan batas bukti
+
+- Pengguna melaporkan pada UAT 27 November 2026 bahwa beberapa menu tidak berfungsi. Rincian menu/akun/aksi yang gagal belum seluruhnya terinventarisasi.
+- Sebelumnya ada laporan layar kosong dan teks `Memuat status modul…` yang menetap setelah login.
+- PR/CI sebelumnya hanya menjadi bukti pemeriksaan otomatis pada commit masing-masing; bukan bukti bahwa seluruh menu telah lolos UAT.
+- Pemeriksaan kode awal pada baseline main menunjukkan `App.tsx` mengelola state navigasi dan render view, sedangkan `Sidebar.tsx` menyusun menu berbasis permission. Ini titik awal audit, bukan kesimpulan penyebab.
+
+## Status pekerjaan
+
+| Jalur | Status | Catatan |
+|---|---|---|
+| A — Bootstrap & navigasi | MENUNGGU AUDIT TERINSTRUMEN | Prioritas pertama |
+| B — RBAC & module access | MENUNGGU AUDIT MATRIKS | Dikerjakan paralel |
+| C — Halaman & operasi | MENUNGGU INVENTARIS MENU/API | Dikerjakan paralel setelah pemetaan titik integrasi |
+| D — Tes & dokumentasi | AKTIF | Dokumen rencana ini menjadi acuan; hasil audit berikutnya ditambahkan di worklog terpisah |
+
+## Next actions
+
+1. Buat matriks semua item Sidebar → NavTab → komponen halaman → permission/module key → endpoint.
+2. Audit semua kondisi yang dapat membuat konten tidak dirender atau menu tidak merespons.
+3. Audit error/loading handling untuk setiap initial fetch dan perubahan tab.
+4. Tambahkan regression test pada setiap penyebab yang terbukti.
+5. Pecah perbaikan menjadi PR kecil/terukur; jalankan CI per branch tanpa menghentikan jalur paralel.
