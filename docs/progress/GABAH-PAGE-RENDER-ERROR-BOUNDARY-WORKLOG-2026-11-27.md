@@ -124,3 +124,12 @@ The original PR #354 branch had a failed CI attempt and did not receive a fresh 
 - Added `componentDidUpdate` to clear the failed state when `resetKey` changes; this allows the next selected page to render without a full reload.
 - Fix commit: `8465a551f97062457119bdbb09660472d2108363`.
 - Exact-head CI rerun is pending.
+
+
+## Boundary lifecycle type correction
+
+- CI run #3919 found that `setState` was not available on the component's declared type after the explicit props declaration.
+- Replaced the imperative `componentDidUpdate/setState` reset with React's static `getDerivedStateFromProps`, storing the last `resetKey` in boundary state. A navigation key change now clears `hasError` without imperative state mutation.
+- Updated the regression to assert the derived-state reset contract.
+- Boundary commit: `1497d2b20eab4d529d684f451b00cf8e436556ce`; test commit: `c75b9ad55ea8a3ca60ab08c0513c521da3de9bbf`.
+- Exact-head CI pending.
