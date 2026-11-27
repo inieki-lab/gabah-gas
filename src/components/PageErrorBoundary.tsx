@@ -14,13 +14,8 @@ interface PageErrorBoundaryState {
  * page resets the failed boundary without requiring a full application reload.
  */
 export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErrorBoundaryState> {
-  private readonly pageContent: ReactNode;
+  declare readonly props: Readonly<PageErrorBoundaryProps>;
   state: PageErrorBoundaryState = { hasError: false };
-
-  constructor(props: PageErrorBoundaryProps) {
-    super(props);
-    this.pageContent = props.children;
-  }
 
   static getDerivedStateFromError(): PageErrorBoundaryState {
     return { hasError: true };
@@ -40,6 +35,6 @@ export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErr
         </section>
       );
     }
-    return this.pageContent;
+    return this.props.children;
   }
 }
