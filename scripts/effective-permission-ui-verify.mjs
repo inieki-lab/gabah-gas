@@ -11,7 +11,7 @@ assert.ok(source.includes("this.hasEffectivePermission(user, 'loans.approve')"))
 assert.ok(source.includes("this.hasEffectivePermission(user, key)"));
 const auditor = source.indexOf('static canApproveLoan(');
 assert.ok(source.slice(auditor, auditor + 220).includes('this.isReadOnly(user)'), 'Auditor remains deny-write');
-assert.match(header, /isSuperadmin \? \(/, 'Account directory must only render for Superadmin');
+assert.match(header, /isSuperadmin <PageErrorBoundary resetKey={activeTab || 'no-access'}>? \(/, 'Account directory must only render for Superadmin');
 assert.match(header, /Direktori akun hanya dapat diakses Superadmin/, 'Non-Superadmin receives a privacy-safe account menu state');
 assert.match(header, /\{\(allUsers \|\| \[\]\)\.map\(user =>/, 'Registered account list remains available inside the Superadmin-only branch');
 console.log('PASS: Superadmin and wildcard permissions are consistent; account directory is hidden from non-Superadmin users.');
@@ -83,12 +83,6 @@ assert.match(app, /result\.reason\?\.status === 403[\s\S]*?setCollection\(\[\]\)
 console.log('PASS: expected 403 denials for unassigned/inactive modules are not reported as server outages.');
 
 
-assert.match(boundary, /declare readonly props: Readonly<PageErrorBoundaryProps>/,
-  'page boundary must type its props without freezing the initial children');
-assert.match(boundary, /return this\.props\.children/);
-assert.doesNotMatch(boundary, /pageContent/,
-  'page boundary must render the latest children after data refreshes');
-console.log('PASS: page boundary preserves reactive children when parent data updates.');
 
 
 assert.doesNotMatch(app, /INITIAL_VENDORS|INITIAL_KNOWLEDGE_BASE|INITIAL_MAINTENANCE_SCHEDULES/,
@@ -97,3 +91,12 @@ assert.match(app, /useState<Vendor\[\]>\(\[\]\)/);
 assert.match(app, /useState<KnowledgeArticle\[\]>\(\[\]\)/);
 assert.match(app, /useState<MaintenanceSchedule\[\]>\(\[\]\)/);
 console.log('PASS: operational collections start empty until PostgreSQL-backed API responses arrive.');
+
+
+assert.match(app, /<PageErrorBoundary resetKey=\{activeTab \|\| 'no-access'\}>/,
+  'page boundary must reset when the active navigation tab changes');
+assert.match(boundary, /declare readonly props: Readonly<PageErrorBoundaryProps>/);
+assert.match(boundary, /componentDidUpdate\(previousProps/);
+assert.match(boundary, /return this\.props\.children/);
+assert.doesNotMatch(boundary, /pageContent/);
+console.log('PASS: page boundary keeps children reactive and resets after navigation.');
