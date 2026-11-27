@@ -833,7 +833,7 @@ export default function App() {
         />
 
         {/* Main Content Pane */}
-        <PageErrorBoundary key={activeTab || 'no-access'}>
+        <PageErrorBoundary resetKey={activeTab || 'no-access'}>
         <main className="gabah-main-content flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto bg-[#f4f8f5]">
           {dataRefreshErrors.length > 0 && (
             <section role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
