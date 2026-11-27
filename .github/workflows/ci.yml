@@ -155,6 +155,9 @@ jobs:
       - name: Role navigation policy checks
         run: npm run test:navigation-policy
 
+      - name: Sidebar menu composite permission and shared-grant regression
+        run: npm run test:sidebar-menu-permission-sync
+
       - name: Public landing page employee-directory privacy regression
         run: npm run test:public-landing-privacy
 
