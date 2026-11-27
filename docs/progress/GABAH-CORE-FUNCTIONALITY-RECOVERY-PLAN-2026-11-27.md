@@ -67,3 +67,20 @@ Sebelum dua jalur mengubah file yang sama, perubahan dikoordinasikan atau ditump
 3. Audit error/loading handling untuk setiap initial fetch dan perubahan tab.
 4. Tambahkan regression test pada setiap penyebab yang terbukti.
 5. Pecah perbaikan menjadi PR kecil/terukur; jalankan CI per branch tanpa menghentikan jalur paralel.
+
+
+## Temuan audit awal — 27 November 2026
+
+### Jalur A — Bootstrap & navigasi
+- **Terkonfirmasi pada baseline `main` `4f10d7a`:** `src/App.tsx` belum memiliki generation guard untuk membatalkan `initAuth()` yang terlambat setelah login interaktif. Kode dapat menjalankan `clearRoleScopedData()` dan mengembalikan `activeModuleKeys` ke `null` setelah login, sementara effect pemuatan modul bergantung pada `currentUser?.id`. Ini cocok dengan gejala `Memuat status modul…` yang pernah dilaporkan.
+- **Perbaikan sudah ada di PR #345**, branch `fix/login-module-status-init-race`, HEAD `91418ab330321f9ee459deb4a3b188e57ab6c1e3`. PR masih Draft dan base-nya `fix/postgres-skip-readonly-state-snapshot`, bukan `main`; karena itu perbaikan tersebut belum menjadi bukti bahwa branch lokal pengguna sudah memuatnya atau sudah lolos UAT.
+- **Hipotesis mismatch module key ditolak untuk baseline ini:** 12 key pada `042_module_lifecycle_registry.sql` selaras dengan `AppNavTab` dan daftar tab di `roleNavigation.ts`. Script `module-lifecycle-registry-verify.mjs` memeriksa sebagian kontrak tersebut. Tetap perlu uji runtime bahwa registry benar-benar ter-migrasi dan seluruh status aktif.
+- Sidebar membentuk daftar menu hanya dari gabungan permission dan `activeModuleKeys`; App juga menolak navigasi ke modul yang tidak aktif. Saat status modul belum tersedia, tidak ada menu yang dianggap tersedia. Ini perilaku fail-closed yang harus disertai status error/retry yang dapat dipahami pengguna.
+
+### Jalur C — Data halaman & API
+- **Temuan source-level:** `refreshData()` di `src/App.tsx` mengubah kegagalan masing-masing API menjadi array kosong (`catch(() => [])`), sehingga kegagalan jaringan/otorisasi sulit dibedakan dari data yang memang kosong.
+- **Temuan source-level:** ketika API mengembalikan array kosong, data awal `maintenanceSchedules`, `vendors`, dan `knowledgeBase` tidak selalu diganti; kode mempertahankan seed/demo lama. Ini bertentangan dengan prinsip PostgreSQL sebagai sumber data authoritative pada runtime Compose dan dapat menampilkan data yang tidak berasal dari server.
+- Temuan ini perlu diperbaiki dengan pola status per data (loading/success/empty/error) atau setidaknya mengosongkan state ketika server secara sah mengembalikan array kosong. Jangan menampilkan data seed seolah-olah data produksi.
+
+### Batas bukti
+Semua temuan di atas berasal dari inspeksi source GitHub pada baseline yang disebutkan. Belum ada browser UAT pada sesi ini. Belum dapat disimpulkan bahwa temuan tersebut menjelaskan semua menu yang gagal dilaporkan pengguna.
