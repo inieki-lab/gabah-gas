@@ -89,3 +89,11 @@ assert.match(boundary, /return this\.props\.children/);
 assert.doesNotMatch(boundary, /pageContent/,
   'page boundary must render the latest children after data refreshes');
 console.log('PASS: page boundary preserves reactive children when parent data updates.');
+
+
+assert.doesNotMatch(app, /INITIAL_VENDORS|INITIAL_KNOWLEDGE_BASE|INITIAL_MAINTENANCE_SCHEDULES/,
+  'authoritative page collections must not start with demo seed rows');
+assert.match(app, /useState<Vendor\[\]>\(\[\]\)/);
+assert.match(app, /useState<KnowledgeArticle\[\]>\(\[\]\)/);
+assert.match(app, /useState<MaintenanceSchedule\[\]>\(\[\]\)/);
+console.log('PASS: operational collections start empty until PostgreSQL-backed API responses arrive.');
