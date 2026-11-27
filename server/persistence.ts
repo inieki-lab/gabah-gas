@@ -824,8 +824,9 @@ export async function initializePersistence(): Promise<void> {
       const legacyCapabilities = collectLegacyEmployeeCapabilityAssignments();
       await ensureEmployeeCapabilityAssignments(legacyCapabilities);
       normalizeLegacyEmployeeProfileRoles();
-      saveStateToFile(createPayload());
 
+      // PostgreSQL is authoritative in this mode. Do not write a local JSON
+      // recovery snapshot: production containers intentionally use read_only.
       await persistPostgresState();
       await backfillNormalizedTables();
 
@@ -878,7 +879,6 @@ export async function initializePersistence(): Promise<void> {
       );
       isPostgresAvailable = true;
       console.log('[GABAH Persistence] PostgreSQL persistence ready; normalized tables backfilled');
-      saveStateToFile(createPayload());
       return;
     } catch (error: any) {
       lastError = error;
@@ -937,10 +937,9 @@ export function persistDataStore(): Promise<void> {
       throw Object.assign(new Error('PostgreSQL tidak lagi tersedia; perubahan tidak dapat dipastikan tersimpan.'), { statusCode: 503 });
     }
     try {
-      const committedPayload = await persistPostgresState();
-      // Publish the local recovery snapshot only after the PostgreSQL
-      // transaction commits, and use the exact payload committed by it.
-      saveStateToFile(committedPayload);
+      await persistPostgresState();
+      // PostgreSQL is the durable source of truth; avoid a second local write
+      // because hardened production containers mount the application read-only.
     } catch (error: any) {
       postgresFailureLatched = true;
       isPostgresAvailable = false;
