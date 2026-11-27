@@ -40,3 +40,13 @@ The same function also retained seeded data when the server legitimately returne
 1. Check exact-head CI.
 2. If CI passes, keep PR Draft until the user can UAT the affected pages.
 3. Continue the independent menu-to-view and role-to-permission audit; do not wait for this CI to finish.
+
+
+## Tambahan — error refresh ditampilkan kepada pengguna
+
+- Menambahkan state error koleksi pada App.
+- Kegagalan API sekarang ditampilkan sebagai banner peringatan yang menyebut koleksi yang gagal, mempertahankan data terakhir jika tersedia, dan menyediakan tombol **Coba muat ulang data**.
+- Error state dibersihkan saat identitas direset dan setiap refresh baru dimulai.
+- Regression contract diperluas untuk memastikan banner dan retry action ada.
+- Ini belum membuktikan browser UAT; pastikan banner tidak menutupi halaman dan retry berhasil pada UAT.
+- Latest code/test commits before this worklog update: `ce8aaa307116dd1745bf9737b71bb1a08e533f17` and `813a9a1653c9362a6932808bbbfd18d0ad125281`.
