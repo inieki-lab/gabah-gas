@@ -7,24 +7,28 @@ interface PageErrorBoundaryProps {
 
 interface PageErrorBoundaryState {
   hasError: boolean;
+  resetKey?: string;
 }
 
 /**
  * Keeps the application shell/navigation usable when one page component throws
- * during render. The parent keys this boundary by active tab so choosing another
- * page resets the failed boundary without requiring a full application reload.
+ * during render. A changed resetKey clears the previous page's error state.
  */
 export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErrorBoundaryState> {
   declare readonly props: Readonly<PageErrorBoundaryProps>;
-  state: PageErrorBoundaryState = { hasError: false };
+  state: PageErrorBoundaryState = { hasError: false, resetKey: this.props.resetKey };
 
-  componentDidUpdate(previousProps: Readonly<PageErrorBoundaryProps>) {
-    if (previousProps.resetKey !== this.props.resetKey && this.state.hasError) {
-      this.setState({ hasError: false });
+  static getDerivedStateFromProps(
+    props: Readonly<PageErrorBoundaryProps>,
+    state: PageErrorBoundaryState,
+  ): Partial<PageErrorBoundaryState> | null {
+    if (props.resetKey !== state.resetKey) {
+      return { hasError: false, resetKey: props.resetKey };
     }
+    return null;
   }
 
-  static getDerivedStateFromError(): PageErrorBoundaryState {
+  static getDerivedStateFromError(): Partial<PageErrorBoundaryState> {
     return { hasError: true };
   }
 
