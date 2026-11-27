@@ -84,3 +84,27 @@ Sebelum dua jalur mengubah file yang sama, perubahan dikoordinasikan atau ditump
 
 ### Batas bukti
 Semua temuan di atas berasal dari inspeksi source GitHub pada baseline yang disebutkan. Belum ada browser UAT pada sesi ini. Belum dapat disimpulkan bahwa temuan tersebut menjelaskan semua menu yang gagal dilaporkan pengguna.
+
+
+## Update pelaksanaan — 27 November 2026
+
+### Branch/PR aktif
+| Jalur | Branch / PR | HEAD terakhir yang diketahui | Status |
+|---|---|---|---|
+| Login/bootstrap race | `fix/login-module-status-init-race` / PR #345 | `91418ab330321f9ee459deb4a3b188e57ab6c1e3` | Exact-head CI sebelumnya SUCCESS; Draft; browser UAT belum dilakukan |
+| Sinkronisasi data halaman | `fix/authoritative-empty-list-refresh-2026-11-27` / PR #352 | Worklog commit `d1f3e70263cbd0443a038b22517c189cf9af539c` | CI pada head sebelumnya sempat berjalan; head terbaru perlu CI ulang; Draft |
+| Kontrak menu-ke-halaman | `test/menu-to-view-contract-2026-11-27` / PR #353 | `63baac46738825a422c80764db028123aba779b0` | CI belum terlihat pada pemeriksaan terakhir; Draft |
+| Rencana pemulihan | `audit/core-functionality-recovery-plan-2026-11-27` | `32c7173c864abcdf6490195faddad32cd5ed6baa` | Dokumen acuan sudah dipush |
+
+### Perkembangan jalur
+- Jalur A mengidentifikasi race condition auth pada baseline main dan mengonfirmasi perbaikan tersedia di PR #345, tetapi PR masih berada di branch bertingkat dan belum diuji browser.
+- Jalur C mengubah refresh data menjadi `Promise.allSettled`, membedakan respons kosong dari request gagal, dan menampilkan banner error plus tombol retry. PR #352.
+- Jalur D menambahkan regression contract bahwa seluruh 12 item Sidebar memiliki cabang render pada App dan jalur klik melewati guard permission/module. PR #353.
+- Mismatch nama module key vs NavTab tidak ditemukan pada migration seed baseline; hipotesis awal tersebut tidak terbukti.
+- Jalur B (audit matriks permission/scope per role dan backend endpoint) masih berjalan independen; belum ada klaim selesai.
+
+### Hal yang belum boleh dianggap selesai
+- Belum ada browser UAT seluruh menu.
+- Belum ada verifikasi semua tombol/form pada tiap halaman.
+- Belum ada uji akun IT, GA, staf biasa, dan pengguna lokasi untuk seluruh alur.
+- CI untuk PR #352/#353 harus dinilai berdasarkan exact latest head, bukan commit sebelumnya.
