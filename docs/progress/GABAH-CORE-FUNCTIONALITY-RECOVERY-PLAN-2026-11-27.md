@@ -152,3 +152,14 @@ Dokumen tersebut menjadi checklist UAT per menu, termasuk pemisahan bukti wiring
 - Karena `refreshData()` memanggil endpoint lintas modul saat login, 403 untuk modul yang tidak ditugaskan atau dinonaktifkan adalah penolakan yang diharapkan. API client sekarang menyimpan HTTP status/error code; 403 tidak menimbulkan banner outage palsu.
 - Collection vendor, knowledge, dan maintenance sekarang dimulai dari array kosong, bukan data demo. Hanya respons backend sukses yang boleh mengisi data awal.
 - Kegagalan selain 403 tetap ditampilkan sebagai banner dengan daftar koleksi dan tombol retry.
+
+
+## Status terkini setelah pemeriksaan CI
+
+- **PR #352:** implementasi/test commit `9561f12495c0b1bf765bd1a820eb5647743554fc` lulus CI lengkap pada run #3907. Commit `f1a40dc88b6edc3fb1ceac393f26d69240478248` sesudahnya hanya worklog. Browser UAT belum.
+- **PR #353:** menu-to-view + menu-to-backend-read-permission regression ditambahkan; run #3910/#3911 sedang berjalan.
+- **PR #355:** dokumen tahapan dan matriks menu; run #3909 sedang berjalan.
+- **PR #356:** Error Boundary dengan `resetKey`; run #3908 melewati typecheck/build dan sedang menjalankan integrasi PostgreSQL saat pemeriksaan terakhir.
+- **PR #354:** closed, superseded by #356.
+- Tidak ada PR yang di-merge ke `main`.
+
