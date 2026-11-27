@@ -87,3 +87,12 @@ The same function also retained seeded data when the server legitimately returne
 - Added regression assertions that these three collections do not initialize from mock/demo data.
 - Latest App commit: `758228d44256d88c8889f5ed1e8e30b4a33d916b`; test commit: `10bcd96411c85e68f43b601cf31364ff6b90364a`.
 - Exact-head CI must rerun.
+
+
+## Final exact-head CI result (current head at this check)
+
+- Exact PR head: `9561f12495c0b1bf765bd1a820eb5647743554fc`.
+- CI run #3907 (`46002821162`) completed **SUCCESS** on that exact head.
+- The immediately preceding run #3906 also passed on the test commit; run #3907 is the authoritative latest-head result.
+- Typecheck, production build, Docker runtime smoke, PostgreSQL integration, and all remaining workflow steps completed successfully for this exact head.
+- Browser UAT remains NOT RUN. CI success is not proof that the user-reported menus work in the local browser.
