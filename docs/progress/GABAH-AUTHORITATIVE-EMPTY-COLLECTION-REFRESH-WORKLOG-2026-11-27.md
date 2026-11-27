@@ -59,3 +59,11 @@ The same function also retained seeded data when the server legitimately returne
 - All steps before that regression passed, including TypeScript typecheck, production build, Docker image build, runtime smoke, and PostgreSQL integration; later steps were skipped after the failure.
 - Removed the stale assertion. New test commit: `ca8c75b7dff36dca89fb0ffba9bfe64f11a930b5`.
 - Exact-head CI must rerun on this new commit; no PASS is claimed yet.
+
+
+## Second exact-head CI result and correction
+
+- CI run `46001458576` (run #3887) passed typecheck/build/runtime checks up to the `Effective permission UI regression` step, then failed because the new source assertion searched the entire remainder of `App.tsx` for `length > 0` and accidentally matched unrelated later code.
+- Narrowed the assertion's inspected source range to the `refreshData()` function only.
+- Correction commit: `59773485c4ee115551707d77c6a00cf122e8202b`.
+- Exact-head CI must rerun; no PASS is claimed.
