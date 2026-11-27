@@ -575,7 +575,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { tab: 'reports', label: 'Laporan & Audit', description: 'Laporan operasional dan audit', required: ['reports.read'], anyOf: ['assets.read', 'loans.read', 'tickets.read', 'maintenances.read'], revoke: ['reports.read'] },
   ] as const;
   const coreSidebarTabs = new Set(['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge']);
-  const activePermissionKeys = new Set(rbacPermissions.filter((permission: any) => permission.is_active).map((permission: any) => permission.permission_key));
+  const activePermissionKeys = new Set<string>(rbacPermissions.filter((permission: any) => permission.is_active).map((permission: any) => String(permission.permission_key)));
   const getMissingMenuPermissions = (item: typeof sidebarMenuControls[number]) =>
     getMissingSidebarMenuPermissions(item, activePermissionKeys);
   const isSidebarMenuEnabled = (item: typeof sidebarMenuControls[number]) => coreSidebarTabs.has(item.tab)
