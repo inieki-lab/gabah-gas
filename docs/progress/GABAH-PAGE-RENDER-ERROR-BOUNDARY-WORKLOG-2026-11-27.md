@@ -108,3 +108,11 @@ The original PR #354 branch had a failed CI attempt and did not receive a fresh 
 - Replaced the special key with an explicit `resetKey` prop and `componentDidUpdate` reset logic. The boundary still keeps live children reactive and resets after the user navigates to another tab.
 - Latest commits: boundary `801f7f5cd055ec3c53b31470156c2d844b2e1e1a`; App `8b517848d8410c7b4b2b0441e6473be2bfd0da6b`; test `5fffd251c3487c821f25f2fb1ddf911f999f0320`.
 - Exact-head CI must rerun; no PASS is claimed.
+
+
+## Regression assertion alignment
+
+- CI run #3908 passed typecheck and production build but failed in `effective-permission-ui` because one earlier assertion still expected the old special `key` prop after the implementation moved to `resetKey`.
+- Updated the assertion to match the actual `resetKey` contract.
+- Correction commit: `5df4a25912ddd434bb7e3dbc96ef647319a1ea4a`.
+- Exact-head CI must rerun; no PASS is claimed yet.
