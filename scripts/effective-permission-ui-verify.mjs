@@ -49,3 +49,12 @@ assert.match(refreshSource, /applyCollection\(vendorsResult, setVendors/);
 assert.match(refreshSource, /applyCollection\(knowledgeResult, setKnowledgeBase/);
 assert.doesNotMatch(refreshSource, /length > 0/, 'empty server collections must not preserve mock/demo rows');
 console.log('PASS: authoritative empty collections clear stale seed rows; failed API requests preserve last-known data and are logged.');
+
+
+assert.match(app, /const \[dataRefreshErrors, setDataRefreshErrors\] = useState<string\[\]>\(\[\]\)/,
+  'collection failures must have user-visible state');
+assert.match(app, /dataRefreshErrors\.length > 0[\s\S]*?role="alert"[\s\S]*?Coba muat ulang data/,
+  'collection failures must display an alert and an explicit retry action');
+assert.match(app, /setDataRefreshErrors\(previous => previous\.includes\(collectionName\)/,
+  'collection failures must be aggregated without duplicate labels');
+console.log('PASS: failed page data loads are visible to users with a retry action.');
