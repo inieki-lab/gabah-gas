@@ -1,7 +1,7 @@
-import React from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 
 interface PageErrorBoundaryProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 interface PageErrorBoundaryState {
@@ -13,14 +13,14 @@ interface PageErrorBoundaryState {
  * during render. The parent keys this boundary by active tab so choosing another
  * page resets the failed boundary without requiring a full application reload.
  */
-export class PageErrorBoundary extends React.Component<PageErrorBoundaryProps, PageErrorBoundaryState> {
+export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErrorBoundaryState> {
   state: PageErrorBoundaryState = { hasError: false };
 
   static getDerivedStateFromError(): PageErrorBoundaryState {
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, info: React.ErrorInfo) {
+  componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('GABAH page render failed:', error, info.componentStack);
   }
 
