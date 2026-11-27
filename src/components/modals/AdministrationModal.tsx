@@ -277,7 +277,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     name: '',
     email: '',
     role: 'Karyawan',
-    division: 'SC',
+    // Do not silently assign the retired SC owner domain to a newly created employee.
+    division: '' as OwnerDivision,
     department: '',
     job_level_code: '',
     unit_id: '',
