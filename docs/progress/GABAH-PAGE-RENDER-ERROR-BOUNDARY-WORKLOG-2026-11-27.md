@@ -82,3 +82,12 @@ The original PR #354 branch had a failed CI attempt and did not receive a fresh 
 - Added regression assertions on this stacked branch.
 - Latest commits: App `0800cf5ad03a536a43df9d727c146861b850e318`, API `e3f6f81738a79d49dd2e5f7ab448c33d70845759`, test `bcd8f4ab8dcdc2c61a8736c9abac39fd1e7a6945`.
 - Exact-head CI must rerun.
+
+
+## Reactive children correction
+
+- Review found that storing `children` in the constructor would freeze the first render and prevent refreshed page props/data from flowing through the boundary.
+- Replaced the cached field with a declared, explicitly typed `props` member and render `this.props.children` so parent updates remain reactive.
+- Added a regression asserting that the boundary does not cache initial children.
+- Latest commits: boundary `e0669298544426ad19cc2d86b0ebd312be7ddd79`; test `1625180cac2eb7aed1ad27ff869fbf9fad0f3414`.
+- Exact-head CI still pending; verify typecheck and re-render behavior before UAT.
