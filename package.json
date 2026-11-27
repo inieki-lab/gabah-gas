@@ -112,7 +112,8 @@
     "test:auth-rate-limit-memory": "node --import tsx scripts/auth-rate-limit-memory-verify.mjs",
     "test:production-secret-policy": "node --import tsx scripts/production-secret-policy-verify.mjs",
     "test:admin-empty-user-sync": "node scripts/admin-empty-user-sync-verify.mjs",
-    "test:admin-new-user-division-default": "node scripts/admin-new-user-division-default-verify.mjs"
+    "test:admin-new-user-division-default": "node scripts/admin-new-user-division-default-verify.mjs",
+    "test:admin-empty-category-sync": "node scripts/admin-empty-category-sync-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
