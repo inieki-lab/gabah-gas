@@ -108,3 +108,23 @@ Semua temuan di atas berasal dari inspeksi source GitHub pada baseline yang dise
 - Belum ada verifikasi semua tombol/form pada tiap halaman.
 - Belum ada uji akun IT, GA, staf biasa, dan pengguna lokasi untuk seluruh alur.
 - CI untuk PR #352/#353 harus dinilai berdasarkan exact latest head, bukan commit sebelumnya.
+
+
+## Audit lanjutan — komponen halaman dan error boundary
+
+- Seluruh 12 file view utama ditemukan: Dashboard, Aset, Aset Saya, Ruang Meeting, Maintenance, Peminjaman, Tiket, Lisensi, Kontrak, Vendor, Knowledge Base, dan Laporan.
+- Pemeriksaan source awal tidak menemukan handler tombol inline kosong (`onClick={() => {}}`) atau penanda TODO/FIXME umum pada 11 view. `ReportsView` memiliki dua pesan metrik yang memang belum tersedia (timestamp respons pertama dan durasi penyelesaian); ini bukan bukti tombol/menu rusak.
+- Tombol pada komponen-komponen tersebut memiliki wiring `onClick` yang terlihat secara statis. Ini belum memverifikasi callback parent, permission backend, atau hasil transaksi.
+- `src/main.tsx` tidak memasang Error Boundary. PR #354 menambahkan boundary pada content pane agar exception satu view tidak menjatuhkan sidebar; CI awal menemukan masalah tipe, sudah dikoreksi, menunggu CI exact-head baru.
+- Pemeriksaan ini tidak menggantikan UAT klik per menu dan uji aksi per persona.
+
+### Status CI terbaru saat pembaruan
+| PR | Status yang diketahui | Catatan |
+|---|---|---|
+| #345 | SUCCESS | Exact-head CI pada PR login race; browser UAT belum |
+| #351 | SUCCESS | Exact-head CI sebelumnya; re-login setelah role assignment perlu UAT |
+| #352 | QUEUED | Dua CI sebelumnya gagal pada assertion lama/salah-scope; test diperbaiki dan run #3897 antre |
+| #353 | SUCCESS | Run #3882 lulus; structural menu-to-view contract |
+| #354 | PENDING | Run awal #3888 gagal typecheck; tipe boundary dan assertion parent diperbaiki, menunggu run baru |
+| #355 | Draft | Dokumen rencana pemulihan |
+
