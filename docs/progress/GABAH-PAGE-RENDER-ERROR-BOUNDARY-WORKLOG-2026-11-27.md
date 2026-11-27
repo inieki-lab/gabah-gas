@@ -46,3 +46,10 @@ This is a plausible failure mode for “menu clicked, then blank screen”, but 
 - Updated the component to extend the explicitly imported `Component` type and import `ErrorInfo`/`ReactNode` as types.
 - Correction commit: `7b73dc7c94d9ef27f35a4350953e580b956d52ad`.
 - Exact-head CI must rerun; no PASS is claimed.
+
+
+## Follow-up type safety
+
+- To avoid depending on the inferred inherited `props` member in this repository's React type setup, the boundary now stores its child content explicitly in the constructor and renders that field.
+- Latest implementation commit: `05536d31f4b68e096fcc078bfe9952500b828c0a`.
+- Exact-head typecheck/CI still pending.
