@@ -53,3 +53,11 @@ This is a plausible failure mode for “menu clicked, then blank screen”, but 
 - To avoid depending on the inferred inherited `props` member in this repository's React type setup, the boundary now stores its child content explicitly in the constructor and renders that field.
 - Latest implementation commit: `05536d31f4b68e096fcc078bfe9952500b828c0a`.
 - Exact-head typecheck/CI still pending.
+
+
+## Shared regression assertion correction
+
+- The parent CI run failed because the refresh contract test scanned the entire rest of `App.tsx`, not only `refreshData()`, and matched unrelated `length > 0` code.
+- Scoped the test to the refresh function boundaries on this stacked branch as well.
+- Correction commit: `cbbcb63a837a75686d8479f1e19422a5528aa566`.
+- Exact-head CI must rerun; no PASS is claimed.
