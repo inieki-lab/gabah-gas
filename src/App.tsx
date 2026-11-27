@@ -22,6 +22,7 @@ import { gabahApi } from './services/gabahApi';
 import { GabahService } from './services/gabahService';
 
 import { HeaderNavbar } from './components/HeaderNavbar';
+import { PageErrorBoundary } from './components/PageErrorBoundary';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed } from './navigation/roleNavigation';
 // API collections are already scoped by the authoritative backend policy.
@@ -830,6 +831,7 @@ export default function App() {
         />
 
         {/* Main Content Pane */}
+        <PageErrorBoundary key={activeTab || 'no-access'}>
         <main className="gabah-main-content flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto bg-[#f4f8f5]">
           {dataRefreshErrors.length > 0 && (
             <section role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
@@ -1034,6 +1036,7 @@ export default function App() {
             />
           )}
         </main>
+        </PageErrorBoundary>
       </div>
 
       {/* Modal Dialogs */}
