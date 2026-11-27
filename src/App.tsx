@@ -88,6 +88,7 @@ export default function App() {
   // flow. Prevents being stuck in the portal shell after logout/stale session.
   const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>('login');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [dataRefreshErrors, setDataRefreshErrors] = useState<string[]>([]);
 
   // Modals state
   const [isCreateAssetModalOpen, setIsCreateAssetModalOpen] = useState(false);
@@ -154,6 +155,7 @@ export default function App() {
     setMovements([]);
     setActiveModuleKeys(null);
     setModuleStatusLoadFailed(false);
+    setDataRefreshErrors([]);
     setSelectedAssetForDetail(null);
     setSelectedAssetForEdit(null);
     setSelectedAssetForQr(null);
@@ -177,6 +179,7 @@ export default function App() {
     const generation = dataRefreshGeneration.current;
     try {
       setIsLoading(true);
+      setDataRefreshErrors([]);
       const results = await Promise.allSettled([
         gabahApi.getAssets(),
         gabahApi.getLoans(),
@@ -207,6 +210,7 @@ export default function App() {
         } else {
           // Preserve the last known collection on transport/API failure, but do not
           // disguise the failure as a successful empty response.
+          setDataRefreshErrors(previous => previous.includes(collectionName) ? previous : [...previous, collectionName]);
           console.error(`Failed to refresh ${collectionName}; keeping last known data.`,
             result.status === 'rejected' ? result.reason : 'API returned a non-array response.');
         }
@@ -827,6 +831,13 @@ export default function App() {
 
         {/* Main Content Pane */}
         <main className="gabah-main-content flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto bg-[#f4f8f5]">
+          {dataRefreshErrors.length > 0 && (
+            <section role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <h2 className="font-bold">Sebagian data belum dapat dimuat</h2>
+              <p className="mt-1">Gagal memuat: {dataRefreshErrors.join(', ')}. Data terakhir tetap ditampilkan jika tersedia.</p>
+              <button type="button" onClick={() => void refreshData()} className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold hover:bg-amber-100">Coba muat ulang data</button>
+            </section>
+          )}
           {activeTab === null && (
             <section role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
               <h2 className="font-bold">{moduleStatusLoadFailed ? 'Status modul tidak dapat diverifikasi' : activeModuleKeys === null ? 'Memuat status modul…' : 'Belum ada akses modul aktif'}</h2>
