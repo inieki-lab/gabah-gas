@@ -177,40 +177,59 @@ export default function App() {
     const generation = dataRefreshGeneration.current;
     try {
       setIsLoading(true);
-      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge, fetchedMovements] = await Promise.all([
-        gabahApi.getAssets().catch(() => []),
-        gabahApi.getLoans().catch(() => []),
-        gabahApi.getTickets().catch(() => []),
-        gabahApi.getAuditLogs().catch(() => []),
-        gabahApi.getUsers().catch(() => []),
-        gabahApi.getMeetingRooms().catch(() => []),
-        gabahApi.getRoomReservations().catch(() => []),
-        gabahApi.getContracts().catch(() => []),
-        gabahApi.getMaintenances().catch(() => []),
-        gabahApi.getVendors().catch(() => []),
-        gabahApi.getKnowledgeArticles().catch(() => []),
-        gabahApi.getMovements().catch(() => []),
+      const results = await Promise.allSettled([
+        gabahApi.getAssets(),
+        gabahApi.getLoans(),
+        gabahApi.getTickets(),
+        gabahApi.getAuditLogs(),
+        gabahApi.getUsers(),
+        gabahApi.getMeetingRooms(),
+        gabahApi.getRoomReservations(),
+        gabahApi.getContracts(),
+        gabahApi.getMaintenances(),
+        gabahApi.getVendors(),
+        gabahApi.getKnowledgeArticles(),
+        gabahApi.getMovements(),
       ]);
 
       // A role switch/logout may have happened while these requests were in flight.
       // Never commit a response captured under the previous authenticated identity.
       if (generation !== dataRefreshGeneration.current) return;
 
-      if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
-      if (Array.isArray(fetchedLoans)) setLoans(fetchedLoans);
-      if (Array.isArray(fetchedTickets)) setTickets(fetchedTickets);
-      if (Array.isArray(fetchedLogs)) setAuditLogs(fetchedLogs);
-      if (Array.isArray(fetchedUsers)) setAllUsers(fetchedUsers);
-      if (Array.isArray(fetchedRooms)) setMeetingRooms(fetchedRooms);
-      if (Array.isArray(fetchedReservations)) setRoomReservations(fetchedReservations);
-      if (Array.isArray(fetchedContracts)) setContracts(fetchedContracts);
-      if (Array.isArray(fetchedMaintenances)) {
-        if (fetchedMaintenances.length > 0) setMaintenanceSchedules(fetchedMaintenances);
-        else console.warn('Backend returned an empty maintenance list; keeping seeded schedules for offline dev.');
-      }
-      if (Array.isArray(fetchedVendors) && fetchedVendors.length > 0) setVendors(fetchedVendors);
-      if (Array.isArray(fetchedKnowledge) && fetchedKnowledge.length > 0) setKnowledgeBase(fetchedKnowledge);
-      if (Array.isArray(fetchedMovements)) setMovements(fetchedMovements);
+      const applyCollection = <T,>(
+        result: PromiseSettledResult<T[]>,
+        setCollection: React.Dispatch<React.SetStateAction<T[]>>,
+        collectionName: string,
+      ) => {
+        if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+          // An empty server response is authoritative and must clear stale/demo rows.
+          setCollection(result.value);
+        } else {
+          // Preserve the last known collection on transport/API failure, but do not
+          // disguise the failure as a successful empty response.
+          console.error(`Failed to refresh ${collectionName}; keeping last known data.`,
+            result.status === 'rejected' ? result.reason : 'API returned a non-array response.');
+        }
+      };
+
+      const [
+        assetsResult, loansResult, ticketsResult, logsResult, usersResult,
+        roomsResult, reservationsResult, contractsResult, maintenancesResult,
+        vendorsResult, knowledgeResult, movementsResult,
+      ] = results;
+
+      applyCollection(assetsResult, setAssets, 'assets');
+      applyCollection(loansResult, setLoans, 'loans');
+      applyCollection(ticketsResult, setTickets, 'tickets');
+      applyCollection(logsResult, setAuditLogs, 'audit logs');
+      applyCollection(usersResult, setAllUsers, 'users');
+      applyCollection(roomsResult, setMeetingRooms, 'meeting rooms');
+      applyCollection(reservationsResult, setRoomReservations, 'room reservations');
+      applyCollection(contractsResult, setContracts, 'contracts');
+      applyCollection(maintenancesResult, setMaintenanceSchedules, 'maintenance');
+      applyCollection(vendorsResult, setVendors, 'vendors');
+      applyCollection(knowledgeResult, setKnowledgeBase, 'knowledge base');
+      applyCollection(movementsResult, setMovements, 'asset movements');
     } catch (err: any) {
       console.error('Failed to fetch from backend:', err);
     } finally {
