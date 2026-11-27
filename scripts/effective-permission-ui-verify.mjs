@@ -60,3 +60,11 @@ assert.match(app, /dataRefreshErrors\.length > 0[\s\S]*?role="alert"[\s\S]*?Coba
 assert.match(app, /setDataRefreshErrors\(previous => previous\.includes\(collectionName\)/,
   'collection failures must be aggregated without duplicate labels');
 console.log('PASS: failed page data loads are visible to users with a retry action.');
+
+
+const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
+assert.match(apiClient, /err\.status = res\.status/);
+assert.match(apiClient, /err\.code = json\.code/);
+assert.match(app, /result\.reason\?\.status === 403[\s\S]*?setCollection\(\[\]\)/,
+  'expected permission/module 403 responses must not create a false data-load error banner');
+console.log('PASS: expected 403 denials for unassigned/inactive modules are not reported as server outages.');
