@@ -1,3 +1,9 @@
+## [2026-11-26] — Keep overdue loan assets locked against schedule collisions
+
+- Treat `overdue` as active physical custody in the loan form, domain validation, and PostgreSQL per-asset collision trigger.
+- Preserve the per-asset `FOR UPDATE` lock so concurrent approvals remain serialized.
+- Add regression coverage for overdue collisions; no existing loans or asset records are rewritten.
+
 ## [2026-11-25] — Preserve loan request form on API failure and forward borrower contact
 - Keep the loan request modal open until the parent receives a successful API response; validation, network, or persistence errors no longer discard the user's form context.
 - Disable repeated submission while the asynchronous request is pending to prevent duplicate requests.

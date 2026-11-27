@@ -64,7 +64,7 @@
 - **Enforcement Kode**: `server/services.ts` (baris 396-397).
 
 ### BR-03.2: Validasi Anti-Bentrok Jadwal (Per-Asset Anti-Collision)
-- **Aturan**: Tabrakan jadwal dievaluasi secara **ketat per unit aset** terhadap permohonan yang berstatus disetujui (`approved`) atau sedang dipinjam (`borrowed`).
+- **Aturan**: Tabrakan jadwal dievaluasi secara **ketat per unit aset** terhadap permohonan yang berstatus disetujui (`approved`) atau masih dalam penguasaan peminjam (`borrowed`, `active`, `overdue`). Pinjaman terlambat (`overdue`) tetap mengunci unit fisik sampai pengembalian tercatat.
   $$\text{Tabrakan} \iff (\text{start\_date} < \text{existing\_due\_date}) \land (\text{due\_date} > \text{existing\_start\_date})$$
 - **Peminjaman Simultan Aset Berbeda**: Pengguna yang sama diizinkan meminjam aset berbeda pada rentang waktu yang sama (misal laptop IT dan mobil dinas GA) tanpa bentrok.
 - **Enforcement Kode**: `server/services.ts` (baris 405-419), `server/migrations/003_loan_anti_collision_trigger.sql`.

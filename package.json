@@ -13,6 +13,7 @@
     "test:loan-mutation-atomicity": "node scripts/loan-mutation-atomicity-verify.mjs",
     "test:loan-overdue-return": "node --import tsx scripts/loan-overdue-return-verify.mjs",
     "test:loanable-pool-ui": "node scripts/loanable-pool-ui-verify.mjs",
+    "test:loan-overdue-collision": "node scripts/loan-overdue-collision-verify.mjs",
     "test:meeting-room": "node scripts/meeting-room-stage3-verify.mjs",
     "test:room-domain-persistence": "node scripts/room-domain-persistence-verify.mjs",
     "test:room-mutation-rollback": "node scripts/room-mutation-rollback-verify.mjs",
