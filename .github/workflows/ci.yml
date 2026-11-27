@@ -220,6 +220,9 @@ jobs:
       - name: Administration category master mirrors empty authoritative result
         run: npm run test:admin-empty-category-sync
 
+      - name: Administration organization masters mirror empty API results
+        run: npm run test:admin-empty-organization-sync
+
       - name: User bulk-import primary-role regression
         run: npm run test:bulk-import
 

@@ -405,16 +405,16 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           }));
           setCategories(mapped);
         }
-        if (Array.isArray(liveLocs) && liveLocs.length > 0) {
+        if (Array.isArray(liveLocs)) {
           setLocations(liveLocs);
         }
-        if (Array.isArray(liveDivs) && liveDivs.length > 0) {
+        if (Array.isArray(liveDivs)) {
           setDivisions(liveDivs);
         }
         // ORG-MODEL: masters terpisah jabatan/unit/lokasi kantor
-        if (Array.isArray(liveJobLevels) && liveJobLevels.length > 0) setJobLevels(liveJobLevels);
-        if (Array.isArray(liveOrgUnits) && liveOrgUnits.length > 0) setOrgUnits(liveOrgUnits);
-        if (Array.isArray(liveOffices) && liveOffices.length > 0) setOfficeLocations(liveOffices);
+        if (Array.isArray(liveJobLevels)) setJobLevels(liveJobLevels);
+        if (Array.isArray(liveOrgUnits)) setOrgUnits(liveOrgUnits);
+        if (Array.isArray(liveOffices)) setOfficeLocations(liveOffices);
         if (Array.isArray(liveAssetLocs)) setAssetLocations(liveAssetLocs);
       } catch (e) {
         console.error('Failed loading administration master data:', e);
@@ -478,7 +478,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   };
 
   // Server API is authoritative; never hydrate operational master data from browser storage.
-  const [locations, setLocations] = useState<MasterLocation[]>(DEFAULT_LOCATIONS);
+  // The API is authoritative, including an empty master list.
+  const [locations, setLocations] = useState<MasterLocation[]>([]);
   const [isAddLocationOpen, setIsAddLocationOpen] = useState(false);
   const [locationToEdit, setLocationToEdit] = useState<MasterLocation | null>(null);
   const [isEditLocationOpen, setIsEditLocationOpen] = useState(false);
@@ -814,7 +815,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const [isSubmittingOrgMaster, setIsSubmittingOrgMaster] = useState(false);
 
   // Server API is authoritative; local browser cache must not override organization masters.
-  const [divisions, setDivisions] = useState<OrgDivision[]>(DEFAULT_DIVISIONS);
+  const [divisions, setDivisions] = useState<OrgDivision[]>([]);
   const [divisionToEdit, setDivisionToEdit] = useState<OrgDivision | null>(null);
   const [isEditDivisionOpen, setIsEditDivisionOpen] = useState(false);
   const [isAddDivisionOpen, setIsAddDivisionOpen] = useState(false);
