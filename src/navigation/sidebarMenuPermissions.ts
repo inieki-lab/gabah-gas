@@ -18,9 +18,10 @@ export function getMissingSidebarMenuPermissions(
   catalogKeys: ReadonlySet<string>,
 ): string[] {
   const missing = item.required.filter(key => !catalogKeys.has(key));
-  const alternatives = item.alternative || item.anyOf;
-  if (alternatives?.length && !alternatives.some(key => catalogKeys.has(key))) {
-    missing.push(alternatives.join(' atau '));
+  for (const choiceGroup of [item.alternative, item.anyOf]) {
+    if (choiceGroup?.length && !choiceGroup.some(key => catalogKeys.has(key))) {
+      missing.push(choiceGroup.join(' atau '));
+    }
   }
   return missing;
 }
