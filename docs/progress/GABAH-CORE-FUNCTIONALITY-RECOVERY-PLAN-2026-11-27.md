@@ -184,3 +184,14 @@ Dokumen tersebut menjadi checklist UAT per menu, termasuk pemisahan bukti wiring
 - Perbaikan juga menjaga agar mematikan menu Licenses tidak mencabut `assets.read` yang dipakai Aset Saya; mematikan Reports hanya mencabut `reports.read`.
 - PR #357 menambahkan helper murni dan regression test, exact-head CI sedang berjalan setelah satu koreksi TypeScript.
 - Link: https://github.com/inieki-lab/gabah-gas/pull/357
+
+
+## Update paralel terbaru — 27 November 2026
+
+- **PR #357 sidebar permission dependencies:** CI #3920 dan #3921 SUCCESS. Editor role sekarang menyamakan syarat menu Licenses/Reports dengan navigasi aktual dan tidak mencabut grant bersama saat satu menu dimatikan. UAT browser belum.
+- **PR #353 menu-to-view:** regression baru memastikan seluruh callback wajib dari 12 view dipasang oleh App. Run #3929/#3930 berjalan.
+- **PR #356 Error Boundary:** run #3927 menemukan deklarasi props React perlu eksplisit; implementasi sekarang memakai constructor untuk resetKey state, `getDerivedStateFromProps` untuk reset saat pindah tab, dan props declaration eksplisit. Run #3931/#3932 berjalan pada perbaikan terbaru.
+- **PR #352 data refresh:** CI #3907, #3906, #3905 SUCCESS; run #3912 juga SUCCESS.
+- **PR #355 rencana pemulihan:** CI #3909, #3913, #3916, #3922 SUCCESS.
+- Semua perubahan masih Draft; tidak ada merge ke `main`.
+
