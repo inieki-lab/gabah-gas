@@ -173,3 +173,14 @@ Dokumen tersebut menjadi checklist UAT per menu, termasuk pemisahan bukti wiring
 - PR #356: run #3908 gagal hanya pada assertion lama yang masih menyebut `key` setelah implementasi beralih ke `resetKey`; assertion sudah dikoreksi. Run #3914 berjalan pada implementation/test head `5df4a259`; commit sesudahnya hanya worklog.
 - Tidak ada merge ke `main`; semua PR tetap Draft dan menunggu review/UAT.
 
+
+
+## Jalur paralel tambahan — sinkronisasi toggle menu role
+
+- PR #357 menemukan ketidaksamaan antara editor role dan syarat menu aktual:
+  - Licenses membutuhkan `licenses.read + assets.read`, tetapi editor hanya memeriksa `licenses.read`.
+  - Reports membutuhkan `reports.read` dan setidaknya satu permission baca sumber data, tetapi editor hanya memeriksa `reports.read`.
+- Dampaknya, editor bisa menampilkan menu sebagai aktif padahal Sidebar menyembunyikannya.
+- Perbaikan juga menjaga agar mematikan menu Licenses tidak mencabut `assets.read` yang dipakai Aset Saya; mematikan Reports hanya mencabut `reports.read`.
+- PR #357 menambahkan helper murni dan regression test, exact-head CI sedang berjalan setelah satu koreksi TypeScript.
+- Link: https://github.com/inieki-lab/gabah-gas/pull/357
