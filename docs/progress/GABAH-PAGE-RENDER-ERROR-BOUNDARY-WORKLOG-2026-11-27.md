@@ -91,3 +91,12 @@ The original PR #354 branch had a failed CI attempt and did not receive a fresh 
 - Added a regression asserting that the boundary does not cache initial children.
 - Latest commits: boundary `e0669298544426ad19cc2d86b0ebd312be7ddd79`; test `1625180cac2eb7aed1ad27ff869fbf9fad0f3414`.
 - Exact-head CI still pending; verify typecheck and re-render behavior before UAT.
+
+
+## Startup demo seed removal inherited from parent refresh fix
+
+- Vendor, knowledge-base, and maintenance collections now start empty instead of being prefilled with mock/demo arrays before the authoritative API responds.
+- This prevents a first-load API failure from leaving demo records visible as if they were live PostgreSQL data.
+- Regression assertions were added on this stacked branch.
+- Latest App commit: `149cad244fa1a75a92f61497446c522d7c8cc5cd`; test commit: `074be6f8e3d5442c7f82451276e49956020d1cba`.
+- Exact-head CI must rerun.
