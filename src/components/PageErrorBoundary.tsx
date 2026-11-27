@@ -15,6 +15,7 @@ interface PageErrorBoundaryState {
  * during render. A changed resetKey clears the previous page's error state.
  */
 export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErrorBoundaryState> {
+  declare readonly props: Readonly<PageErrorBoundaryProps>;
   state: PageErrorBoundaryState;
 
   constructor(props: PageErrorBoundaryProps) {
