@@ -223,6 +223,9 @@ jobs:
       - name: Administration organization masters mirror empty API results
         run: npm run test:admin-empty-organization-sync
 
+      - name: Administration master fetch ignores stale async responses
+        run: npm run test:admin-master-fetch-cancellation
+
       - name: User bulk-import primary-role regression
         run: npm run test:bulk-import
 

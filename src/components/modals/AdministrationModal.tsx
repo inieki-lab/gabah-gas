@@ -378,6 +378,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   // Fetch live master data (categories, locations, divisions) from database
   useEffect(() => {
+    let cancelled = false;
     const fetchMasterData = async () => {
       try {
         const [liveCats, liveLocs, liveDivs, liveJobLevels, liveOrgUnits, liveOffices, liveAssetLocs] = await Promise.all([
@@ -389,6 +390,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           gabahApi.getOfficeLocations(),
           gabahApi.getAssetLocations(),
         ]);
+        if (cancelled) return;
         if (Array.isArray(liveCats)) {
           const mapped = liveCats.map((c: any) => ({
             code: c.code,
@@ -417,6 +419,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         if (Array.isArray(liveOffices)) setOfficeLocations(liveOffices);
         if (Array.isArray(liveAssetLocs)) setAssetLocations(liveAssetLocs);
       } catch (e) {
+        if (cancelled) return;
         console.error('Failed loading administration master data:', e);
         showToast('Gagal memuat master data dari server. Data referensi belum diperbarui; periksa koneksi lalu buka ulang Administrasi.', 'warning');
       }
@@ -424,6 +427,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     if (isOpen) {
       fetchMasterData();
     }
+    return () => { cancelled = true; };
   }, [isOpen, assets]);
 
   const handleAddCategorySubmit = async (e: React.FormEvent) => {
