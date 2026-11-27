@@ -17,7 +17,6 @@ import {
   Contract,
   AssetMovement
 } from './types';
-import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
 import { gabahApi } from './services/gabahApi';
 import { GabahService } from './services/gabahService';
 
@@ -63,9 +62,9 @@ export default function App() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
-  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>(INITIAL_KNOWLEDGE_BASE);
-  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>(INITIAL_MAINTENANCE_SCHEDULES);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>([]);
+  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
   const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
   const [roomReservations, setRoomReservations] = useState<RoomReservation[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
