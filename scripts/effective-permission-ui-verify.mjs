@@ -96,6 +96,7 @@ console.log('PASS: operational collections start empty until PostgreSQL-backed A
 assert.match(app, /<PageErrorBoundary resetKey=\{activeTab \|\| 'no-access'\}>/,
   'page boundary must reset when the active navigation tab changes');
 assert.match(boundary, /constructor\(props: PageErrorBoundaryProps\)/);
+assert.match(boundary, /declare readonly props: Readonly<PageErrorBoundaryProps>/);
 assert.match(boundary, /static getDerivedStateFromProps/);
 assert.match(boundary, /return this\.props\.children/);
 assert.doesNotMatch(boundary, /pageContent/);
