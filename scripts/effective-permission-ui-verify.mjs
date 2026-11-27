@@ -73,3 +73,11 @@ assert.match(boundary, /static getDerivedStateFromError/);
 assert.match(boundary, /componentDidCatch/);
 assert.match(boundary, /Menu navigasi tetap tersedia/);
 console.log('PASS: page render exceptions are contained inside the content pane; keyed navigation can recover.');
+
+
+const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
+assert.match(apiClient, /err\.status = res\.status/);
+assert.match(apiClient, /err\.code = json\.code/);
+assert.match(app, /result\.reason\?\.status === 403[\s\S]*?setCollection\(\[\]\)/,
+  'expected permission/module 403 responses must not create a false data-load error banner');
+console.log('PASS: expected 403 denials for unassigned/inactive modules are not reported as server outages.');
