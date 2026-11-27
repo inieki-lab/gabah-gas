@@ -58,3 +58,16 @@ assert.match(app, /dataRefreshErrors\.length > 0[\s\S]*?role="alert"[\s\S]*?Coba
 assert.match(app, /setDataRefreshErrors\(previous => previous\.includes\(collectionName\)/,
   'collection failures must be aggregated without duplicate labels');
 console.log('PASS: failed page data loads are visible to users with a retry action.');
+
+
+const boundary = fs.readFileSync('src/components/PageErrorBoundary.tsx', 'utf8');
+assert.match(app, /import \{ PageErrorBoundary \} from '\.\/components\/PageErrorBoundary'/,
+  'App must import the page-level error boundary');
+assert.match(app, /<PageErrorBoundary key=\{activeTab \|\| 'no-access'\}>[\s\S]*?<main className="gabah-main-content/,
+  'page content must be isolated so a render exception does not destroy the sidebar shell');
+assert.match(app, /<\/main>\s*<\/PageErrorBoundary>/,
+  'page boundary must close after the main content');
+assert.match(boundary, /static getDerivedStateFromError/);
+assert.match(boundary, /componentDidCatch/);
+assert.match(boundary, /Menu navigasi tetap tersedia/);
+console.log('PASS: page render exceptions are contained inside the content pane; keyed navigation can recover.');
