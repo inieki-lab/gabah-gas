@@ -34,3 +34,12 @@ The baseline source has 12 declared tabs and corresponding App render branches. 
 ## Next
 
 Use the test result as a guardrail, then inspect each view's data dependencies and action handlers. Do not merge to `main` without explicit approval.
+
+
+## Backend read-permission alignment
+
+- Extended the same CI regression to check backend read endpoint existence and required RBAC permission for dashboard, assets, loans, tickets, meeting rooms/reservations, maintenance, contracts, vendors, knowledge, and audit logs.
+- Added assertions that the frontend menu read grants expose the same corresponding endpoint permissions; reports remain partial-data capable and require reports.read plus at least one source data permission.
+- This is still source-contract verification, not runtime API testing under real test accounts.
+- Latest test commit: `5736d64a8e46ab7bff63ba815b80c5490cceaee8`.
+- Exact-head CI pending.
