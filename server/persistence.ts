@@ -217,6 +217,10 @@ function hydrateDbFromState(state: any): void {
   // and every token that has ever been in source control is considered
   // COMPROMISED. Sessions are in-memory only; users re-authenticate on boot.
   db.sessions = [];
+  // RPC/SC and PIBC are historical location/unit labels, not active owner domains.
+  // Keep their master rows and all historical references, but never reactivate them
+  // from an older JSON/PG snapshot that predates this retirement decision.
+  const retiredLocationOwnerCodes = new Set(['SC', 'PIBC']);
   if (Array.isArray(state.assets) && state.assets.length > 0) db.assets = state.assets;
   if (Array.isArray(state.movements) && state.movements.length > 0) db.movements = state.movements;
   if (Array.isArray(state.loans) && state.loans.length > 0) db.loans = state.loans;
@@ -230,7 +234,11 @@ function hydrateDbFromState(state: any): void {
   // `is_active`/`main_type` kanonikal tetap terbaca (default aktif, main_type
   // legacy dipetakan deterministik). Tidak ada kategori yang dihapus di sini;
   // penghapusan hanya lewat API admin yang ter-guard.
-  db.categories = normalizeCategoryMaster(db.categories);
+  db.categories = normalizeCategoryMaster(db.categories).map((category: any) =>
+    retiredLocationOwnerCodes.has(String(category.owner_division || '').trim().toUpperCase())
+      ? { ...category, is_active: false }
+      : category,
+  );
   console.log(
     `[GABAH Persistence] T2B-3 master kategori: total=${db.categories.length}, ` +
     `aktif=${db.categories.filter((c: any) => c && c.is_active !== false).length}, ` +
@@ -238,6 +246,11 @@ function hydrateDbFromState(state: any): void {
   );
   if (Array.isArray(state.locations) && state.locations.length > 0) db.locations = state.locations;
   if (Array.isArray(state.divisions) && state.divisions.length > 0) db.divisions = state.divisions;
+  db.divisions = (db.divisions || []).map((division: any) =>
+    retiredLocationOwnerCodes.has(String(division?.code || '').trim().toUpperCase())
+      ? { ...division, is_active: false }
+      : division,
+  );
 
   // =========================
   // ORG-MODEL migration (aman, idempoten):

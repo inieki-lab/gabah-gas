@@ -1448,6 +1448,42 @@ async function main() {
     const itUser = (usersRes.json?.data || []).find(u => u.email === IT_EMAIL);
     const itUserId = itUser?.id || '';
 
+    // ---------- Legacy location codes are not active owner domains ----------
+    const divisionsForOwnerCheck = await req(base, 'GET', '/api/master/divisions', { token: adminToken });
+    const legacyOwnerCodes = new Set(['SC', 'PIBC']);
+    const legacyOwnerRows = (divisionsForOwnerCheck.json?.data || [])
+      .filter(row => legacyOwnerCodes.has(String(row.code || '').trim().toUpperCase()));
+    record('Legacy SC/PIBC owner rows remain present but inactive', 'both rows present with is_active=false',
+      legacyOwnerRows.map(row => `${row.code}:${row.is_active}`).join(','),
+      divisionsForOwnerCheck.status === 200 && legacyOwnerRows.length === 2
+        && legacyOwnerRows.every(row => row.is_active === false));
+
+    const categoryRowsForOwnerCheck = await req(base, 'GET', '/api/taxonomy/categories', { token: adminToken });
+    const legacyOwnedCategories = (categoryRowsForOwnerCheck.json?.data || [])
+      .filter(row => legacyOwnerCodes.has(String(row.owner_division || '').trim().toUpperCase()));
+    record('Legacy-owned categories remain readable but are inactive for new assets', 'all SC/PIBC categories inactive',
+      legacyOwnedCategories.map(row => `${row.code}:${row.is_active}`).join(','),
+      categoryRowsForOwnerCheck.status === 200 && legacyOwnedCategories.length > 0
+        && legacyOwnedCategories.every(row => row.is_active === false));
+
+    const retiredOwnerContract = await req(base, 'POST', '/api/contracts', {
+      token: adminToken,
+      body: {
+        title: 'VERIFY rejected legacy-owner contract',
+        vendor_name: 'PT Verifikasi Legacy Owner',
+        contract_type: 'Layanan',
+        owner_division: 'SC',
+        pic_user_id: itUserId || ADMIN_EMAIL,
+        start_date: isoInDays(0),
+        end_date: isoInDays(30),
+        notice_period_days: 0,
+        contract_value: 1000,
+        restricted: false,
+      },
+    });
+    record('Direct API contract creation rejects retired SC owner', '409 Conflict',
+      `HTTP ${retiredOwnerContract.status}`, retiredOwnerContract.status === 409);
+
     // ---------- 3. Contract CRUD + restricted visibility ----------
     const created = await req(base, 'POST', '/api/contracts', {
       token: adminToken,

@@ -370,3 +370,9 @@ Found 47 SQL migration files:
 - `server/migrations/103_system_settings_company_profile.sql`
 
 **NOT VERIFIED by this inventory:** execution order/ledger behavior, actual schema after full migration, foreign-key/index/trigger definitions, upgrade from legacy snapshots, rollback safety, and PostgreSQL restore.
+
+## 10. Migration 106 addendum — retire legacy location owner codes (26 November 2026)
+
+`server/migrations/106_retire_legacy_owner_domains.sql` marks the existing `divisions` rows `SC` and `PIBC` inactive and marks asset-category master rows owned by those codes inactive. It does not delete either master row or modify any asset, contract, user, unit, ticket, vendor, maintenance, loan, or historical ownership reference.
+
+Runtime hydration also forces these two legacy codes inactive when loading older JSON/DB snapshots, so stale persisted state cannot reactivate them. The corresponding category rows remain readable for historical assets but are not eligible for new asset selection. The migration is additive/idempotent; fresh-install and representative legacy-upgrade execution must be confirmed by exact-head CI and staging rehearsal before release.

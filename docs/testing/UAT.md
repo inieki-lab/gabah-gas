@@ -4,7 +4,7 @@
 **Sistem:** GABAH (*General Asset, Business & Automated Helpdesk*)  
 **Organisasi:** PT Food Station Tjipinang Jaya (Perseroda)  
 **Status:** Rencana UAT; skenario harus dijalankan dan ditandatangani pemilik proses sebelum go-live. Dokumen ini bukan bukti seluruh skenario telah lulus. Ikuti [Documentation Authority & AI Handoff Guide](../GABAH-DOCUMENTATION-CONTROL.md) dan [Master Test Strategy](./MASTER-TEST-STRATEGY.md) untuk menjaga istilah, status, dan bukti tetap konsisten.  
-**Terakhir Diperbarui:** 25 November 2026
+**Terakhir Diperbarui:** 26 November 2026
 
 > **Batas bukti:** Bagian hasil PASS/angka total pengujian yang tercatat dari siklus terdahulu adalah HISTORICAL dan hanya berlaku pada commit/run yang disebutkan di catatan asal. Jangan menganggapnya sebagai hasil UAT pada HEAD saat ini. Setiap siklus baru harus mengisi bukti dan SHA aktual.
 
@@ -320,6 +320,14 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
 - **Status Browser UAT:** NOT RUN. Skenario di atas tetap harus dijalankan dengan akun persona nyata pada lingkungan UAT; hasil CI tidak menggantikan UAT.
 
 
+### Skenario 2E: Owner Legacy RPC/SC dan PIBC — Retired, Historical Read Preserved
+
+- **Tujuan:** Memastikan RPC/SC dan PIBC tetap menjadi lokasi/unit historis, bukan owner domain baru.
+- **Prasyarat:** Jalankan migration 106 pada database UAT hasil backup/clone; jangan menguji pada database produksi.
+- **Langkah:** Verifikasi master owner SC dan PIBC berstatus nonaktif; pilihan owner baru tidak menampilkan keduanya; coba POST aset dan kontrak dengan owner SC/PIBC secara langsung dan pastikan ditolak; pastikan aset, kategori, kontrak, user, unit, dan tiket historis tetap dapat dibaca sesuai permission/scope yang sudah berlaku.
+- **Kriteria Lulus:** Tidak ada record baru dengan owner SC/PIBC; seluruh referensi historis tetap utuh; tidak ada perubahan massal terhadap owner, nomor aset, PIC, lokasi, assignment, atau histori.
+- **Status Browser UAT:** NOT RUN sampai skenario dijalankan pada environment UAT.
+
 ## 5. Status Eksekusi UAT dan Release Gate — 25 November 2026
 
 **Kode dan CI bukan bukti browser UAT.** Pada `main` setelah PR #324, pemeriksaan CI exact-head terakhir untuk perubahan aplikasi terkait lulus pada run `45643550850` (118/118). PR #321 juga lulus live HTTP notification-recipient matrix pada run `45641748515`.
@@ -340,3 +348,10 @@ Audit seluruh 10 menu Administration Control Panel menghasilkan perbaikan beriku
 | Business-owner sign-off | PENDING | Wajib sebelum go-live |
 
 **Keputusan:** GABAH belum boleh dinyatakan production-ready hanya berdasarkan CI. Selesaikan seluruh aktivitas NOT RUN/PENDING, rekam tanggal, pelaksana, exact SHA, dan bukti hasil pada tabel ini sebelum persetujuan go-live.
+
+
+### Addendum verifikasi branch — legacy owner retirement (26 November 2026)
+
+- **Perubahan yang menunggu CI:** migration 106, normalisasi seed/hydration, penolakan create contract owner SC/PIBC, serta live PostgreSQL assertions untuk master dan kategori legacy.
+- **Status:** NOT VERIFIED sampai workflow pada exact branch head selesai. Jangan mengubah status menjadi PASS berdasarkan pemeriksaan source saja.
+- **Browser UAT:** NOT RUN. Jalankan Skenario 2E pada database UAT hasil backup/clone setelah migration 106 lulus CI.

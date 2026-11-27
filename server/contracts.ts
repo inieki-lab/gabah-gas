@@ -191,6 +191,11 @@ export const ContractDomainService = {
     }
 
     const ownerDivision = (payload.owner_division || actor.division || '').toString().trim().toUpperCase();
+    // Location/unit aliases must not become new contract owners, even when a
+    // stale persisted master or historical RBAC scope still contains the code.
+    if (ownerDivision === 'SC' || ownerDivision === 'PIBC') {
+      throw Object.assign(new Error(`Owner kontrak ${ownerDivision} sudah dipensiunkan; pilih owner domain aktif yang telah diverifikasi.`), { statusCode: 409 });
+    }
     const ownerExists = (db.divisions || []).some(d =>
       String(d.code).trim().toUpperCase() === ownerDivision && d.is_active !== false
     );

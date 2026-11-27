@@ -548,8 +548,8 @@ export const db = {
   assetLocations: DEFAULT_ASSET_LOCATIONS,
 
   divisions: [
-    { code: 'SC', name: 'RPC (legacy references)', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'] },
-    { code: 'PIBC', name: 'PIBC (legacy references)', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'] },
+    { code: 'SC', name: 'RPC (legacy references)', leader: 'Direktur Operasional', depts: ['Pergudangan Beras Induk', 'Armada Truk & Distribusi', 'Kualitas & Pengemasan'], is_active: false },
+    { code: 'PIBC', name: 'PIBC (legacy references)', leader: 'Kepala Pasar Induk', depts: ['Pengelolaan Kios & Los', 'Ketertiban & Retribusi', 'Informasi Pasokan Beras'], is_active: false },
     { code: 'IT', name: 'Teknologi Informasi & Sistem', leader: 'Manajer IT & Transformasi Digital', depts: ['Infrastruktur & Jaringan', 'Sistem ERP SAP & GABAH', 'Technical Support & Helpdesk'] },
     { code: 'GA', name: 'General Affairs & Fasilitas', leader: 'Manajer Umum', depts: ['Pemeliharaan Gedung & ME', 'Kendaraan Operasional Kantor', 'Keamanan & Kebersihan'] },
     { code: 'Audit', name: 'Satuan Pengawas Internal (SPI)', leader: 'Kepala SPI', depts: ['Audit Kepatuhan & PSAK 16', 'Tinjauan Tata Kelola Aset'] },

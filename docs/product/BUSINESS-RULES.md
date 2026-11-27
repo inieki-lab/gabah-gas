@@ -152,3 +152,19 @@
 ### BR-08.1: Rekam Jejak Audit yang Tidak Dapat Dihapus (*Immutable*)
 - **Aturan**: Setiap aksi yang mengubah keadaan sistem (*state-changing action*) wajib dicatat ke tabel `audit_logs` dengan informasi: aksi, nama entitas, ID entitas, nama aktor, peran aktor, rincian perubahan, serta timestamp presisi.
 - **Enforcement Kode**: `server/services.ts` (`GabahDomainService.recordAudit()`), `server.ts` (baris 40-49).
+
+
+---
+
+## 9. Addendum — Retired legacy location codes as owner domains (26 November 2026)
+
+### BR-09.1: RPC/SC and PIBC are not active asset or contract owners
+
+- **Approved business boundary:** RPC (historically labelled SC) and PIBC are operational locations/units, not application roles and not owner domains by implication.
+- Existing `SC` and `PIBC` owner-master rows are retained as inactive compatibility references. They must not be deleted or reused for new ownership.
+- Existing assets, categories, contracts, users, units, loans, tickets, vendors, maintenance records, and audit history retain their stored references. No automatic owner reassignment, renumbering, or historical rewrite is permitted.
+- Categories whose stored owner is SC/PIBC remain visible on historical assets but are inactive for new asset creation until an approved owner is assigned through a separate, explicit review.
+- New asset and contract writes must reject SC/PIBC even when a legacy permission/scope or stale persisted snapshot still contains those codes.
+- New owner domains must use a separately approved active master code. Do not infer owner from office location, unit label, or physical asset location.
+
+**Implementation target:** migration 106, seed/hydration normalization, contract-domain guard, and PostgreSQL/live regression checks. The change must remain on its review branch until exact-head CI passes; existing production records are not changed by this PR.
