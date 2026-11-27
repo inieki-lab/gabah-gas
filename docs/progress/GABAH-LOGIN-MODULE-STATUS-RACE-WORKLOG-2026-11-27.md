@@ -34,3 +34,11 @@ Run project build/tests, then user UAT on this branch. Do not merge to `main` un
 - Updated the regression to assert PostgreSQL commit is awaited and the PostgreSQL-success path does not write a secondary local snapshot.
 - This aligns the test with the current persistence contract; no runtime persistence code or database was changed.
 - CI must rerun on the updated head; no PASS claimed yet.
+
+
+## CI regression correction — auth generation guard contract
+- The next exact-head CI run passed the persistence regression but exposed an outdated `effective-permission-ui-verify` source assertion.
+- The old assertion expected the login callback to increment only `dataRefreshGeneration`; the new race fix correctly increments `authInitializationGeneration` first to invalidate the in-flight initial session restore.
+- Updated the regression to require both generation increments in the correct order and the stale-init guard itself.
+- This is a test expectation update for the intended auth fix; no permission logic changed.
+- Exact-head CI must rerun; no PASS claimed yet.
