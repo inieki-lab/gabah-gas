@@ -67,3 +67,13 @@ The same function also retained seeded data when the server legitimately returne
 - Narrowed the assertion's inspected source range to the `refreshData()` function only.
 - Correction commit: `59773485c4ee115551707d77c6a00cf122e8202b`.
 - Exact-head CI must rerun; no PASS is claimed.
+
+
+## Expected 403 handling
+
+- Audit of the global refresh pattern found that the app fetches collections for multiple modules on login, while each user is only authorized for a subset. Therefore 403 responses for unassigned modules or globally disabled modules are expected and must not be reported as application outages.
+- API client now preserves HTTP status, stable error code, and module key on thrown errors.
+- Collection refresh clears the inaccessible collection on 403 without adding it to the visible data-load error banner. Unexpected network/server failures still preserve last-known data and display the banner.
+- Regression added for this distinction.
+- Latest commits: App `47a02e4ddaae49267af0545a571c0e08b010068b`, API client `0d123bc9c263754c835c85b0278cfb123be3f7f8`, test `d10a0f646752365228733e1aa00089c18e823119`.
+- Exact-head CI must rerun.
