@@ -137,6 +137,8 @@ export default function App() {
   // Fetch all authoritative data from Backend API
   // Prevent an older user's in-flight API response from repopulating state after an identity change.
   const dataRefreshGeneration = useRef(0);
+  // Invalidate an in-flight initial session check when an interactive login wins the race.
+  const authInitializationGeneration = useRef(0);
   const clearRoleScopedData = () => {
     setAssets([]);
     setLoans([]);
@@ -218,6 +220,7 @@ export default function App() {
 
   useEffect(() => {
     async function initAuth() {
+      const generation = authInitializationGeneration.current;
       try {
         // The browser never reads the HttpOnly cookie. Ask the server whether
         // the browser already has a valid session; anonymous users go to login.
@@ -225,6 +228,9 @@ export default function App() {
           gabahApi.getMe().catch(() => null),
           new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
         ]);
+        // A manual login may have completed while this initial /me request was in flight.
+        // Its stale result must not clear the freshly loaded module state or overwrite the view.
+        if (generation !== authInitializationGeneration.current) return;
         if (me) {
           dataRefreshGeneration.current += 1;
           clearRoleScopedData();
@@ -232,12 +238,12 @@ export default function App() {
         } else setViewMode('login');
       } catch (err) {
         console.warn('Auth initialization:', err);
-        setViewMode('login');
+        if (generation === authInitializationGeneration.current) setViewMode('login');
       } finally {
         // Do not block auth initialization on the bulk data refresh. Each API
         // request is best-effort, and a slow/hung endpoint must never keep the
         // user on the "Memulihkan sesi…" screen.
-        void refreshData();
+        if (generation === authInitializationGeneration.current) void refreshData();
       }
     }
     initAuth();
@@ -683,6 +689,7 @@ export default function App() {
         <LoginPage
           initialEmail={loginEmail}
           onLoginSuccess={(u) => {
+            authInitializationGeneration.current += 1;
             dataRefreshGeneration.current += 1;
             clearRoleScopedData();
             setCurrentUser(u);
