@@ -2605,9 +2605,7 @@ async function startServer() {
 
   app.post('/api/vendors', (req, res) => {
     const actor = getActor(req);
-    if (isPostgresPersistenceActive()) {
-      if (!requireRbacPermission(req, res, 'vendors.create')) return;
-    }
+    if (!requireRbacPermission(req, res, 'vendors.create')) return;
     const requestedCategory = String(req.body?.category || '').trim();
     if (!requestedCategory || requestedCategory.length > 80) {
       return res.status(400).json({ success: false, message: 'Kategori vendor wajib diisi (maksimal 80 karakter).' });
@@ -2656,9 +2654,7 @@ async function startServer() {
 
   app.patch('/api/vendors/:id', (req, res) => {
     const actor = getActor(req);
-    if (isPostgresPersistenceActive()) {
-      if (!requireRbacPermission(req, res, 'vendors.update')) return;
-    }
+    if (!requireRbacPermission(req, res, 'vendors.update')) return;
     const existingVendor = db.vendors.find(v => v.id === req.params.id);
     if (!existingVendor) return res.status(404).json({ success: false, message: 'Vendor tidak ditemukan.' });
     const existingOwner = String(existingVendor.owner_division || '').trim().toUpperCase();
@@ -2723,11 +2719,7 @@ async function startServer() {
 
   app.post('/api/knowledge', (req, res) => {
     const actor = getActor(req);
-    if (isPostgresPersistenceActive()) {
-      if (!requireRbacPermission(req, res, 'knowledge.create')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH, IT, atau GA yang berwenang menulis artikel panduan.' });
-    }
+    if (!requireRbacPermission(req, res, 'knowledge.create')) return;
     const title = typeof req.body.title === 'string' ? req.body.title.trim() : '';
     const content = typeof req.body.content === 'string' ? req.body.content : '';
     if (!title || !content) {
@@ -2752,11 +2744,7 @@ async function startServer() {
 
   app.patch('/api/knowledge/:id', (req, res) => {
     const actor = getActor(req);
-    if (isPostgresPersistenceActive()) {
-      if (!requireRbacPermission(req, res, 'knowledge.update')) return;
-    } else if (!['Admin GABAH', 'IT', 'GA'].includes(actor.role)) {
-      return res.status(403).json({ success: false, message: 'Akses ditolak: Hanya Admin GABAH, IT, atau GA yang berwenang mengubah artikel.' });
-    }
+    if (!requireRbacPermission(req, res, 'knowledge.update')) return;
     const article = db.knowledgeArticles.find(a => a.id === req.params.id);
     if (!article) return res.status(404).json({ success: false, message: 'Artikel tidak ditemukan' });
     // SECURITY (CR-06): explicit allowlist — view_count/helpful_votes only via dedicated endpoints.
