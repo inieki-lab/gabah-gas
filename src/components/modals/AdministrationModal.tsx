@@ -370,7 +370,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     code: '',
     name: '',
     main_type: 'MSN',
-    owner_division: 'IT',
+    owner_division: '',
     category_type: 'IT',
     description: '',
     is_loanable_by_default: true,
@@ -432,6 +432,10 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
 
   const handleAddCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!newCategoryData.owner_division) {
+      showToast('Divisi pemilik aset wajib dipilih.', 'warning');
+      return;
+    }
     if (!newCategoryData.code.trim() || !newCategoryData.name.trim()) {
       showToast('Kode kategori dan nama kategori wajib diisi.', 'warning');
       return;
@@ -468,7 +472,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
         code: '',
         name: '',
         main_type: 'MSN',
-        owner_division: 'IT',
+        owner_division: '',
         category_type: 'IT',
         description: '',
         is_loanable_by_default: true,
@@ -3936,10 +3940,9 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                             }}
                             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold focus:outline-none focus:border-emerald-500"
                           >
+                            <option value="">— Pilih owner domain —</option>
                             <option value="IT">IT (Teknologi Informasi)</option>
                             <option value="GA">GA (General Affairs / Umum)</option>
-                            <option value="SC">SC (Supply Chain &amp; Gudang)</option>
-                            <option value="PIBC">PIBC (Pasar Induk Cipinang)</option>
                           </select>
                         </div>
                       </div>
