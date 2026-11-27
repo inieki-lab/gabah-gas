@@ -43,3 +43,12 @@ Use the test result as a guardrail, then inspect each view's data dependencies a
 - This is still source-contract verification, not runtime API testing under real test accounts.
 - Latest test commit: `5736d64a8e46ab7bff63ba815b80c5490cceaee8`.
 - Exact-head CI pending.
+
+
+## Required page callback wiring regression
+
+- Extended the menu-to-view contract to read each of the 12 page component prop interfaces.
+- Every non-optional callback declared by a page must now be passed by `App.tsx`; optional callbacks may use their documented fallback.
+- This catches a menu that opens a page but leaves a required action handler disconnected.
+- Latest test commit: `3f4622f5aee51d69ff6b465f4932ae8ea0bdcd13`.
+- Exact-head CI pending.
