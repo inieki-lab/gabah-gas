@@ -142,3 +142,12 @@ The original PR #354 branch had a failed CI attempt and did not receive a fresh 
 - Updated regression assertion to require constructor-based initialization.
 - Boundary commit: `4a063788a6eac12f7a9a3b30420c29caf158f1b3`; test commit: `f9e9146121cf0b0e795ace51bcd022dfc6d796e7`.
 - Exact-head CI pending.
+
+
+## Explicit props typing correction
+
+- CI run #3927 showed this repository's React component type contract does not expose `props` as expected on the subclass without an explicit declaration.
+- Restored `declare readonly props: Readonly<PageErrorBoundaryProps>`; retained constructor-based state initialization and the static `getDerivedStateFromProps` reset, with no imperative `setState`.
+- Added a regression assertion for the explicit props declaration.
+- Boundary commit: `be37c722f58fd62186bfcda4f7d63a1af5cdb8b9`; test commit: `a5fe201da2bb6f2cfd46ca06b11188e82a96961b`.
+- Exact-head CI pending.
