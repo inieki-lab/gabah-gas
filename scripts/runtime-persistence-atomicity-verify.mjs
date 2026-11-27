@@ -20,9 +20,9 @@ assert.match(pgWrite, /await client\.query\('ROLLBACK'\)/, 'Any failure in the t
 assert.match(persist, /if \(postgresFailureLatched\)[\s\S]*Promise\.reject/, 'All writes after a runtime PostgreSQL failure must fail closed');
 assert.match(persist, /if \(!isPostgresAvailable\)[\s\S]*saveStateToFile\(payload\)[\s\S]*return persistQueue/, 'File store is available only for the startup fallback state');
 assert.match(persist, /await persistPostgresState\(\)/, 'Authoritative PostgreSQL transaction must complete before persistence reports success');
-assert.match(persist, /avoid a second local write[\\s\\S]*read-only/, 'Production persistence must not require a writable application filesystem');
+assert.match(persist, /avoid a second local write[\s\S]*read-only/, 'Production persistence must not require a writable application filesystem');
 const postgresWritePath = persist.slice(persist.indexOf('const write ='));
-assert.doesNotMatch(postgresWritePath, /saveStateToFile\\(/, 'A successful PostgreSQL write must not publish a secondary local snapshot');
+assert.doesNotMatch(postgresWritePath, /saveStateToFile\(/, 'A successful PostgreSQL write must not publish a secondary local snapshot');
 assert.match(persist, /postgresFailureLatched = true;[\s\S]*isPostgresAvailable = false;[\s\S]*throw Object\.assign\(/, 'A failed authoritative write must latch closed, reject the caller, and expose HTTP 503');
 
 console.log('PASS: PostgreSQL runtime failure latch, shared transaction rollback, and post-commit snapshot ordering');
