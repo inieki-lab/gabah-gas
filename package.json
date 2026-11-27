@@ -114,7 +114,8 @@
     "test:admin-empty-user-sync": "node scripts/admin-empty-user-sync-verify.mjs",
     "test:admin-new-user-division-default": "node scripts/admin-new-user-division-default-verify.mjs",
     "test:admin-empty-category-sync": "node scripts/admin-empty-category-sync-verify.mjs",
-    "test:admin-empty-organization-sync": "node scripts/admin-empty-organization-sync-verify.mjs"
+    "test:admin-empty-organization-sync": "node scripts/admin-empty-organization-sync-verify.mjs",
+    "test:admin-master-fetch-cancellation": "node scripts/admin-master-fetch-cancellation-verify.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
