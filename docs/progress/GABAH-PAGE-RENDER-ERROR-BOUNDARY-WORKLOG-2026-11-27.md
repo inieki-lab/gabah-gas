@@ -38,3 +38,11 @@ This is a plausible failure mode for “menu clicked, then blank screen”, but 
 - The parent data-refresh PR exposed an obsolete source assertion in the shared `effective-permission-ui` test that expected swallowed API failures.
 - Removed that obsolete assertion on this stacked branch as well, keeping the test aligned with the new `Promise.allSettled` contract.
 - Latest test commit: `f919ccd98405f6a8e3c70571a36e5a088862dacb`.
+
+
+## Exact-head CI result and correction
+
+- CI run `46001490790` (run #3888) failed at TypeScript typecheck with `TS2339: Property 'props' does not exist on type 'PageErrorBoundary'`.
+- Updated the component to extend the explicitly imported `Component` type and import `ErrorInfo`/`ReactNode` as types.
+- Correction commit: `7b73dc7c94d9ef27f35a4350953e580b956d52ad`.
+- Exact-head CI must rerun; no PASS is claimed.
