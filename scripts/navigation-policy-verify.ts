@@ -158,13 +158,13 @@ const viewComponents = [
 ];
 for (const view of viewComponents) {
   const viewSource = fs.readFileSync('src/components/views/' + view + '.tsx', 'utf8');
-  const propsBlock = viewSource.match(new RegExp('interface ' + view + 'Props \\\\{([\\\\s\\\\S]*?)\\\\n\\\\}'));
+  const propsBlock = viewSource.match(new RegExp('interface ' + view + 'Props \\{([\\s\\S]*?)\\n\\}'));
   assert.ok(propsBlock, view + ' must declare its public props contract');
-  const requiredCallbacks = [...propsBlock[1].matchAll(/^\\s*(on[A-Z]\\w*)\\s*:/gm)].map(match => match[1]);
-  const appTag = app.match(new RegExp('<' + view + '\\\\b[\\\\s\\\\S]*?\\\\/>'));
+  const requiredCallbacks = [...propsBlock[1].matchAll(/^\s*(on[A-Z]\w*)\s*:/gm)].map(match => match[1]);
+  const appTag = app.match(new RegExp('<' + view + '\\b[\\s\\S]*?\\/>'));
   assert.ok(appTag, 'App must render ' + view);
   for (const callback of requiredCallbacks) {
-    assert.match(appTag[0], new RegExp('\\\\b' + callback + '\\\\s*='), view + ' required callback ' + callback + ' must be wired by App');
+    assert.match(appTag[0], new RegExp('\\b' + callback + '\\s*='), view + ' required callback ' + callback + ' must be wired by App');
   }
 }
 console.log('Menu action wiring contract: PASS (all required page callbacks are connected to App handlers).');
