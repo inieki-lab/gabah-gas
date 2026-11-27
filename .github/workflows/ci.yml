@@ -229,6 +229,9 @@ jobs:
       - name: Administration category owner choices exclude retired location domains
         run: npm run test:admin-category-owner-options
 
+      - name: Administration explains role-assignment session revocation
+        run: npm run test:admin-rbac-assignment-reauth
+
       - name: User bulk-import primary-role regression
         run: npm run test:bulk-import
 
