@@ -362,13 +362,8 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   }, [isOpen, activeSection]);
 
   // Master Data State
-  const [categories, setCategories] = useState<any[]>([
-    { code: 'IT-HLT', name: 'Hardware Laptop & PC', type: 'IT', loanable: true, total: 42, is_active: true },
-    { code: 'IT-SRV', name: 'Server & Infrastructure', type: 'IT', loanable: false, total: 18, is_active: true },
-    { code: 'SC-FLT', name: 'Armada Truk Beras Cipinang', type: 'SC', loanable: true, total: 24, is_active: true },
-    { code: 'GA-BLD', name: 'Gedung & Fasilitas Pasar', type: 'GA', loanable: false, total: 31, is_active: true },
-    { code: 'LIC-ENT', name: 'Lisensi ERP SAP & OS', type: 'License', loanable: false, total: 15, is_active: true },
-  ]);
+  // The API is authoritative; do not display fabricated fallback categories.
+  const [categories, setCategories] = useState<any[]>([]);
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [isSubmittingCategory, setIsSubmittingCategory] = useState(false);
   const [newCategoryData, setNewCategoryData] = useState({
@@ -394,7 +389,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
           gabahApi.getOfficeLocations(),
           gabahApi.getAssetLocations(),
         ]);
-        if (Array.isArray(liveCats) && liveCats.length > 0) {
+        if (Array.isArray(liveCats)) {
           const mapped = liveCats.map((c: any) => ({
             code: c.code,
             name: c.name,

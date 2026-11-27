@@ -217,6 +217,9 @@ jobs:
       - name: New employee must not default to retired SC owner domain
         run: npm run test:admin-new-user-division-default
 
+      - name: Administration category master mirrors empty authoritative result
+        run: npm run test:admin-empty-category-sync
+
       - name: User bulk-import primary-role regression
         run: npm run test:bulk-import
 
