@@ -68,3 +68,11 @@ assert.match(apiClient, /err\.code = json\.code/);
 assert.match(app, /result\.reason\?\.status === 403[\s\S]*?setCollection\(\[\]\)/,
   'expected permission/module 403 responses must not create a false data-load error banner');
 console.log('PASS: expected 403 denials for unassigned/inactive modules are not reported as server outages.');
+
+
+assert.doesNotMatch(app, /INITIAL_VENDORS|INITIAL_KNOWLEDGE_BASE|INITIAL_MAINTENANCE_SCHEDULES/,
+  'authoritative page collections must not start with demo seed rows');
+assert.match(app, /useState<Vendor\[\]>\(\[\]\)/);
+assert.match(app, /useState<KnowledgeArticle\[\]>\(\[\]\)/);
+assert.match(app, /useState<MaintenanceSchedule\[\]>\(\[\]\)/);
+console.log('PASS: operational collections start empty until PostgreSQL-backed API responses arrive.');
