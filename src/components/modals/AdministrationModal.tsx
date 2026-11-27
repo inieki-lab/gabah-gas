@@ -574,14 +574,12 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     { tab: 'knowledge', label: 'Knowledge Base', description: 'Panduan dan SOP', required: ['knowledge.read'] },
     { tab: 'reports', label: 'Laporan & Audit', description: 'Laporan operasional dan audit', required: ['reports.read'], anyOf: ['assets.read', 'loans.read', 'tickets.read', 'maintenances.read'], revoke: ['reports.read'] },
   ] as const;
-  const coreSidebarTabs = new Set(['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge']);
   const activePermissionKeys = new Set<string>(rbacPermissions.filter((permission: any) => permission.is_active).map((permission: any) => String(permission.permission_key)));
   const getMissingMenuPermissions = (item: typeof sidebarMenuControls[number]) =>
     getMissingSidebarMenuPermissions(item, activePermissionKeys);
-  const isSidebarMenuEnabled = (item: typeof sidebarMenuControls[number]) => coreSidebarTabs.has(item.tab)
-    || isSidebarMenuPermissionEnabled(item, rbacSelectedPermissionKeys);
+  const isSidebarMenuEnabled = (item: typeof sidebarMenuControls[number]) =>
+    isSidebarMenuPermissionEnabled(item, rbacSelectedPermissionKeys);
   const toggleSidebarMenu = (item: typeof sidebarMenuControls[number], enabled: boolean) => {
-    if (coreSidebarTabs.has(item.tab)) return;
     const change = getSidebarMenuPermissionChange(item, enabled, activePermissionKeys, rbacSelectedPermissionKeys);
     if (change.missing.length) {
       showToast('Permission menu belum tersedia di katalog: ' + change.missing.join(', '), 'warning');
@@ -3040,18 +3038,18 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                                     const enabled = isSidebarMenuEnabled(item);
                                     return (
                                       <label key={item.tab} className="flex items-start gap-2 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-xs">
-                                        <input type="checkbox" checked={enabled} onChange={event => toggleSidebarMenu(item, event.target.checked)} disabled={rbacSaving || missing.length > 0 || coreSidebarTabs.has(item.tab)} className="mt-0.5" />
+                                        <input type="checkbox" checked={enabled} onChange={event => toggleSidebarMenu(item, event.target.checked)} disabled={rbacSaving || missing.length > 0} className="mt-0.5" />
                                         <span className="min-w-0">
                                           <span className="font-bold text-slate-800">{item.label}</span>
                                           <span className="block text-[10px] text-slate-500">{item.description}</span>
-                                          {coreSidebarTabs.has(item.tab) ? <span className="block text-[10px] text-emerald-700">Menu dasar — selalu aktif</span> : missing.length > 0 && <span className="block text-[10px] text-amber-700">Belum tersedia: {missing.join(', ')}</span>}
+                                          {missing.length > 0 && <span className="block text-[10px] text-amber-700">Belum tersedia: {missing.join(', ')}</span>}
                                         </span>
                                       </label>
                                     );
                                   })}
                                 </div>
                                 <div className="flex items-center justify-between flex-wrap gap-2">
-                                  <p className="text-[10px] text-slate-500">Dashboard, Aset Saya, Peminjaman, Tiket, dan Knowledge Base adalah menu dasar yang selalu aktif. Menu lain dapat diatur per role; menu Administrasi khusus Superadmin.</p>
+                                  <p className="text-[10px] text-slate-500">Setiap menu mengikuti permission baca yang dipilih untuk role ini. Permission yang dipakai bersama oleh beberapa menu dapat memengaruhi lebih dari satu menu; menu Administrasi khusus Superadmin.</p>
                                   <button type="button" onClick={() => void handleSaveRbacPermissions()} disabled={rbacSaving} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">Simpan Menu Role</button>
                                 </div>
                               </>
