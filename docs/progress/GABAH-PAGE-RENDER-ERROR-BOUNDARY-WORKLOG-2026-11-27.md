@@ -100,3 +100,11 @@ The original PR #354 branch had a failed CI attempt and did not receive a fresh 
 - Regression assertions were added on this stacked branch.
 - Latest App commit: `149cad244fa1a75a92f61497446c522d7c8cc5cd`; test commit: `074be6f8e3d5442c7f82451276e49956020d1cba`.
 - Exact-head CI must rerun.
+
+
+## JSX typecheck correction
+
+- CI run `46002339822` (run #3902) failed at TypeScript because the custom boundary JSX type did not accept React's special `key` attribute in this project type setup.
+- Replaced the special key with an explicit `resetKey` prop and `componentDidUpdate` reset logic. The boundary still keeps live children reactive and resets after the user navigates to another tab.
+- Latest commits: boundary `801f7f5cd055ec3c53b31470156c2d844b2e1e1a`; App `8b517848d8410c7b4b2b0441e6473be2bfd0da6b`; test `5fffd251c3487c821f25f2fb1ddf911f999f0320`.
+- Exact-head CI must rerun; no PASS is claimed.
