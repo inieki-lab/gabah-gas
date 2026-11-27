@@ -128,3 +128,11 @@ Semua temuan di atas berasal dari inspeksi source GitHub pada baseline yang dise
 | #354 | PENDING | Run awal #3888 gagal typecheck; tipe boundary dan assertion parent diperbaiki, menunggu run baru |
 | #355 | Draft | Dokumen rencana pemulihan |
 
+
+
+## Peta operasional menu
+
+Matriks 12 menu → komponen → data → aksi sudah dicatat di:
+`docs/progress/GABAH-MENU-PAGE-API-MATRIX-2026-11-27.md`.
+
+Dokumen tersebut menjadi checklist UAT per menu, termasuk pemisahan bukti wiring source, API permission, scope data, dan transaksi backend.
