@@ -24,7 +24,9 @@ assert.match(app, /if \(generation === dataRefreshGeneration\.current\) setIsLoa
 assert.match(app, /gabahApi\.getUsers\(\)\.catch\(\(\) => \[\]\)/);
 assert.match(app, /const \[allUsers, setAllUsers\] = useState<UserProfile\[]>\(\[\]\)/);
 assert.match(app, /dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(targetUser\)/);
-assert.match(app, /onLoginSuccess=\{\(u\) => \{\s*dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(u\)/);
+assert.match(app, /onLoginSuccess=\{\(u\) => \{\s*authInitializationGeneration\.current \+= 1;\s*dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(u\)/, 'interactive login must invalidate the initial session restore before resetting role-scoped state');
+assert.match(app, /const authInitializationGeneration = useRef\(0\)/);
+assert.match(app, /if \(generation !== authInitializationGeneration\.current\) return/);
 assert.match(app, /if \(me\) \{\s*dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(me\)/);
 assert.ok(app.includes('setActiveModuleKeys(null)'));
 assert.ok(app.includes('setModuleStatusLoadFailed(false)'));
