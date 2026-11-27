@@ -699,3 +699,11 @@ Akar masalah: route check-in/check-out menerapkan permission gate global sebelum
 ### CI dan status
 - Run `45907144668` menguji branch setelah perubahan loan dan numbering; pada saat catatan ini dibuat masih berjalan. Belum ada klaim PASS.
 - Branch: `ai/hermes/authorization-endpoint-audit`. Tidak ada merge ke `main`.
+
+
+## 2026-11-27 — Vendor dan Knowledge write authorization fail-closed
+
+- Audit endpoint paralel menemukan POST/PATCH `/api/vendors` dan `/api/knowledge` hanya memanggil permission RBAC saat PostgreSQL aktif. Pada file-store, Vendor memakai fallback role/scope berbasis nama role dan Knowledge memakai allowlist Admin GABAH/IT/GA; ini tidak konsisten dengan GET dan kebijakan endpoint sensitif lain yang fail-closed.
+- Perbaikan: keempat operasi tulis sekarang selalu memerlukan `vendors.create`, `vendors.update`, `knowledge.create`, atau `knowledge.update` melalui `requireRbacPermission`. Tidak menambahkan fallback role dan tidak mengubah scope baca vendor.
+- Commit kode: `f4d2b776f36b4b12143e26392c08ca0ed317cdd0`.
+- Status: CI baru dipicu oleh commit; belum dinyatakan lulus. Berikutnya audit route user administration, uploads, dan endpoint lifecycle serta pastikan regresi PostgreSQL tetap hijau.
