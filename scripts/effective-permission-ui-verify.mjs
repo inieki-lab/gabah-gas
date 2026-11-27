@@ -38,3 +38,14 @@ for (const transient of ["setSelectedAssetForDetail(null)","setSelectedAssetForE
   assert.ok(app.includes(transient), `Identity reset must clear transient state ${transient}`);
 }
 console.log('PASS: role switch, login, and logout clear role-scoped data and invalidate stale in-flight refreshes.');
+
+
+const refreshSource = app.slice(app.indexOf('const refreshData = useCallback'));
+assert.match(refreshSource, /Promise\\.allSettled\\(\\[/, 'refreshData must distinguish empty success from request failure');
+assert.match(refreshSource, /result\\.status === 'fulfilled'[\\s\\S]*?setCollection\\(result\\.value\\)/, 'a successful empty response must replace stale seeded data');
+assert.match(refreshSource, /Failed to refresh \\${collectionName}; keeping last known data\\./, 'failed requests must be reported instead of masquerading as empty results');
+assert.match(refreshSource, /applyCollection\\(maintenancesResult, setMaintenanceSchedules/);
+assert.match(refreshSource, /applyCollection\\(vendorsResult, setVendors/);
+assert.match(refreshSource, /applyCollection\\(knowledgeResult, setKnowledgeBase/);
+assert.doesNotMatch(refreshSource, /length > 0/, 'empty server collections must not preserve mock/demo rows');
+console.log('PASS: authoritative empty collections clear stale seed rows; failed API requests preserve last-known data and are logged.');
