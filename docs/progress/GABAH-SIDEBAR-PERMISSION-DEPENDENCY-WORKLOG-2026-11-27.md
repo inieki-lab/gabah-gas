@@ -51,3 +51,10 @@ The Administration → Roles → Sidebar Menu controls did not fully model the s
 - Typed the set as `Set<string>` and normalized each key to a string before passing it to the pure helper.
 - Fix commit: `0c1a633d9ec24bb1792b4ec084f41df26c816432`.
 - Exact-head CI rerun pending.
+
+
+## Exact-head CI result
+
+- Run #3920 passed on implementation/test commit `0c1a633d9ec24bb1792b4ec084f41df26c816432`.
+- Run #3921 passed on latest branch head `205b90a8e0aa6f375208ff2418d295e21157e34b` (documentation-only commit after the implementation/test commit).
+- Both exact runs completed successfully; browser UAT remains not run.
