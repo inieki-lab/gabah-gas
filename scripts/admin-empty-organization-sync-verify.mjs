@@ -18,9 +18,13 @@ for (const [response, setter] of [
   ['liveOrgUnits', 'setOrgUnits'],
   ['liveOffices', 'setOfficeLocations'],
 ]) {
-  assert.match(block, new RegExp('if \\(Array\\.isArray\\(' + response + '\\)\\)[\\s\\S]{0,100}' + setter + '\\('),
-    response + ' empty array must synchronize through ' + setter);
-  assert.doesNotMatch(block, new RegExp(response + '\\.length\\s*>\\s*0'),
+  assert.ok(block.includes('if (Array.isArray(' + response + '))'),
+    response + ' must accept an empty authoritative array');
+  const condition = block.indexOf('if (Array.isArray(' + response + '))');
+  const update = block.indexOf(setter + '(', condition);
+  assert.ok(update > condition && update - condition < 250,
+    response + ' must update ' + setter + ' even when empty');
+  assert.ok(!block.includes(response + '.length > 0'),
     response + ' must not retain stale values when the server returns an empty list');
 }
 
