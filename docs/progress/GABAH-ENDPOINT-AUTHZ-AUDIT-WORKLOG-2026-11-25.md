@@ -60,7 +60,7 @@ Sources inspected:
 
 | ID | Severity | Finding | Evidence / status |
 |---|---|---|---|
-| AUTHZ-01 | MEDIUM | Read-only behavior on `main` is still tied to the fixed `auditor` role key. A custom Dynamic RBAC role cannot receive the same explicit deny-write policy marker. This is a capability/configuration gap, not evidence that a custom role currently bypasses a granted deny-write rule. | `server/rbac-policy.ts` exports `isAuditorActor`; `server/runtime-hardening.ts` blocks mutations based on Auditor identity; `docs/IMPLEMENTATION-TRUTH-REGISTER.md` already records this as PARTIAL. PR #301 proposes `security.read_only` and generic deny-write behavior. PR #301 exact-head CI run 45573751004 is SUCCESS, but PR remains OPEN and its code is not in `main`. |
+| AUTHZ-01 | RESOLVED IN CODE; BROWSER UAT PENDING | Generic Dynamic RBAC read-only policy is implemented. `security.read_only` enforces deny-write precedence for any role; `isAuditorActor()` remains distinct so a custom read-only role does not inherit global observer visibility. | PR #301 merged to `main`; exact-head CI run #3534 SUCCESS. `scripts/cr04-cr05-verify.mjs` creates a custom non-Auditor role with both read and write grants, confirms the marker/effective permissions, verifies read endpoints and rejects POST with 403. Remaining: browser UAT and additional direct-ID/out-of-scope visibility cases before declaring release acceptance. |
 | API-01 | MEDIUM | Report/export endpoints are not implemented on the audited `main` source, although the permission catalog includes `reports.read` and `reports.export`. There is consequently no backend report/export endpoint whose authorization can be verified. | No `/api/reports` or `/api/exports` route registration found in `server.ts`; repository code search returned no matches for those route paths. Treat as a missing feature/contract gap, not an unauthenticated access bypass. |
 | AUTH-02 | LOW / INFORMATIONAL | Login retains a hard-coded legacy alias fallback for old role labels/accounts after exact email lookup. Password verification is still mandatory and alias matching does not itself grant permissions. | `server.ts` login resolver; exact email/prefix match takes precedence. Remove only after account migration and UAT are approved. |
 
@@ -611,3 +611,8 @@ The scripts assert permission/scope checks, active-user eligibility, read-only h
 - No new direct-ID authorization bypass was confirmed in this pass.
 - Endpoint authorization static/live regression coverage is substantially broader, but it does not replace browser UAT with actual business personas.
 - Next release work is operational acceptance: per-persona browser UAT, migration rehearsal against a copy of the existing PostgreSQL database, backup/restore verification, staging deployment and rollback rehearsal, and named business-owner sign-off. Do not declare production-ready until those are recorded.
+
+
+### Addendum — AUTHZ-01 generic read-only implementation (26 November 2026)
+
+PR #301 (`adc706edcb038b41a35bbfb2ea429f0293777169`) is merged to `main`. GitHub Actions CI run `45625865976` (#3534) completed SUCCESS. The custom-role integration fixture in `scripts/cr04-cr05-verify.mjs` deliberately combines `security.read_only` with `assets.create` and `assets.update`; effective permissions retain only explicit read capabilities, while POST asset creation returns 403. The generic policy does not identify the user as Auditor, preserving the separation between deny-write and global observer visibility. Browser UAT and direct-ID/out-of-scope checks remain open.
