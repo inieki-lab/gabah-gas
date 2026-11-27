@@ -116,3 +116,11 @@ The original PR #354 branch had a failed CI attempt and did not receive a fresh 
 - Updated the assertion to match the actual `resetKey` contract.
 - Correction commit: `5df4a25912ddd434bb7e3dbc96ef647319a1ea4a`.
 - Exact-head CI must rerun; no PASS is claimed yet.
+
+
+## Missing reset lifecycle found by CI
+
+- CI run #3915 failed in the Error Boundary regression because the component had a `resetKey` prop but the implementation did not yet reset `hasError` when navigation changed.
+- Added `componentDidUpdate` to clear the failed state when `resetKey` changes; this allows the next selected page to render without a full reload.
+- Fix commit: `8465a551f97062457119bdbb09660472d2108363`.
+- Exact-head CI rerun is pending.
