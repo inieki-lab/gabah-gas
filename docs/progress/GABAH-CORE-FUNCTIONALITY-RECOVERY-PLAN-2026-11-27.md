@@ -163,3 +163,13 @@ Dokumen tersebut menjadi checklist UAT per menu, termasuk pemisahan bukti wiring
 - **PR #354:** closed, superseded by #356.
 - Tidak ada PR yang di-merge ke `main`.
 
+
+
+## Update terakhir — 27 November 2026
+
+- PR #352: CI #3907 **SUCCESS** pada implementation/test head `9561f124`; run #3912 berjalan pada commit worklog setelahnya.
+- PR #353: run #3910 dan #3911 berjalan setelah penambahan kontrak backend read permission.
+- PR #355: run #3909 **SUCCESS** pada versi dokumen sebelumnya; run #3913 berjalan pada update dokumen terakhir.
+- PR #356: run #3908 gagal hanya pada assertion lama yang masih menyebut `key` setelah implementasi beralih ke `resetKey`; assertion sudah dikoreksi. Run #3914 berjalan pada implementation/test head `5df4a259`; commit sesudahnya hanya worklog.
+- Tidak ada merge ke `main`; semua PR tetap Draft dan menunggu review/UAT.
+
