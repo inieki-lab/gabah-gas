@@ -136,3 +136,19 @@ Matriks 12 menu → komponen → data → aksi sudah dicatat di:
 `docs/progress/GABAH-MENU-PAGE-API-MATRIX-2026-11-27.md`.
 
 Dokumen tersebut menjadi checklist UAT per menu, termasuk pemisahan bukti wiring source, API permission, scope data, dan transaksi backend.
+
+
+## Update CI dan implementasi — 27 November 2026
+
+- PR #352 pada branch data refresh: run #3905 SUCCESS untuk commit `1ed08c6`; run #3906 dan #3907 berjalan untuk commit berikutnya sampai head terbaru `9561f12`. Perubahan lanjutan mencakup penanganan 403 yang diharapkan serta penghapusan data demo awal untuk vendor/knowledge/maintenance.
+- PR #353 menu-to-view contract: run #3882 SUCCESS.
+- PR #355 rencana pemulihan: run #3901 SUCCESS.
+- PR #356 Error Boundary: run #3902 gagal typecheck pada implementasi awal; setelah koreksi props/resetKey, PR dibuka ulang untuk memicu exact-head CI #3908 (QUEUED) pada head `97ad1d2`.
+- PR #345 login race: run sebelumnya SUCCESS.
+- PR #351 notifikasi re-login role assignment: run sebelumnya SUCCESS.
+- PR #354 ditutup sebagai superseded oleh PR #356; tidak ada merge.
+
+### Catatan desain tambahan
+- Karena `refreshData()` memanggil endpoint lintas modul saat login, 403 untuk modul yang tidak ditugaskan atau dinonaktifkan adalah penolakan yang diharapkan. API client sekarang menyimpan HTTP status/error code; 403 tidak menimbulkan banner outage palsu.
+- Collection vendor, knowledge, dan maintenance sekarang dimulai dari array kosong, bukan data demo. Hanya respons backend sukses yang boleh mengisi data awal.
+- Kegagalan selain 403 tetap ditampilkan sebagai banner dengan daftar koleksi dan tombol retry.
