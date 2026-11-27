@@ -147,3 +147,24 @@ for (const [tab, grants] of routeNavContracts) {
 assert.ok(isNavTabAllowedForRole('Custom Role', 'reports', ['reports.read', 'assets.read']));
 assert.equal(isNavTabAllowedForRole('Custom Role', 'reports', ['reports.read']), false);
 console.log('Menu-to-API permission contract: PASS (backend read endpoints enforce the permissions that expose each menu).');
+
+
+// Every required callback declared by a page component must be wired by App.
+// Optional callbacks may intentionally use a documented fallback/no-op.
+const viewComponents = [
+  'DashboardView', 'AssetsView', 'MyAssetsView', 'MeetingRoomsView',
+  'MaintenanceView', 'LoansView', 'TicketsView', 'LicensesView',
+  'ContractsView', 'VendorsView', 'KnowledgeBaseView', 'ReportsView',
+];
+for (const view of viewComponents) {
+  const viewSource = fs.readFileSync('src/components/views/' + view + '.tsx', 'utf8');
+  const propsBlock = viewSource.match(new RegExp('interface ' + view + 'Props \\\\{([\\\\s\\\\S]*?)\\\\n\\\\}'));
+  assert.ok(propsBlock, view + ' must declare its public props contract');
+  const requiredCallbacks = [...propsBlock[1].matchAll(/^\\s*(on[A-Z]\\w*)\\s*:/gm)].map(match => match[1]);
+  const appTag = app.match(new RegExp('<' + view + '\\\\b[\\\\s\\\\S]*?\\\\/>'));
+  assert.ok(appTag, 'App must render ' + view);
+  for (const callback of requiredCallbacks) {
+    assert.match(appTag[0], new RegExp('\\\\b' + callback + '\\\\s*='), view + ' required callback ' + callback + ' must be wired by App');
+  }
+}
+console.log('Menu action wiring contract: PASS (all required page callbacks are connected to App handlers).');
