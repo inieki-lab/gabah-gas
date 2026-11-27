@@ -82,3 +82,23 @@ assert.match(sidebar, /const isSekdir = !isSuperAdmin && hasPermission/,
   'Superadmin wildcard must not make the sidebar identify Superadmin as Sekdir');
 
 console.log('Dynamic navigation policy: PASS (no fixed role catalogue; permissions and landing-page checks)');
+
+
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+const expectedRenderedTabs = [
+  'dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans',
+  'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports',
+];
+for (const tab of expectedRenderedTabs) {
+  assert.match(sidebar, new RegExp(`id: '\u0024{tab}'`), `Sidebar must expose the ${tab} navigation item`);
+  assert.ok(app.includes(`activeTab === '\u0024{tab}'`), `App must render a page for the ${tab} navigation item`);
+}
+assert.match(sidebar, /onClick=\{\(\) => onTabChange\(item\.id\)\}/,
+  'clicking a visible sidebar item must invoke the navigation callback');
+assert.match(app, /const navigateToTab = \(tab: NavTab\) => \{/,
+  'App must provide a single navigation gate');
+assert.match(app, /isNavTabAllowedForRole\(currentUser\.role, tab, currentUser\.permission_keys\) && !isModuleAvailable\(tab\)/,
+  'navigation must enforce both effective permissions and global module lifecycle');
+assert.match(app, /setCurrentTab\(tab\)/,
+  'an authorized, active module selection must update the rendered tab');
+console.log('Menu-to-view contract: PASS (all 12 sidebar tabs have an App render branch and a guarded click path).');
