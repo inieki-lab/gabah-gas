@@ -73,3 +73,12 @@ The original PR #354 branch had a failed CI attempt and did not receive a fresh 
 - Test change: `10bc36c99299c13f9157369caa71dc573e2f09e7`
 - Boundary component: `084d573cf59ea11af01657d151f7a50392d6b014`
 - CI must run on the new PR head; no PASS claimed.
+
+
+## Expected 403 handling inherited from parent refresh fix
+
+- Global data refresh calls endpoints across modules even when a user has only a subset of module permissions. A 403 for an unassigned or globally inactive module is expected, not a server outage.
+- API errors now preserve HTTP status/code/module key; expected 403 results clear that collection without showing a false outage banner. Unexpected failures remain visible.
+- Added regression assertions on this stacked branch.
+- Latest commits: App `0800cf5ad03a536a43df9d727c146861b850e318`, API `e3f6f81738a79d49dd2e5f7ab448c33d70845759`, test `bcd8f4ab8dcdc2c61a8736c9abac39fd1e7a6945`.
+- Exact-head CI must rerun.
