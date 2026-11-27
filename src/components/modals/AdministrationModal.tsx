@@ -794,7 +794,7 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
       await gabahApi.setRbacUserRoles(String(roleAssignmentTarget.id), roleAssignmentDraft);
       await refreshUserAssignments();
       setRoleAssignmentTarget(null);
-      showToast('Assignment role pegawai berhasil disimpan.', 'success');
+      showToast('Assignment role tersimpan. Sesi pengguna dicabut demi keamanan; minta pengguna login kembali agar hak akses baru aktif.', 'success');
     } catch (error: any) {
       showToast(error?.message || 'Gagal menyimpan assignment role pegawai.', 'warning');
     } finally {
