@@ -207,9 +207,12 @@ export default function App() {
         if (result.status === 'fulfilled' && Array.isArray(result.value)) {
           // An empty server response is authoritative and must clear stale/demo rows.
           setCollection(result.value);
+        } else if (result.status === 'rejected' && result.reason?.status === 403) {
+          // A 403 is expected for collections outside this user's assigned role
+          // or a globally inactive module; it must not create a false global error.
+          setCollection([]);
         } else {
-          // Preserve the last known collection on transport/API failure, but do not
-          // disguise the failure as a successful empty response.
+          // Preserve the last known collection on unexpected transport/server failures.
           setDataRefreshErrors(previous => previous.includes(collectionName) ? previous : [...previous, collectionName]);
           console.error(`Failed to refresh ${collectionName}; keeping last known data.`,
             result.status === 'rejected' ? result.reason : 'API returned a non-array response.');
