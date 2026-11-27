@@ -65,7 +65,7 @@ console.log('PASS: failed page data loads are visible to users with a retry acti
 const boundary = fs.readFileSync('src/components/PageErrorBoundary.tsx', 'utf8');
 assert.match(app, /import \{ PageErrorBoundary \} from '\.\/components\/PageErrorBoundary'/,
   'App must import the page-level error boundary');
-assert.match(app, /<PageErrorBoundary key=\{activeTab \|\| 'no-access'\}>[\s\S]*?<main className="gabah-main-content/,
+assert.match(app, /<PageErrorBoundary resetKey=\{activeTab \|\| 'no-access'\}>[\s\S]*?<main className="gabah-main-content/,
   'page content must be isolated so a render exception does not destroy the sidebar shell');
 assert.match(app, /<\/main>\s*<\/PageErrorBoundary>/,
   'page boundary must close after the main content');
