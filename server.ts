@@ -4696,6 +4696,16 @@ async function startServer() {
     }
   });
 
+  app.get('/api/contracts/create-options', (req, res) => {
+    try {
+      if (!requireRbacPermission(req, res, 'contracts.create')) return;
+      const actor = getActor(req);
+      res.json({ success: true, data: ContractDomainService.listCreatableOwnerDomains(actor) });
+    } catch (err: any) {
+      res.status(400).json({ success: false, message: err.message });
+    }
+  });
+
   app.get('/api/contracts/:id', (req, res) => {
     try {
       

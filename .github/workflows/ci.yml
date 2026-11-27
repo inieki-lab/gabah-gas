@@ -98,6 +98,9 @@ jobs:
       - name: Asset scope policy regression checks
         run: npm run test:asset-scope-policy
 
+      - name: Contract owner scope options regression checks
+        run: npm run test:contract-owner-scope-options
+
       - name: Asset mutation authorization HTTP status regression
         run: npm run test:asset-mutation-http-status
 
