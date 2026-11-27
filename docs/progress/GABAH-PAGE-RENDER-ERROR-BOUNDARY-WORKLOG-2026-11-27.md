@@ -31,3 +31,10 @@ This is a plausible failure mode for “menu clicked, then blank screen”, but 
 
 - No database, migration, Docker volume, or business data changed.
 - Draft only; do not merge to `main` without explicit owner approval.
+
+
+## Shared regression alignment
+
+- The parent data-refresh PR exposed an obsolete source assertion in the shared `effective-permission-ui` test that expected swallowed API failures.
+- Removed that obsolete assertion on this stacked branch as well, keeping the test aligned with the new `Promise.allSettled` contract.
+- Latest test commit: `f919ccd98405f6a8e3c70571a36e5a088862dacb`.
