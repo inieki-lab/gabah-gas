@@ -7,8 +7,8 @@ import {
 } from '../src/navigation/sidebarMenuPermissions';
 
 const catalog = new Set([
-  'licenses.read', 'assets.read', 'reports.read', 'loans.read',
-  'tickets.read', 'maintenances.read', 'assets.audit.read',
+  'dashboard.read', 'licenses.read', 'assets.read', 'reports.read', 'loans.read',
+  'tickets.read', 'knowledge.read', 'maintenances.read', 'assets.audit.read',
 ]);
 const licenses = {
   tab: 'licenses',
@@ -72,3 +72,31 @@ assert.match(modal, /getSidebarMenuPermissionChange\(item, enabled, activePermis
 assert.match(modal, /current\.filter\(key => !change\.remove\.includes\(key\)\)/);
 
 console.log('Sidebar menu permission dependencies: PASS (composite grants and shared permissions are preserved).');
+
+
+// The five baseline tabs are not exempt from backend permission checks.
+// Custom roles must be able to turn them on/off through the same role editor.
+const dashboard = { tab: 'dashboard', required: ['dashboard.read'] };
+const enableDashboard = getSidebarMenuPermissionChange(dashboard, true, catalog, []);
+assert.deepEqual(enableDashboard.add, ['dashboard.read']);
+assert.equal(isSidebarMenuPermissionEnabled(dashboard, []), false);
+assert.equal(isSidebarMenuPermissionEnabled(dashboard, ['dashboard.read']), true);
+const disableDashboard = getSidebarMenuPermissionChange(dashboard, false, catalog, ['dashboard.read']);
+assert.deepEqual(disableDashboard.remove, ['dashboard.read']);
+
+const myAssets = { tab: 'my_assets', required: ['assets.read'] };
+assert.deepEqual(getSidebarMenuPermissionChange(myAssets, true, catalog, []).add, ['assets.read']);
+assert.deepEqual(getSidebarMenuPermissionChange(myAssets, false, catalog, ['assets.read']).remove, ['assets.read']);
+
+const loans = { tab: 'loans', required: ['loans.read'] };
+assert.deepEqual(getSidebarMenuPermissionChange(loans, true, catalog, []).add, ['loans.read']);
+
+const tickets = { tab: 'tickets', required: ['tickets.read'] };
+assert.deepEqual(getSidebarMenuPermissionChange(tickets, true, catalog, []).add, ['tickets.read']);
+
+const knowledge = { tab: 'knowledge', required: ['knowledge.read'] };
+assert.deepEqual(getSidebarMenuPermissionChange(knowledge, true, catalog, []).add, ['knowledge.read']);
+assert.doesNotMatch(modal, /coreSidebarTabs/,
+  'the role editor must not label baseline tabs always-on while backend navigation still checks their grants');
+assert.match(modal, /disabled=\{rbacSaving \|\| missing\.length > 0\}/,
+  'baseline menu toggles must remain editable when their permission catalogue entries exist');
