@@ -26,3 +26,11 @@ The initial `initAuth()` session restoration request can remain in flight while 
 
 ## Next
 Run project build/tests, then user UAT on this branch. Do not merge to `main` until checks pass and the user explicitly approves.
+
+
+## CI regression correction — 2026-11-27
+- The first exact-head CI run failed in the inherited `test:runtime-persistence-atomicity` assertion, not in the login race patch.
+- The assertion still required publishing a local snapshot after PostgreSQL commit (`saveStateToFile(committedPayload)`), but the current production runtime deliberately avoids a second local write because the app filesystem is read-only.
+- Updated the regression to assert PostgreSQL commit is awaited and the PostgreSQL-success path does not write a secondary local snapshot.
+- This aligns the test with the current persistence contract; no runtime persistence code or database was changed.
+- CI must rerun on the updated head; no PASS claimed yet.
