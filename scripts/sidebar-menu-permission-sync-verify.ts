@@ -31,7 +31,7 @@ const assets = {
 // Licenses needs its own grant and asset data access; the admin toggle must
 // add both, but disabling Licenses must preserve the shared assets.read grant.
 assert.equal(isSidebarMenuPermissionEnabled(licenses, ['licenses.read']), false);
-const enableLicenses = getSidebarMenuPermissionChange(licenses, true, catalog, ['']);
+const enableLicenses = getSidebarMenuPermissionChange(licenses, true, catalog, []);
 assert.deepEqual(enableLicenses.missing, []);
 assert.deepEqual(enableLicenses.add, ['licenses.read', 'assets.read']);
 const disableLicenses = getSidebarMenuPermissionChange(licenses, false, catalog, ['licenses.read', 'assets.read']);
