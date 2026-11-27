@@ -21,7 +21,6 @@ assert.match(app, /const dataRefreshGeneration = useRef\(0\)/);
 assert.match(app, /const generation = dataRefreshGeneration\.current/);
 assert.match(app, /generation !== dataRefreshGeneration\.current/);
 assert.match(app, /if \(generation === dataRefreshGeneration\.current\) setIsLoading\(false\)/);
-assert.match(app, /gabahApi\.getUsers\(\)\.catch\(\(\) => \[\]\)/);
 assert.match(app, /const \[allUsers, setAllUsers\] = useState<UserProfile\[]>\(\[\]\)/);
 assert.match(app, /dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(targetUser\)/);
 assert.match(app, /onLoginSuccess=\{\(u\) => \{\s*authInitializationGeneration\.current \+= 1;\s*dataRefreshGeneration\.current \+= 1;\s*clearRoleScopedData\(\);\s*setCurrentUser\(u\)/, 'interactive login must invalidate the initial session restore before resetting role-scoped state');
@@ -38,3 +37,42 @@ for (const transient of ["setSelectedAssetForDetail(null)","setSelectedAssetForE
   assert.ok(app.includes(transient), `Identity reset must clear transient state ${transient}`);
 }
 console.log('PASS: role switch, login, and logout clear role-scoped data and invalidate stale in-flight refreshes.');
+
+
+const refreshStart = app.indexOf('const refreshData = useCallback');
+const refreshEnd = app.indexOf("\n  useEffect(() => {\n    async function initAuth()", refreshStart);
+assert.ok(refreshStart >= 0 && refreshEnd > refreshStart, 'refreshData function boundaries must be present');
+const refreshSource = app.slice(refreshStart, refreshEnd);
+assert.match(refreshSource, /Promise\.allSettled\(\[/, 'refreshData must distinguish empty success from request failure');
+assert.match(refreshSource, /result\.status === 'fulfilled'[\s\S]*?setCollection\(result\.value\)/, 'a successful empty response must replace stale seeded data');
+assert.match(refreshSource, /Failed to refresh \$\{collectionName\}; keeping last known data\./, 'failed requests must be reported instead of masquerading as empty results');
+assert.match(refreshSource, /applyCollection\(maintenancesResult, setMaintenanceSchedules/);
+assert.match(refreshSource, /applyCollection\(vendorsResult, setVendors/);
+assert.match(refreshSource, /applyCollection\(knowledgeResult, setKnowledgeBase/);
+assert.doesNotMatch(refreshSource, /length > 0/, 'empty server collections must not preserve mock/demo rows');
+console.log('PASS: authoritative empty collections clear stale seed rows; failed API requests preserve last-known data and are logged.');
+
+
+assert.match(app, /const \[dataRefreshErrors, setDataRefreshErrors\] = useState<string\[\]>\(\[\]\)/,
+  'collection failures must have user-visible state');
+assert.match(app, /dataRefreshErrors\.length > 0[\s\S]*?role="alert"[\s\S]*?Coba muat ulang data/,
+  'collection failures must display an alert and an explicit retry action');
+assert.match(app, /setDataRefreshErrors\(previous => previous\.includes\(collectionName\)/,
+  'collection failures must be aggregated without duplicate labels');
+console.log('PASS: failed page data loads are visible to users with a retry action.');
+
+
+const apiClient = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
+assert.match(apiClient, /err\.status = res\.status/);
+assert.match(apiClient, /err\.code = json\.code/);
+assert.match(app, /result\.reason\?\.status === 403[\s\S]*?setCollection\(\[\]\)/,
+  'expected permission/module 403 responses must not create a false data-load error banner');
+console.log('PASS: expected 403 denials for unassigned/inactive modules are not reported as server outages.');
+
+
+assert.doesNotMatch(app, /INITIAL_VENDORS|INITIAL_KNOWLEDGE_BASE|INITIAL_MAINTENANCE_SCHEDULES/,
+  'authoritative page collections must not start with demo seed rows');
+assert.match(app, /useState<Vendor\[\]>\(\[\]\)/);
+assert.match(app, /useState<KnowledgeArticle\[\]>\(\[\]\)/);
+assert.match(app, /useState<MaintenanceSchedule\[\]>\(\[\]\)/);
+console.log('PASS: operational collections start empty until PostgreSQL-backed API responses arrive.');

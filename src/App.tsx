@@ -17,7 +17,6 @@ import {
   Contract,
   AssetMovement
 } from './types';
-import { INITIAL_VENDORS, INITIAL_KNOWLEDGE_BASE, INITIAL_MAINTENANCE_SCHEDULES } from './data/mockData';
 import { gabahApi } from './services/gabahApi';
 import { GabahService } from './services/gabahService';
 
@@ -62,9 +61,9 @@ export default function App() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
-  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>(INITIAL_KNOWLEDGE_BASE);
-  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>(INITIAL_MAINTENANCE_SCHEDULES);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [knowledgeBase, setKnowledgeBase] = useState<KnowledgeArticle[]>([]);
+  const [maintenanceSchedules, setMaintenanceSchedules] = useState<MaintenanceSchedule[]>([]);
   const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
   const [roomReservations, setRoomReservations] = useState<RoomReservation[]>([]);
   const [contracts, setContracts] = useState<Contract[]>([]);
@@ -88,6 +87,7 @@ export default function App() {
   // flow. Prevents being stuck in the portal shell after logout/stale session.
   const [viewMode, setViewMode] = useState<'landing' | 'login' | 'portal'>('login');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [dataRefreshErrors, setDataRefreshErrors] = useState<string[]>([]);
 
   // Modals state
   const [isCreateAssetModalOpen, setIsCreateAssetModalOpen] = useState(false);
@@ -154,6 +154,7 @@ export default function App() {
     setMovements([]);
     setActiveModuleKeys(null);
     setModuleStatusLoadFailed(false);
+    setDataRefreshErrors([]);
     setSelectedAssetForDetail(null);
     setSelectedAssetForEdit(null);
     setSelectedAssetForQr(null);
@@ -177,40 +178,64 @@ export default function App() {
     const generation = dataRefreshGeneration.current;
     try {
       setIsLoading(true);
-      const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge, fetchedMovements] = await Promise.all([
-        gabahApi.getAssets().catch(() => []),
-        gabahApi.getLoans().catch(() => []),
-        gabahApi.getTickets().catch(() => []),
-        gabahApi.getAuditLogs().catch(() => []),
-        gabahApi.getUsers().catch(() => []),
-        gabahApi.getMeetingRooms().catch(() => []),
-        gabahApi.getRoomReservations().catch(() => []),
-        gabahApi.getContracts().catch(() => []),
-        gabahApi.getMaintenances().catch(() => []),
-        gabahApi.getVendors().catch(() => []),
-        gabahApi.getKnowledgeArticles().catch(() => []),
-        gabahApi.getMovements().catch(() => []),
+      setDataRefreshErrors([]);
+      const results = await Promise.allSettled([
+        gabahApi.getAssets(),
+        gabahApi.getLoans(),
+        gabahApi.getTickets(),
+        gabahApi.getAuditLogs(),
+        gabahApi.getUsers(),
+        gabahApi.getMeetingRooms(),
+        gabahApi.getRoomReservations(),
+        gabahApi.getContracts(),
+        gabahApi.getMaintenances(),
+        gabahApi.getVendors(),
+        gabahApi.getKnowledgeArticles(),
+        gabahApi.getMovements(),
       ]);
 
       // A role switch/logout may have happened while these requests were in flight.
       // Never commit a response captured under the previous authenticated identity.
       if (generation !== dataRefreshGeneration.current) return;
 
-      if (Array.isArray(fetchedAssets)) setAssets(fetchedAssets);
-      if (Array.isArray(fetchedLoans)) setLoans(fetchedLoans);
-      if (Array.isArray(fetchedTickets)) setTickets(fetchedTickets);
-      if (Array.isArray(fetchedLogs)) setAuditLogs(fetchedLogs);
-      if (Array.isArray(fetchedUsers)) setAllUsers(fetchedUsers);
-      if (Array.isArray(fetchedRooms)) setMeetingRooms(fetchedRooms);
-      if (Array.isArray(fetchedReservations)) setRoomReservations(fetchedReservations);
-      if (Array.isArray(fetchedContracts)) setContracts(fetchedContracts);
-      if (Array.isArray(fetchedMaintenances)) {
-        if (fetchedMaintenances.length > 0) setMaintenanceSchedules(fetchedMaintenances);
-        else console.warn('Backend returned an empty maintenance list; keeping seeded schedules for offline dev.');
-      }
-      if (Array.isArray(fetchedVendors) && fetchedVendors.length > 0) setVendors(fetchedVendors);
-      if (Array.isArray(fetchedKnowledge) && fetchedKnowledge.length > 0) setKnowledgeBase(fetchedKnowledge);
-      if (Array.isArray(fetchedMovements)) setMovements(fetchedMovements);
+      const applyCollection = <T,>(
+        result: PromiseSettledResult<T[]>,
+        setCollection: React.Dispatch<React.SetStateAction<T[]>>,
+        collectionName: string,
+      ) => {
+        if (result.status === 'fulfilled' && Array.isArray(result.value)) {
+          // An empty server response is authoritative and must clear stale/demo rows.
+          setCollection(result.value);
+        } else if (result.status === 'rejected' && result.reason?.status === 403) {
+          // A 403 is expected for collections outside this user's assigned role
+          // or a globally inactive module; it must not create a false global error.
+          setCollection([]);
+        } else {
+          // Preserve the last known collection on unexpected transport/server failures.
+          setDataRefreshErrors(previous => previous.includes(collectionName) ? previous : [...previous, collectionName]);
+          console.error(`Failed to refresh ${collectionName}; keeping last known data.`,
+            result.status === 'rejected' ? result.reason : 'API returned a non-array response.');
+        }
+      };
+
+      const [
+        assetsResult, loansResult, ticketsResult, logsResult, usersResult,
+        roomsResult, reservationsResult, contractsResult, maintenancesResult,
+        vendorsResult, knowledgeResult, movementsResult,
+      ] = results;
+
+      applyCollection(assetsResult, setAssets, 'assets');
+      applyCollection(loansResult, setLoans, 'loans');
+      applyCollection(ticketsResult, setTickets, 'tickets');
+      applyCollection(logsResult, setAuditLogs, 'audit logs');
+      applyCollection(usersResult, setAllUsers, 'users');
+      applyCollection(roomsResult, setMeetingRooms, 'meeting rooms');
+      applyCollection(reservationsResult, setRoomReservations, 'room reservations');
+      applyCollection(contractsResult, setContracts, 'contracts');
+      applyCollection(maintenancesResult, setMaintenanceSchedules, 'maintenance');
+      applyCollection(vendorsResult, setVendors, 'vendors');
+      applyCollection(knowledgeResult, setKnowledgeBase, 'knowledge base');
+      applyCollection(movementsResult, setMovements, 'asset movements');
     } catch (err: any) {
       console.error('Failed to fetch from backend:', err);
     } finally {
@@ -808,6 +833,13 @@ export default function App() {
 
         {/* Main Content Pane */}
         <main className="gabah-main-content flex-1 p-4 sm:p-6 lg:p-8 min-w-0 overflow-y-auto bg-[#f4f8f5]">
+          {dataRefreshErrors.length > 0 && (
+            <section role="alert" className="mb-4 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <h2 className="font-bold">Sebagian data belum dapat dimuat</h2>
+              <p className="mt-1">Gagal memuat: {dataRefreshErrors.join(', ')}. Data terakhir tetap ditampilkan jika tersedia.</p>
+              <button type="button" onClick={() => void refreshData()} className="mt-3 rounded-lg border border-amber-300 bg-white px-3 py-2 text-xs font-bold hover:bg-amber-100">Coba muat ulang data</button>
+            </section>
+          )}
           {activeTab === null && (
             <section role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
               <h2 className="font-bold">{moduleStatusLoadFailed ? 'Status modul tidak dapat diverifikasi' : activeModuleKeys === null ? 'Memuat status modul…' : 'Belum ada akses modul aktif'}</h2>
