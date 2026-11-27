@@ -18,6 +18,12 @@ export class PageErrorBoundary extends Component<PageErrorBoundaryProps, PageErr
   declare readonly props: Readonly<PageErrorBoundaryProps>;
   state: PageErrorBoundaryState = { hasError: false };
 
+  componentDidUpdate(previousProps: Readonly<PageErrorBoundaryProps>) {
+    if (previousProps.resetKey !== this.props.resetKey && this.state.hasError) {
+      this.setState({ hasError: false });
+    }
+  }
+
   static getDerivedStateFromError(): PageErrorBoundaryState {
     return { hasError: true };
   }
