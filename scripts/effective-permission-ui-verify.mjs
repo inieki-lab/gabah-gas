@@ -81,3 +81,11 @@ assert.match(apiClient, /err\.code = json\.code/);
 assert.match(app, /result\.reason\?\.status === 403[\s\S]*?setCollection\(\[\]\)/,
   'expected permission/module 403 responses must not create a false data-load error banner');
 console.log('PASS: expected 403 denials for unassigned/inactive modules are not reported as server outages.');
+
+
+assert.match(boundary, /declare readonly props: Readonly<PageErrorBoundaryProps>/,
+  'page boundary must type its props without freezing the initial children');
+assert.match(boundary, /return this\.props\.children/);
+assert.doesNotMatch(boundary, /pageContent/,
+  'page boundary must render the latest children after data refreshes');
+console.log('PASS: page boundary preserves reactive children when parent data updates.');
