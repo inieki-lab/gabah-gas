@@ -90,15 +90,15 @@ const expectedRenderedTabs = [
   'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports',
 ];
 for (const tab of expectedRenderedTabs) {
-  assert.match(sidebar, new RegExp(`id: '\u0024{tab}'`), `Sidebar must expose the ${tab} navigation item`);
-  assert.ok(app.includes(`activeTab === '\u0024{tab}'`), `App must render a page for the ${tab} navigation item`);
+  assert.ok(sidebar.includes("id: '" + tab + "'"), 'Sidebar must expose the ' + tab + ' navigation item');
+  assert.ok(app.includes("activeTab === '" + tab + "'"), 'App must render a page for the ' + tab + ' navigation item');
 }
-assert.match(sidebar, /onClick=\{\(\) => onTabChange\(item\.id\)\}/,
+assert.ok(sidebar.includes('onClick={() => onTabChange(item.id)}'),
   'clicking a visible sidebar item must invoke the navigation callback');
-assert.match(app, /const navigateToTab = \(tab: NavTab\) => \{/,
+assert.ok(app.includes('const navigateToTab = (tab: NavTab) => {'),
   'App must provide a single navigation gate');
-assert.match(app, /isNavTabAllowedForRole\(currentUser\.role, tab, currentUser\.permission_keys\) && !isModuleAvailable\(tab\)/,
+assert.ok(app.includes('!isNavTabAllowedForRole(currentUser.role, tab, currentUser.permission_keys) || !isModuleAvailable(tab)'),
   'navigation must enforce both effective permissions and global module lifecycle');
-assert.match(app, /setCurrentTab\(tab\)/,
+assert.ok(app.includes('setCurrentTab(tab)'),
   'an authorized, active module selection must update the rendered tab');
 console.log('Menu-to-view contract: PASS (all 12 sidebar tabs have an App render branch and a guarded click path).');
