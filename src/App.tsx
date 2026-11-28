@@ -912,16 +912,16 @@ export default function App() {
                   }
                 })();
               }}
-              onAddSchedule={(newSch) => {
-                (async () => {
-                  try {
-                    const created = await gabahApi.createMaintenance(newSch);
-                    setMaintenanceSchedules(prev => [created, ...prev.filter(s => s.id !== created.id)]);
-                    showToast(`Jadwal servis ${created.schedule_code} tersimpan di server.`, 'success');
-                  } catch (err: any) {
-                    showToast(err?.message || 'Gagal menyimpan jadwal servis ke server.', 'warning');
-                  }
-                })();
+              onAddSchedule={async (newSch) => {
+                try {
+                  const created = await gabahApi.createMaintenance(newSch);
+                  setMaintenanceSchedules(prev => [created, ...prev.filter(s => s.id !== created.id)]);
+                  showToast(`Jadwal servis ${created.schedule_code} tersimpan di server.`, 'success');
+                  return true;
+                } catch (err: any) {
+                  showToast(err?.message || 'Gagal menyimpan jadwal servis ke server.', 'warning');
+                  return false;
+                }
               }}
             />
           )}
