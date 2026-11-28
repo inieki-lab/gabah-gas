@@ -76,3 +76,7 @@
 - App session-expiry handler clears role-scoped data, clears the current user, and returns to the login screen with an explanatory message.
 - Module-status refresh uses the same 401 handler, so a revoked session cannot remain in the portal with stale navigation.
 - Regression assertions cover both normal data refresh and module-status refresh 401 paths.
+
+
+- Final review also ensures the revoked-session handler clears the global loading indicator; otherwise a 401 during bulk refresh could return the app to login while leaving the spinner state active.
+- Regression assertion added for loading-state cleanup.
