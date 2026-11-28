@@ -39,3 +39,10 @@
 - No backend ticket access policy, unit/location scope, role assignment, permission grant, or ticket data changed.
 - Category filters are presentation only; backend/API remains authoritative.
 - No merge to `main` without explicit owner approval.
+
+
+## Exact-head CI result
+
+- CI #4008 (run ID 46129889511) completed SUCCESS, 120/120 workflow steps, on exact PR head 680c34a884a86720175c3dbfc7c966e042a67b55.
+- The workflow includes the expanded ME queue/category-scope regression, TypeScript/build, PostgreSQL integration, and Docker/runtime checks.
+- Browser UAT remains pending.
