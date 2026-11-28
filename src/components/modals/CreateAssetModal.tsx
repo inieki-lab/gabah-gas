@@ -24,8 +24,9 @@ interface CreateAssetModalProps {
   isOpen: boolean;
   onClose: () => void;
   existingAssets?: Asset[];
-  onCreateAsset: (newAsset: Partial<Asset>) => Promise<boolean>;
+  onCreateAsset: (newAsset: Partial<Asset> & { assigned_to_user_id?: string }) => Promise<boolean>;
   currentUser?: UserProfile;
+  users?: UserProfile[];
 }
 
 export type FixedAssetMainType = 'TNH' | 'BGN' | 'MSN' | 'KDR' | 'INV-F' | 'INV-P' | 'IT-H' | 'IT-S' | 'LNY';
@@ -192,7 +193,8 @@ export const FIXED_ASSET_TAXONOMY: FixedAssetCategoryDef[] = [
 export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({ 
   isOpen, 
   onClose, 
-  onCreateAsset 
+  onCreateAsset,
+  users = [],
 }) => {
   const [assetCreateOptions, setAssetCreateOptions] = useState<{ owner_domains: Array<{ code: string; name: string }>; categories: any[] } | null>(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
@@ -310,7 +312,10 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   // disinkronkan ke path lengkap agar tampilan lama tetap konsisten.
   const [assetLocations, setAssetLocations] = useState<any[]>([]);
   const [assetLocationId, setAssetLocationId] = useState<string>('');
-  const [custodianName, setCustodianName] = useState('');
+  const [assignedToUserId, setAssignedToUserId] = useState('');
+  const activeCustodianUsers = useMemo(() => (users || [])
+    .filter(user => user.is_active !== false)
+    .sort((left, right) => left.name.localeCompare(right.name)), [users]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
 
@@ -365,7 +370,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
     e.preventDefault();
     if (isSubmitting || !name.trim()) return;
 
-    const newAsset: Partial<Asset> = {
+    const newAsset: Partial<Asset> & { assigned_to_user_id?: string } = {
       name: name.trim(),
       owner_division: selectedDivision,
       category_code: subCode,
@@ -388,16 +393,9 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
       asset_location_id: assetLocationId || null,
       location: (assetLocationId ? assetLocationPath(assetLocationId) : location.trim()) || location.trim(),
       is_loanable: isLoanable,
+      assigned_to_user_id: assignedToUserId || undefined,
       notes: notes.trim(),
     };
-
-    if (custodianName.trim()) {
-      newAsset.assigned_to = {
-        id: `CUST-${Date.now().toString().slice(-4)}`,
-        name: custodianName.trim(),
-        department: location,
-      };
-    }
 
     if (activeMainCat.categoryType === 'License') {
       newAsset.license_detail = {
@@ -730,13 +728,23 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
               <label className="text-slate-800 font-bold flex items-center gap-1">
                 Pengguna / Custodian Awal (Opsional):
               </label>
-              <input
-                type="text"
-                value={custodianName}
-                onChange={(e) => setCustodianName(e.target.value)}
-                placeholder="Nama karyawan pemegang (kosongkan jika Pool / Fasilitas Umum)"
+              <select
+                value={assignedToUserId}
+                onChange={(e) => setAssignedToUserId(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600"
-              />
+              >
+                <option value="">Pool / Fasilitas Umum (tanpa penugasan)</option>
+                {activeCustodianUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}{user.department ? ` — ${user.department}` : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="text-[10px] text-slate-500">
+                {activeCustodianUsers.length > 0
+                  ? 'Pilih pegawai aktif untuk penugasan awal. Server memvalidasi status akun sebelum menyimpan.'
+                  : 'Daftar pegawai tidak tersedia untuk akun ini; aset akan dibuat tanpa penugasan awal (pool).'}
+              </p>
             </div>
           </div>
 
