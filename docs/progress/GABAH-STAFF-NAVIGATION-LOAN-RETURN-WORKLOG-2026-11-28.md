@@ -113,3 +113,10 @@
 - CI #3998 (run ID `46128719074`) completed **SUCCESS**, 120/120 workflow steps, on latest integrated code/worklog head `b2928b851eb587f3b8680b0dd1443dd9582cc863`.
 - This run includes the shared Dashboard/Sidebar capability policy, Auditor secondary-role presentation, and the corrected dashboard owner-summary matcher.
 - Browser UAT remains pending for Karyawan, Auditor, custom room operator, IT, GA, and Humas.
+
+
+## Latest exact-head CI
+
+- CI #4002 (run ID 46129270490) completed SUCCESS, 120/120 workflow steps, on latest PR head 17a64fe1dccd5c376bb31d58544f7fe9aa246652.
+- This run includes the Auditor sidebar persona and all Dashboard/Sidebar shared-capability regression checks.
+- Browser UAT remains pending.
