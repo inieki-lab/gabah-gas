@@ -37,7 +37,7 @@
 | Regression assertions ditambahkan | DONE |
 | Eksekusi lokal `npm run test:navigation-policy` | NOT RUN — tidak ada checkout/runtime repository pada sesi ini |
 | TypeScript/build | NOT RUN |
-| Exact-head GitHub Actions CI | PENDING |
+| Exact-head GitHub Actions CI | PASS — run #3939 / 46113074821, exact head `fec5c4a9f546daed4dfe35de73a5824021443e2d`; all 116 verification steps succeeded, including lint, navigation policy, dashboard scope, production build, Docker runtime smoke, PostgreSQL integration, P0 HTTP security, loan and ticket checks |
 | Browser UAT lintas persona | NOT RUN |
 
 ## Batasan dan risiko
@@ -49,7 +49,7 @@
 
 ## Next
 
-1. Tunggu exact-head CI untuk test navigation-policy dan full verification workflow.
+1. Exact-head CI #3939 telah lulus (116/116 steps); pertahankan hasil ini sebagai bukti otomatis, bukan pengganti browser UAT.
 2. Jika CI lulus, pertahankan PR Draft sampai browser UAT Karyawan dan operator IT/GA dilakukan.
 3. Lanjutkan audit form/action callback pada seluruh view tanpa menunggu CI jalur ini.
 4. Jangan merge ke `main` tanpa persetujuan eksplisit pemilik proyek.
