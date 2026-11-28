@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
-import { CORE_NAVIGATION_TABS, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed, isStaffNavigationPersona } from '../src/navigation/roleNavigation';
+import { CORE_NAVIGATION_TABS, OPERATIONAL_NAVIGATION_PERMISSIONS, getDefaultNavTabForRole, isNavTabAllowedForRole, isSuperadminNavigationAllowed, isStaffNavigationPersona } from '../src/navigation/roleNavigation';
 
 // The application has no fixed role-to-menu matrix. Any Dynamic RBAC role
 // receives exactly the pages authorized by its effective permission keys.
@@ -84,5 +84,28 @@ assert.match(sidebar, /const isHumas = !isSuperAdmin && hasPermission/,
   'Superadmin wildcard must not make the sidebar identify Superadmin as Humas');
 assert.match(sidebar, /const isSekdir = !isSuperAdmin && hasPermission/,
   'Superadmin wildcard must not make the sidebar identify Superadmin as Sekdir');
+
+
+assert.ok(OPERATIONAL_NAVIGATION_PERMISSIONS.includes('assets.lifecycle'),
+  'asset lifecycle operators must use the operational persona');
+assert.ok(OPERATIONAL_NAVIGATION_PERMISSIONS.includes('room_reservations.checkin'),
+  'room check-in operators must use the operational persona');
+assert.ok(OPERATIONAL_NAVIGATION_PERMISSIONS.includes('room_reservations.checkout'),
+  'room check-out operators must use the operational persona');
+assert.equal(OPERATIONAL_NAVIGATION_PERMISSIONS.includes('loans.return'), false,
+  'employee self-service return must not make the user an operational persona');
+
+const dashboard = fs.readFileSync('src/components/views/DashboardView.tsx', 'utf8');
+assert.match(dashboard, /import \{ OPERATIONAL_NAVIGATION_PERMISSIONS \} from '\.\.\/\.\.\/navigation\/roleNavigation'/,
+  'Dashboard must use the same capability set as Sidebar');
+assert.match(dashboard, /OPERATIONAL_NAVIGATION_PERMISSIONS\.some\(/,
+  'Dashboard persona must derive from the shared capability set');
+assert.doesNotMatch(dashboard, /const operationalManagementPermissions\s*=\s*\[/,
+  'Dashboard must not maintain a second drifting operational permission list');
+
+assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'room_reservations.checkin']), false,
+  'a check-in operator must not be presented as a staff-only persona');
+assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'room_reservations.checkout']), false,
+  'a check-out operator must not be presented as a staff-only persona');
 
 console.log('Dynamic navigation policy: PASS (no fixed role catalogue; permissions and landing-page checks)');
