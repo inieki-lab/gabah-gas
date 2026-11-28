@@ -137,6 +137,7 @@ export default function App() {
   // Fetch all authoritative data from Backend API
   // Prevent an older user's in-flight API response from repopulating state after an identity change.
   const dataRefreshGeneration = useRef(0);
+  const sessionExpiredHandled = useRef(false);
   const clearRoleScopedData = () => {
     setAssets([]);
     setLoans([]);
@@ -171,23 +172,44 @@ export default function App() {
     setIsAdministrationModalOpen(false);
   };
 
+  const handleSessionExpired = () => {
+    if (sessionExpiredHandled.current) return;
+    sessionExpiredHandled.current = true;
+    dataRefreshGeneration.current += 1;
+    clearRoleScopedData();
+    setCurrentUser(null);
+    setViewMode('login');
+    setIsLoading(false);
+    setToastMessage({ text: 'Sesi berakhir karena hak akses berubah atau sudah dicabut. Silakan login kembali.', type: 'warning' });
+  };
+
+  useEffect(() => {
+    const onSessionExpired = () => handleSessionExpired();
+    window.addEventListener('gabah:session-expired', onSessionExpired);
+    return () => window.removeEventListener('gabah:session-expired', onSessionExpired);
+  }, []);
+
   const refreshData = useCallback(async () => {
     const generation = dataRefreshGeneration.current;
+    const recoverDataRequestFailure = (error: any) => {
+      if (error?.status === 401) throw error;
+      return [];
+    };
     try {
       setIsLoading(true);
       const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge, fetchedMovements] = await Promise.all([
-        gabahApi.getAssets().catch(() => []),
-        gabahApi.getLoans().catch(() => []),
-        gabahApi.getTickets().catch(() => []),
-        gabahApi.getAuditLogs().catch(() => []),
-        gabahApi.getUsers().catch(() => []),
-        gabahApi.getMeetingRooms().catch(() => []),
-        gabahApi.getRoomReservations().catch(() => []),
-        gabahApi.getContracts().catch(() => []),
-        gabahApi.getMaintenances().catch(() => []),
-        gabahApi.getVendors().catch(() => []),
-        gabahApi.getKnowledgeArticles().catch(() => []),
-        gabahApi.getMovements().catch(() => []),
+        gabahApi.getAssets().catch(recoverDataRequestFailure),
+        gabahApi.getLoans().catch(recoverDataRequestFailure),
+        gabahApi.getTickets().catch(recoverDataRequestFailure),
+        gabahApi.getAuditLogs().catch(recoverDataRequestFailure),
+        gabahApi.getUsers().catch(recoverDataRequestFailure),
+        gabahApi.getMeetingRooms().catch(recoverDataRequestFailure),
+        gabahApi.getRoomReservations().catch(recoverDataRequestFailure),
+        gabahApi.getContracts().catch(recoverDataRequestFailure),
+        gabahApi.getMaintenances().catch(recoverDataRequestFailure),
+        gabahApi.getVendors().catch(recoverDataRequestFailure),
+        gabahApi.getKnowledgeArticles().catch(recoverDataRequestFailure),
+        gabahApi.getMovements().catch(recoverDataRequestFailure),
       ]);
 
       // A role switch/logout may have happened while these requests were in flight.
@@ -210,7 +232,11 @@ export default function App() {
       if (Array.isArray(fetchedKnowledge) && fetchedKnowledge.length > 0) setKnowledgeBase(fetchedKnowledge);
       if (Array.isArray(fetchedMovements)) setMovements(fetchedMovements);
     } catch (err: any) {
-      console.error('Failed to fetch from backend:', err);
+      if (err?.status === 401 && generation === dataRefreshGeneration.current) {
+        handleSessionExpired();
+      } else {
+        console.error('Failed to fetch from backend:', err);
+      }
     } finally {
       if (generation === dataRefreshGeneration.current) setIsLoading(false);
     }
@@ -226,18 +252,18 @@ export default function App() {
           new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
         ]);
         if (me) {
+          sessionExpiredHandled.current = false;
           dataRefreshGeneration.current += 1;
           clearRoleScopedData();
           setCurrentUser(me);
+          // Do not block auth initialization on bulk data refresh. Start it
+          // only after a valid session is confirmed; anonymous visitors must
+          // not trigger authenticated collection requests.
+          void refreshData();
         } else setViewMode('login');
       } catch (err) {
         console.warn('Auth initialization:', err);
         setViewMode('login');
-      } finally {
-        // Do not block auth initialization on the bulk data refresh. Each API
-        // request is best-effort, and a slow/hung endpoint must never keep the
-        // user on the "Memulihkan sesi…" screen.
-        void refreshData();
       }
     }
     initAuth();
@@ -254,6 +280,7 @@ export default function App() {
         showToast('Alih peran ditolak oleh server.', 'warning');
         return;
       }
+      sessionExpiredHandled.current = false;
       dataRefreshGeneration.current += 1;
       clearRoleScopedData();
       setCurrentUser(targetUser);
@@ -271,7 +298,11 @@ export default function App() {
     try {
       const modules = await gabahApi.getModules();
       setActiveModuleKeys(modules.filter(module => module.is_active).map(module => module.module_key));
-    } catch {
+    } catch (error: any) {
+      if (error?.status === 401) {
+        handleSessionExpired();
+        return;
+      }
       // Do not expose navigation when the global module registry cannot be
       // verified. Backend enforcement is authoritative and also fails closed.
       setActiveModuleKeys(null);
@@ -683,6 +714,7 @@ export default function App() {
         <LoginPage
           initialEmail={loginEmail}
           onLoginSuccess={(u) => {
+            sessionExpiredHandled.current = false;
             dataRefreshGeneration.current += 1;
             clearRoleScopedData();
             setCurrentUser(u);

@@ -669,9 +669,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     if (!selectedRbacRole) return;
     setRbacSaving(true);
     try {
-      await gabahApi.setRbacRolePermissions(selectedRbacRole.id, rbacSelectedPermissionKeys);
+      const result = await gabahApi.setRbacRolePermissions(selectedRbacRole.id, rbacSelectedPermissionKeys);
       await refreshRbac();
-      showToast('Permission role berhasil disimpan ke database.', 'success');
+      const affectedCount = Number(result?.affected_user_count || 0);
+      showToast(
+        affectedCount > 0
+          ? `Permission role tersimpan. ${affectedCount} pegawai terdampak harus login ulang agar menu dan hak akses diperbarui.`
+          : 'Permission role berhasil disimpan ke database.',
+        affectedCount > 0 ? 'info' : 'success',
+      );
     } catch (error: any) {
       showToast(error?.message || 'Gagal menyimpan permission role.', 'warning');
     } finally {
@@ -683,9 +689,15 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
     if (!selectedRbacRole) return;
     setRbacSaving(true);
     try {
-      await gabahApi.setRbacRoleScopes(selectedRbacRole.id, rbacScopes);
+      const result = await gabahApi.setRbacRoleScopes(selectedRbacRole.id, rbacScopes);
       await refreshRbac();
-      showToast('Cakupan data role berhasil disimpan ke database.', 'success');
+      const affectedCount = Number(result?.affected_user_count || 0);
+      showToast(
+        affectedCount > 0
+          ? `Cakupan data role tersimpan. ${affectedCount} pegawai terdampak harus login ulang agar akses data diperbarui.`
+          : 'Cakupan data role berhasil disimpan ke database.',
+        affectedCount > 0 ? 'info' : 'success',
+      );
     } catch (error: any) {
       showToast(error?.message || 'Gagal menyimpan cakupan data role.', 'warning');
     } finally {
