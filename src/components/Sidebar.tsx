@@ -100,17 +100,18 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const isGA = hasPermission('room_reservations.approve', ['GA', 'Admin GABAH'])
     || hasPermission('room_reservations.reject', ['GA', 'Admin GABAH'])
     || hasPermission('meeting_facilities.manage', ['GA', 'Admin GABAH']);
-  const isStaff = isStaffNavigationPersona(activeRole, currentUserPermissions) || isSekdir || isHumas;
+  const isAuditor = !isSuperAdmin && currentUserRoleKeys?.includes('auditor') === true;
+  const isStaff = !isAuditor && (isStaffNavigationPersona(activeRole, currentUserPermissions) || isSekdir || isHumas);
   const [showAdministration, setShowAdministration] = useState(false);
 
   const sections: NavSectionConfig[] = [
     {
-      title: isStaff ? 'Layanan & Tugas Staf' : 'Operasional Utama',
+      title: isAuditor ? 'Audit & Pemantauan' : isStaff ? 'Layanan & Tugas Staf' : 'Operasional Utama',
       items: [
         {
           id: 'dashboard',
-          label: isHumas ? 'Dashboard Humas' : isStaff ? 'Dashboard Staf' : 'Dashboard KPI',
-          description: isHumas ? 'Ringkasan & Request Foto' : isStaff ? 'Ringkasan & Status' : 'Overview SLA & Aset',
+          label: isAuditor ? 'Dashboard Auditor' : isHumas ? 'Dashboard Humas' : isStaff ? 'Dashboard Staf' : 'Dashboard KPI',
+          description: isAuditor ? 'Pemantauan Read-only' : isHumas ? 'Ringkasan & Request Foto' : isStaff ? 'Ringkasan & Status' : 'Overview SLA & Aset',
           icon: LayoutDashboard,
           badge: null,
         },
@@ -142,7 +143,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: isStaff ? 'Pinjam Barang' : 'Peminjaman Barang',
           description: 'Sirkulasi & BAST',
           icon: CalendarClock,
-          badge: pendingLoansCount > 0 && !isStaff ? pendingLoansCount : null,
+          badge: pendingLoansCount > 0 && !isStaff && !isAuditor ? pendingLoansCount : null,
           badgeColor: 'bg-[#F7B733] text-slate-900',
         },
         {
@@ -150,7 +151,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           label: isStaff ? 'Tiket Helpdesk' : 'Helpdesk & Tiket',
           description: isStaff ? 'Bantuan Kendala' : 'Insiden & SLA',
           icon: LifeBuoy,
-          badge: openTicketsCount > 0 && !isStaff ? openTicketsCount : null,
+          badge: openTicketsCount > 0 && !isStaff && !isAuditor ? openTicketsCount : null,
           badgeColor: 'bg-[#FC4A1A] text-white',
         },
       ],
