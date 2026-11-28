@@ -42,7 +42,7 @@ assert.match(modal, /Permission role tersimpan\.[\s\S]{0,160}pegawai terdampak h
 
 assert.match(api, /err\.status = res\.status/,
   'API client must retain HTTP status so the app can distinguish revoked sessions');
-assert.match(app, /const handleSessionExpired = \(\) => \{[\s\S]*setCurrentUser\(null\)[\s\S]*setViewMode\('login'\)/,
+assert.match(app, /const handleSessionExpired = \(\) => \{[\s\S]*setCurrentUser\(null\)[\s\S]*setViewMode\('login'\)[\s\S]*setIsLoading\(false\)/,
   'a revoked session must clear the current user and return the app to login');
 assert.match(app, /const recoverDataRequestFailure = \(error: any\) => \{\s*if \(error\?\.status === 401\) throw error;/,
   'best-effort data refresh must not swallow session-expired responses');
