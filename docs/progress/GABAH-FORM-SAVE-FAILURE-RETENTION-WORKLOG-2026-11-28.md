@@ -27,11 +27,35 @@
 - Parent memisahkan kegagalan penyimpanan dari kegagalan refresh: bila record sudah tersimpan tetapi refresh daftar gagal, pengguna tetap diberi status sukses penyimpanan dan tidak didorong mengirim record duplikat.
 - Menambahkan regression source-contract ke `test:effective-permission-ui`, yang sudah terdaftar dalam workflow CI.
 
+
+
+## Temuan tambahan — Jadwal Maintenance
+
+Audit lanjutan menemukan pola yang sama pada form jadwal pemeliharaan:
+
+- `MaintenanceView.handleCreateSubmit()` memanggil callback `onAddSchedule()` tanpa menunggu hasil, lalu langsung menutup modal, mengosongkan form, dan menampilkan toast sukses.
+- Caller di `App.tsx` menjalankan request dalam async IIFE yang tidak dikembalikan ke pemanggil; kegagalan API hanya menampilkan warning.
+- Akibatnya kegagalan `POST /api/maintenance` tetap membuat form hilang dan UI sempat menampilkan pesan sukses palsu.
+
+Perbaikan:
+- `onAddSchedule` sekarang mengembalikan `Promise<boolean>`; caller mengembalikan true/false sesuai hasil API.
+- Form menunggu hasil server, menampilkan error, dan mempertahankan isian ketika gagal.
+- Modal hanya ditutup dan di-reset setelah server mengonfirmasi penyimpanan.
+- Tombol submit dikunci selama request berjalan.
+- Toast sukses hanya berasal dari caller setelah API berhasil; toast sukses lokal yang sebelumnya selalu muncul telah dihapus.
+- Regression checks tambahan mengunci callback asynchronous, retensi form, dan larangan pesan sukses sebelum konfirmasi backend.
+
+Pemeriksaan lanjutan:
+- `CreateContractModal`, `VendorsView`, dan `KnowledgeBaseView` sudah menunggu Promise dan menahan form di dalam catch saat callback menolak; tidak ditemukan pola tutup-modal langsung yang sama pada jalur tersebut.
+- `EditAssetModal` juga menunggu callback; caller `onSaveAsset` melempar ulang error setelah toast sehingga modal tetap terbuka ketika penyimpanan gagal.
+- Audit ini merupakan source inspection, bukan browser UAT.
+
 ## File yang diubah
 
 - `src/App.tsx`
 - `src/components/modals/CreateTicketModal.tsx`
 - `src/components/modals/CreateAssetModal.tsx`
+- `src/components/views/MaintenanceView.tsx`
 - `scripts/effective-permission-ui-verify.mjs`
 - Dokumen worklog ini.
 
@@ -50,7 +74,7 @@
 |---|---|
 | Source inspection modal, App handlers, dan caller | DONE |
 | Regression assertions untuk ticket + asset save result | ADDED; belum dieksekusi lokal |
-| `npm run test:effective-permission-ui` | NOT RUN — tidak ada checkout/runtime repository pada sesi ini |
+| `npm run test:effective-permission-ui` | NOT RUN locally — no repository checkout/runtime in this session; additional source assertions for Maintenance are included |
 | TypeScript `npm run lint` | NOT RUN |
 | Production build | NOT RUN |
 | Exact-head GitHub Actions | PENDING |
