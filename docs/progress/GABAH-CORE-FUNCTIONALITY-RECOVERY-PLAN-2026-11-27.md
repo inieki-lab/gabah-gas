@@ -288,3 +288,17 @@ Tidak boleh menyimpulkan role dari nama lokasi seperti RPC/SC atau PIBC. Lokasi 
 - **PR #361** (module status timeout): CI #3993 dan #3999 **SUCCESS 121/121**; latest worklog commit memicu CI #4004 yang sedang berjalan. UAT network hang/retry pending.
 - **PR #362** (role permission/scope change session invalidation): CI #4001 **SUCCESS 121/121** pada code/worklog head `163d26f3630bbed164f4a17380c4458bbf74590d`; commit dokumentasi terakhir memicu CI #4005 yang sedang berjalan. UAT invalidasi sesi dan login ulang pending.
 - Seluruh PR tetap Draft dan belum merge ke `main`.
+
+
+## Temuan UI per pengguna — Helpdesk/Tiket
+
+- Audit lanjutan `TicketsView` menemukan pilihan filter kategori operasional fallback selalu menampilkan IT, GA, dan ME kepada semua operator, meskipun API sudah membatasi daftar tiket sesuai scope user. Contoh: operator IT dapat melihat pilihan GA/ME yang hasilnya kosong.
+- PR #363 mengubah kategori filter agar berasal dari capability efektif IT/GA/ME/legacy file-store dan kategori yang benar-benar ada pada data tiket terscope; tidak mengubah backend authorization.
+- CI #4008 (run ID `46129889511`) queued/in progress saat catatan ini dibuat.
+- Ini bukti tambahan bahwa source menu visible saja belum cukup: filter dan sub-menu di dalam halaman juga harus mengikuti effective permission/scope.
+
+## CI final untuk perbaikan persona dan RBAC
+- PR #358 latest worklog head `ae8781c71ede9c71742cf06d8cedcf186536b184`: CI #4006 **SUCCESS 120/120**.
+- PR #361 latest worklog head `be5e55c2707d3ed10277308918a28153318e1a91`: CI #4004 **SUCCESS 121/121**.
+- PR #362 latest worklog head `8e31ebcaf535392b51387b93c2d1a35f1d51c3e2`: CI #4005 **SUCCESS 121/121**.
+- Semua browser UAT tetap pending. Jangan menyamakan green CI dengan pembuktian akun aktual.
