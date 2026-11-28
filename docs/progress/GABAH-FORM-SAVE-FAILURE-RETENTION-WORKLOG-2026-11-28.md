@@ -67,6 +67,10 @@ Pemeriksaan lanjutan:
 - `63ad22320f9623cb46402e17235c4779a4c6c953` — regression assertions awal.
 - `3c0822a1b7bb92ee5515ccc647010aa602fc77df` — koreksi matcher regression.
 - `80322aa85ed71d5a1816553821102ed1cab1b094` — bedakan hasil create yang sudah commit dari kegagalan refresh.
+- `be3dbcc6b9db94e01bff5d0c2ce7b58f3e8d9949` — maintenance parent callback mengembalikan hasil API.
+- `3cfd9f1c00ba8043d4666e42514e2807d3399b57` — maintenance form menunggu hasil dan mempertahankan isian saat gagal.
+- `32d1162fc14434b98d3c7b34b7cbaedd7fbd0178` — mempertahankan parsing checklist per baris.
+- `7efc57e82d0fe564667901f80c439f35104c5cff` — regression test menolak false-success maintenance toast.
 
 ## Validasi
 
