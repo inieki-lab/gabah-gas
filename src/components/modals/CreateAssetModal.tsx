@@ -27,6 +27,7 @@ interface CreateAssetModalProps {
   onCreateAsset: (newAsset: Partial<Asset> & { assigned_to_user_id?: string }) => Promise<boolean>;
   currentUser?: UserProfile;
   users?: UserProfile[];
+  canAssignInitialCustodian?: boolean;
 }
 
 export type FixedAssetMainType = 'TNH' | 'BGN' | 'MSN' | 'KDR' | 'INV-F' | 'INV-P' | 'IT-H' | 'IT-S' | 'LNY';
@@ -195,6 +196,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   onClose, 
   onCreateAsset,
   users = [],
+  canAssignInitialCustodian = false,
 }) => {
   const [assetCreateOptions, setAssetCreateOptions] = useState<{ owner_domains: Array<{ code: string; name: string }>; categories: any[] } | null>(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
@@ -393,7 +395,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
       asset_location_id: assetLocationId || null,
       location: (assetLocationId ? assetLocationPath(assetLocationId) : location.trim()) || location.trim(),
       is_loanable: isLoanable,
-      assigned_to_user_id: assignedToUserId || undefined,
+      assigned_to_user_id: canAssignInitialCustodian ? (assignedToUserId || undefined) : undefined,
       notes: notes.trim(),
     };
 
@@ -728,23 +730,31 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
               <label className="text-slate-800 font-bold flex items-center gap-1">
                 Pengguna / Custodian Awal (Opsional):
               </label>
-              <select
-                value={assignedToUserId}
-                onChange={(e) => setAssignedToUserId(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600"
-              >
-                <option value="">Pool / Fasilitas Umum (tanpa penugasan)</option>
-                {activeCustodianUsers.map(user => (
-                  <option key={user.id} value={user.id}>
-                    {user.name}{user.department ? ` — ${user.department}` : ''}
-                  </option>
-                ))}
-              </select>
-              <p className="text-[10px] text-slate-500">
-                {activeCustodianUsers.length > 0
-                  ? 'Pilih pegawai aktif untuk penugasan awal. Server memvalidasi status akun sebelum menyimpan.'
-                  : 'Daftar pegawai tidak tersedia untuk akun ini; aset akan dibuat tanpa penugasan awal (pool).'}
-              </p>
+              {canAssignInitialCustodian ? (
+                <>
+                  <select
+                    value={assignedToUserId}
+                    onChange={(e) => setAssignedToUserId(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600"
+                  >
+                    <option value="">Pool / Fasilitas Umum (tanpa penugasan)</option>
+                    {activeCustodianUsers.map(user => (
+                      <option key={user.id} value={user.id}>
+                        {user.name}{user.department ? ` — ${user.department}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-500">
+                    {activeCustodianUsers.length > 0
+                      ? 'Pilih pegawai aktif untuk penugasan awal. Server memvalidasi status akun sebelum menyimpan.'
+                      : 'Daftar pegawai tidak tersedia untuk akun ini; aset akan dibuat tanpa penugasan awal (pool).'}
+                  </p>
+                </>
+              ) : (
+                <p className="text-[10px] text-slate-500">
+                  Penugasan awal memerlukan permission assets.assign. Aset akan dibuat sebagai pool.
+                </p>
+              )}
             </div>
           </div>
 
