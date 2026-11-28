@@ -50,6 +50,14 @@ assert.match(app, /err\?\.status === 401 && generation === dataRefreshGeneration
   'refreshData must handle 401 only for the current authenticated generation');
 assert.match(app, /catch \(error: any\) \{\s*if \(error\?\.status === 401\) \{\s*handleSessionExpired\(\)/,
   'module status refresh must also end a revoked session instead of leaving stale menus visible');
+
+const authStart = app.indexOf('async function initAuth()');
+const authEnd = app.indexOf('initAuth();', authStart);
+const authInitialization = app.slice(authStart, authEnd);
+assert.match(authInitialization, /if \(me\) \{[\s\S]*void refreshData\(\);[\s\S]*\} else setViewMode\('login'\)/,
+  'initial bulk data refresh must start only after a valid session is confirmed');
+assert.doesNotMatch(authInitialization, /finally\s*\{[\s\S]*refreshData/,
+  'anonymous visitors must not trigger authenticated collection requests');
 assert.match(modal, /Cakupan data role tersimpan\.[\s\S]{0,160}pegawai terdampak harus login ulang/,
   'role scope UI must tell affected users to log in again');
 assert.match(server, /revokeUserSessions\(userId\);[\s\S]{0,100}await refreshRbacPolicy\(\)/,
