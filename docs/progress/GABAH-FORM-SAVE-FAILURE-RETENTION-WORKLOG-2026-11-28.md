@@ -65,6 +65,22 @@ Perbaikan:
 - Regression assertions ditambahkan pada test UI yang sudah terdaftar di CI.
 
 
+
+
+## Temuan tambahan — Permohonan Peminjaman dan pesan collision
+
+`CreateLoanModal` sudah menahan modal ketika callback gagal, tetapi `App.handleRequestLoan` menelan exception dan mengembalikan `void`. Akibatnya form tetap terbuka namun pesan validasi/collision dari API hanya muncul sebagai toast dan tidak melekat pada form; pengguna dapat kehilangan konteks saat mengganti tanggal/aset.
+
+Perbaikan:
+- Callback sekarang mengembalikan `Promise<string | null>`: null untuk transaksi sukses, pesan server untuk kegagalan.
+- Modal menampilkan pesan validasi/collision otoritatif dari API di dalam form.
+- Isian aset, periode, tujuan, dan nomor telepon tetap dipertahankan ketika server mengembalikan 4xx/5xx.
+- Pesan error dibersihkan ketika pengguna mengubah aset/tanggal/tujuan/telepon.
+- Kegagalan refresh setelah transaksi sukses dipisahkan agar tidak membuat permohonan yang sudah tersimpan dianggap gagal dan dikirim ulang.
+- Regression assertions ditambahkan ke test UI.
+
+Catatan: ini meningkatkan visibilitas dan pemulihan form untuk kasus collision/validation. Ini tidak mengubah aturan collision atau menghapus konflik yang memang sah; untuk mendiagnosis kasus Agus/MacBook tertentu tetap diperlukan pesan HTTP aktual dan status pinjaman terkait pada database uji.
+
 ## File yang diubah
 
 - `src/App.tsx`
@@ -72,6 +88,7 @@ Perbaikan:
 - `src/components/modals/CreateAssetModal.tsx`
 - `src/components/views/MaintenanceView.tsx`
 - `src/components/views/LoansView.tsx`
+- `src/components/modals/CreateLoanModal.tsx`
 - `scripts/effective-permission-ui-verify.mjs`
 - Dokumen worklog ini.
 
@@ -90,6 +107,9 @@ Perbaikan:
 - `897075b089cd13e729cb006c3493f3f227241be6` — App mengembalikan hasil API penolakan pinjaman.
 - `494584abfd6fb0b320506168b7cc8b50620d88d1` — dialog penolakan menahan alasan sampai API sukses.
 - `15fc12871a616d85fdb36609ec1aea7da0a8be93` — regression matcher untuk dialog penolakan.
+- `003245494e5f363adfc3f2ab67e8936849b87628` — App meneruskan pesan API permohonan pinjaman ke form.
+- `022c1db6cfda4183af74fbf0a1270dc217f7a943` — form pinjaman menampilkan pesan collision/validation dan mempertahankan isian.
+- `2a72baf4d6a94a4cc0b0fe241dbf533e9939d818` — regression contract untuk pesan error pinjaman.
 
 ## Validasi
 
@@ -134,5 +154,5 @@ Perbaikan:
 
 1. Tunggu exact-head CI; perbaiki semua kegagalan pada branch ini.
 2. Lanjutkan pola audit yang sama ke form create/edit lainnya (kontrak, vendor, knowledge, maintenance, reservasi) tanpa menganggap semuanya memiliki bug yang sama.
-3. Uji browser per role dan per status API, termasuk penolakan pinjaman dengan API sukses/gagal, sebelum PR dinyatakan siap merge.
+3. Uji browser per role dan per status API, termasuk permohonan pinjaman dengan collision 409, validasi 400, network failure, dan sukses, sebelum PR dinyatakan siap merge.
 4. Jangan merge ke `main` tanpa persetujuan eksplisit pemilik proyek.
