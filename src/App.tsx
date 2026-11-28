@@ -1018,6 +1018,13 @@ export default function App() {
         onClose={() => setIsCreateAssetModalOpen(false)}
         existingAssets={assets}
         users={allUsers}
+        canAssignInitialCustodian={Boolean(currentUser && (
+          GabahService.hasEffectivePermission(currentUser, 'assets.assign')
+          || (!Array.isArray(currentUser.permission_keys) && (
+            GabahService.hasLegacyCapability(currentUser, 'it')
+            || GabahService.hasLegacyCapability(currentUser, 'ga')
+          ))
+        ))}
         onCreateAsset={handleCreateAsset}
       />
 
