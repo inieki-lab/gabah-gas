@@ -85,3 +85,10 @@
 - Auth initialization was adjusted so best-effort bulk collection refresh starts only after `/api/auth/me` confirms a valid session. Anonymous visitors no longer trigger a burst of authenticated 401 collection requests.
 - Login success and role switch retain their existing explicit data refresh paths.
 - Regression assertion added for the anonymous vs authenticated initialization paths.
+
+
+## CI feedback — effective permission UI matcher updated
+
+- CI #4025 (run ID 46130679482) reached `test:effective-permission-ui` and failed because an existing assertion expected the old `.catch(() => [])` best-effort pattern.
+- Updated that regression to expect `recoverDataRequestFailure`, assert that 401 is propagated, and assert the session-expiry handler returns the app to login.
+- The change is test-only; exact-head CI rerun is pending.
