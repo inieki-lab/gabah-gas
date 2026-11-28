@@ -418,12 +418,6 @@ export class GabahDomainService {
     // Initial custody is a relational assignment, not a best-effort label.
     // Validate it before numbering or mutating any asset data.
     const assignedToId = payload.assigned_to_user_id == null ? '' : String(payload.assigned_to_user_id).trim();
-    const assignedUser = assignedToId
-      ? db.users.find(user => user.id === assignedToId && user.is_active)
-      : undefined;
-    if (assignedToId && !assignedUser) {
-      throw Object.assign(new Error('User penerima tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
-    }
 
     // 1. Resolve taxonomy strictly from server master.
     // T2B-3: master kategori (`db.categories`, hasil CRUD Admin GABAH) adalah
@@ -482,6 +476,21 @@ export class GabahDomainService {
     // Authorization is based on the effective create permission AND explicit owner scope.
     if (!canMutateAssetOwner(actor, resolvedOwnerDivision, 'assets.create')) {
       throw new Error(`Akses ditolak: Anda tidak memiliki kewenangan membuat aset dengan owner ${resolvedOwnerDivision}.`);
+    }
+
+    if (assignedToId && !canMutateAssetOwner(actor, resolvedOwnerDivision, 'assets.assign')) {
+      throw Object.assign(
+        new Error(`Akses ditolak: Anda tidak memiliki permission assign pada domain pemilik aset ${resolvedOwnerDivision}.`),
+        { statusCode: 403 }
+      );
+    }
+    // Check assignment authority before looking up the target to avoid exposing
+    // active-user existence to actors who cannot assign assets in this domain.
+    const assignedUser = assignedToId
+      ? db.users.find(user => user.id === assignedToId && user.is_active)
+      : undefined;
+    if (assignedToId && !assignedUser) {
+      throw Object.assign(new Error('User penerima tidak ditemukan atau akun sudah nonaktif.'), { statusCode: 404 });
     }
 
     // Check for duplicate serial number
