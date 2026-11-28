@@ -384,7 +384,7 @@ export default function App() {
     start_date: string;
     due_date: string;
     borrower_phone: string;
-  }) => {
+  }): Promise<string | null> => {
     try {
       if (data.asset_ids && data.asset_ids.length > 1) {
         const res = await gabahApi.requestBatchLoans({
@@ -410,9 +410,14 @@ export default function App() {
       }
 
       setIsCreateLoanModalOpen(false);
-      await refreshData();
+      try {
+        await refreshData();
+      } catch {
+        showToast('Permohonan tersimpan, tetapi daftar pinjaman belum dapat diperbarui. Muat ulang data untuk melihat status terbaru.', 'warning');
+      }
+      return null;
     } catch (err: any) {
-      showToast(err.message || 'Gagal mengajukan peminjaman', 'warning');
+      return err?.message || 'Gagal mengajukan peminjaman. Periksa data dan coba kembali.';
     }
   };
 
