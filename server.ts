@@ -677,6 +677,8 @@ async function startServer() {
         const role = found.rows[0];
         if (!role) throw new Error('RBAC_ROLE_NOT_FOUND');
         if (role.is_superadmin || role.role_key === 'superadmin') throw new Error('RBAC_SUPERADMIN_PROTECTED');
+        const affected = await client.query('SELECT DISTINCT user_id FROM gabah_user_roles WHERE role_id = $1', [id]);
+        const affectedUserIds = affected.rows.map((row: any) => String(row.user_id));
         const uniqueKeys = [...new Set(keys as string[])];
         if (uniqueKeys.some(key => ['system.authentication', 'system.audit', 'system.super_admin'].includes(key))) throw new Error('RBAC_PERMISSION_PROTECTED');
         const valid = await client.query('SELECT permission_key FROM gabah_permissions WHERE is_active = TRUE AND permission_key = ANY($1::varchar[])', [uniqueKeys]);
@@ -684,11 +686,13 @@ async function startServer() {
         await client.query('DELETE FROM gabah_role_permissions WHERE role_id = $1', [id]);
         for (const key of uniqueKeys) await client.query('INSERT INTO gabah_role_permissions (role_id, permission_key) VALUES ($1, $2)', [id, key]);
         await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
-        return { role_key: role.role_key, permission_keys: uniqueKeys };
+        return { role_key: role.role_key, permission_keys: uniqueKeys, affected_user_ids: affectedUserIds };
       });
+      const affectedUserIds = (result.affected_user_ids || []).filter((userId: string) => userId !== String(actor.id));
+      for (const userId of affectedUserIds) revokeUserSessions(userId);
       await refreshRbacPolicy();
       GabahDomainService.recordAudit('RBAC_PERMISSIONS_UPDATED', 'Administration', 'Superadmin mengubah permission role "' + result.role_key + '".', actor);
-      return res.json({ success: true, data: result });
+      return res.json({ success: true, data: { role_key: result.role_key, permission_keys: result.permission_keys, affected_user_count: affectedUserIds.length } });
     } catch (error: any) { return rbacFailure(res, error); }
   });
 
@@ -713,6 +717,8 @@ async function startServer() {
         const role = found.rows[0];
         if (!role) throw new Error('RBAC_ROLE_NOT_FOUND');
         if (role.is_superadmin || role.role_key === 'superadmin') throw new Error('RBAC_SUPERADMIN_PROTECTED');
+        const affected = await client.query('SELECT DISTINCT user_id FROM gabah_user_roles WHERE role_id = $1', [id]);
+        const affectedUserIds = affected.rows.map((row: any) => String(row.user_id));
         const moduleRows = await client.query('SELECT DISTINCT module FROM gabah_permissions WHERE is_active = TRUE');
         const validModules = new Set(['*', ...moduleRows.rows.map((row: any) => String(row.module))]);
         if (scopes.some((scope: any) => !validModules.has(scope.module || '*'))) {
@@ -726,11 +732,13 @@ async function startServer() {
           );
         }
         await client.query('UPDATE gabah_roles SET updated_at = NOW() WHERE id = $1', [id]);
-        return { role_key: role.role_key, scopes };
+        return { role_key: role.role_key, scopes, affected_user_ids: affectedUserIds };
       });
+      const affectedUserIds = (result.affected_user_ids || []).filter((userId: string) => userId !== String(actor.id));
+      for (const userId of affectedUserIds) revokeUserSessions(userId);
       await refreshRbacPolicy();
       GabahDomainService.recordAudit('RBAC_SCOPES_UPDATED', 'Administration', 'Superadmin mengubah scope role "' + result.role_key + '".', actor);
-      return res.json({ success: true, data: result });
+      return res.json({ success: true, data: { role_key: result.role_key, scopes: result.scopes, affected_user_count: affectedUserIds.length } });
     } catch (error: any) { return rbacFailure(res, error); }
   });
 
