@@ -22,6 +22,7 @@ import {
 import { Asset, Loan, Ticket, UserProfile, AuditLog, RoomReservation } from '../../types';
 import { GabahService, formatRupiah, formatDateTime, formatDate } from '../../services/gabahService';
 import { NavTab } from '../Sidebar';
+import { OPERATIONAL_NAVIGATION_PERMISSIONS } from '../../navigation/roleNavigation';
 
 interface DashboardViewProps {
   assets: Asset[];
@@ -69,17 +70,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const canCreateLoan = hasEffectivePermission('loans.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']);
   const canCreateTicket = hasEffectivePermission('tickets.create', ['Admin GABAH', 'IT', 'GA', 'Karyawan', 'Humas', 'Sekretaris Direksi']) || hasEffectivePermission('tickets.create.me');
   const canCreateAsset = hasEffectivePermission('assets.create', ['Admin GABAH', 'IT', 'GA']);
-  const operationalManagementPermissions = [
-    'assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign',
-    'assets.move', 'assets.lifecycle', 'loans.approve', 'loans.reject',
-    'loans.handover', 'tickets.assign', 'tickets.update', 'maintenances.create',
-    'maintenances.update', 'room_reservations.approve', 'room_reservations.reject',
-    'meeting_rooms.update', 'meeting_types.manage', 'meeting_facilities.manage',
-    'licenses.manage', 'knowledge.create', 'knowledge.update',
-    'contracts.create', 'contracts.update', 'contracts.documents.upload',
-    'vendors.create', 'vendors.update', 'organization.manage', 'master_data.manage',
-  ];
-  const hasOperationalManagementAccess = operationalManagementPermissions.some(permission =>
+  // Keep Dashboard persona classification aligned with Sidebar. A capability
+  // such as room check-in/check-out makes the account an operational persona,
+  // while employee self-service grants (for example loans.return) do not.
+  const hasOperationalManagementAccess = OPERATIONAL_NAVIGATION_PERMISSIONS.some(permission =>
     hasEffectivePermission(permission, ['Admin GABAH', 'IT', 'GA'])
   );
   // A non-auditor without operational-management capabilities gets the self-service dashboard.
