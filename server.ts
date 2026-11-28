@@ -679,8 +679,8 @@ async function startServer() {
         if (role.is_superadmin || role.role_key === 'superadmin') throw new Error('RBAC_SUPERADMIN_PROTECTED');
         const uniqueKeys = [...new Set(keys as string[])];
         const currentPermissionRows = await client.query('SELECT permission_key FROM gabah_role_permissions WHERE role_id = $1', [id]);
-        const currentPermissionKeys = new Set(currentPermissionRows.rows.map((row: any) => String(row.permission_key)));
-        const nextPermissionKeys = new Set(uniqueKeys);
+        const currentPermissionKeys = new Set<string>(currentPermissionRows.rows.map((row: any) => String(row.permission_key)));
+        const nextPermissionKeys = new Set<string>(uniqueKeys);
         const permissionsChanged = currentPermissionKeys.size !== nextPermissionKeys.size
           || [...currentPermissionKeys].some(key => !nextPermissionKeys.has(key));
         const affected = permissionsChanged
@@ -728,8 +728,8 @@ async function startServer() {
         if (role.is_superadmin || role.role_key === 'superadmin') throw new Error('RBAC_SUPERADMIN_PROTECTED');
         const currentScopeRows = await client.query('SELECT module, scope_type, scope_value FROM gabah_role_division_scopes WHERE role_id = $1', [id]);
         const scopeKey = (scope: any) => JSON.stringify([String(scope.module || '*'), String(scope.type || scope.scope_type), scope.value == null && scope.scope_value == null ? null : String(scope.value ?? scope.scope_value).trim()]);
-        const currentScopeKeys = new Set(currentScopeRows.rows.map((row: any) => scopeKey(row)));
-        const nextScopeKeys = new Set(scopes.map((scope: any) => scopeKey(scope)));
+        const currentScopeKeys = new Set<string>(currentScopeRows.rows.map((row: any) => scopeKey(row)));
+        const nextScopeKeys = new Set<string>(scopes.map((scope: any) => scopeKey(scope)));
         const scopesChanged = currentScopeKeys.size !== nextScopeKeys.size
           || [...currentScopeKeys].some(key => !nextScopeKeys.has(key));
         const affected = scopesChanged
