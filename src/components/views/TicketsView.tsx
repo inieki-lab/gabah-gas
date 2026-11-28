@@ -195,7 +195,19 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     if (selectedStatus !== 'ALL' && t.status !== selectedStatus) return false;
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
-      const handleResolveTicket = async () => {
+
+
+  return (
+        (t.title || '').toLowerCase().includes(q) ||
+        (t.ticket_code || '').toLowerCase().includes(q) ||
+        (t.reporter_name || '').toLowerCase().includes(q) ||
+        (t.description || '').toLowerCase().includes(q)
+      );
+    }
+    return true;
+  });
+
+  const handleResolveTicket = async () => {
     if (!resolvingTicketId || isResolving) return;
     setIsResolving(true);
     setResolveError('');
@@ -217,16 +229,6 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
       setIsResolving(false);
     }
   };
-
-  return (
-        (t.title || '').toLowerCase().includes(q) ||
-        (t.ticket_code || '').toLowerCase().includes(q) ||
-        (t.reporter_name || '').toLowerCase().includes(q) ||
-        (t.description || '').toLowerCase().includes(q)
-      );
-    }
-    return true;
-  });
 
   const canManage = GabahService.canManageTickets(currentUser);
   const canCommentOnTicket = (ticket: Ticket) => !isReadOnly && (
