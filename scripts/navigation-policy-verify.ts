@@ -60,6 +60,10 @@ assert.ok(isSuperadminNavigationAllowed('Admin GABAH', false, undefined));
 
 assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'tickets.create']), true,
   'ordinary employees and request-only users keep the staff persona');
+assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'loans.return']), true,
+  'the baseline own-loan return capability must not change a Karyawan into an operational persona');
+assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'loans.approve']), false,
+  'loan approval remains an operational custodian capability');
 assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'tickets.read', 'tickets.update']), false,
   'IT/GA/ME operators with operational ticket permissions are not classified as staff-only');
 assert.equal(isStaffNavigationPersona('Karyawan', ['dashboard.read', 'assets.create']), false,
