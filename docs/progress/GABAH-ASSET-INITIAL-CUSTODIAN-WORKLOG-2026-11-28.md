@@ -3,7 +3,7 @@
 **Tanggal:** 2026-11-28  
 **Repository:** `inieki-lab/gabah-gas`  
 **Original base:** `fix/forms-preserve-input-on-save-failure-2026-11-28` @ `2fddfd618384f9118cf14175b0aebbd94ce899a0`  
-**Current PR base head:** `484188c93cf575b8dc7e7f79ca01e882be04decf`  
+**Current PR base head:** `5c2fcca38ee66306ff0e834d87151fe5be74af53`  
 **Working branch:** `fix/asset-initial-custodian-selection-stack-2026-11-28`  
 **Status:** IMPLEMENTATION COMMITTED — exact-head CI pending; browser UAT not run.  
 **Dependency:** stacked on PR #359; merge PR #359 first, then retarget this PR to `main`.
@@ -61,7 +61,7 @@ This is a security correction, not just a UI change. Existing permission catalog
 | `npm run test:asset-scope-policy` | NOT RUN locally; permission-gate assertions added |
 | `npm run test:asset-create-atomicity` | NOT RUN locally; assignment guard/403 ordering assertions added |
 | TypeScript/build | NOT RUN |
-| Exact-head GitHub Actions | #3950 FAILED on an outdated assertion inherited from the previous base; base fix available at `484188c...`; rerun pending |
+| Exact-head GitHub Actions | #3950 stale ME matcher; #3960 false-positive maintenance matcher; both corrected in stacked base `5c2fcca...`; rerun pending |
 | Browser UAT with IT/GA and no-directory user | NOT RUN |
 
 
@@ -72,6 +72,14 @@ This is a security correction, not just a UI change. Existing permission catalog
 - PR #359 corrected that matcher in commit `9d16fbc057264b97bb8f841e757a888637ba99e9`; its latest worklog/base commit is `484188c93cf575b8dc7e7f79ca01e882be04decf`.
 - The base branch advanced. GitHub compare of current base vs this head reports only the four intended asset-custodian files in the PR diff; no PR #359 files are included as duplicate changes.
 - A new exact-head CI run must be triggered after updating this branch/worklog; status PENDING.
+
+
+
+## Updated CI feedback from stacked base
+
+- CI #3960 (`46114473603`) failed at the inherited `test:effective-permission-ui` step because the base branch still contained a false-positive maintenance source matcher.
+- PR #359 corrected the assertion in `fd80ab1c4800f17eaf76c5660c44c851f4519750` and recorded it in base worklog commit `5c2fcca38ee66306ff0e834d87151fe5be74af53`.
+- The stacked PR base has now advanced to that commit. The next exact-head CI run must verify the updated base plus asset assignment permission changes.
 
 ## Batasan dan risiko
 
