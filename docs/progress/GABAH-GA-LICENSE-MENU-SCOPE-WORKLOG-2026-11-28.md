@@ -44,3 +44,10 @@
 - Existing user sessions may retain a stale permission snapshot until PR #362's role-policy/session refresh behavior is integrated; affected users should re-login after role policy changes.
 - No asset records, license records, owner divisions, or business data changed.
 - No merge to `main` without explicit owner approval.
+
+
+## Exact-head CI result
+
+- CI #4026 (run ID 46130905998) completed SUCCESS, 121/121 workflow steps, on exact PR head 66eeee0cf43d047dcc78cf4e33aa993e8930c17c.
+- This validates the new GA license-menu regression and the workflow's PostgreSQL migration/integration, TypeScript/build, and Docker/runtime checks.
+- Browser UAT remains pending.
