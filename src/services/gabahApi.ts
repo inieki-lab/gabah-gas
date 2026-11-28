@@ -68,6 +68,10 @@ class GabahApiClient {
 
     const json = await res.json().catch(() => ({}));
     if (!res.ok || json.success === false) {
+      if (res.status === 401 && endpoint !== '/api/auth/login' && endpoint !== '/api/auth/me'
+        && typeof window !== 'undefined') {
+        window.dispatchEvent(new Event('gabah:session-expired'));
+      }
       const err: any = new Error(json.message || `Request gagal: ${res.statusText}`);
       err.status = res.status;
       err.code = json.code;
