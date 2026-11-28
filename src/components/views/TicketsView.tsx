@@ -175,17 +175,18 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     && !GabahService.canManageTickets(currentUser);
 
   const baseCategorySet = new Set(baseTickets.map(t => t.category).filter(Boolean));
+  // Category filters must follow the user's effective function and the
+  // already-scoped ticket data. Never show IT/GA/ME queues to every operator.
+  const roleCategories = [
+    ...(isIT ? ['IT'] : []),
+    ...(isGA ? ['GA'] : []),
+    ...(isMEOperator ? ['ME'] : []),
+    ...(isSC ? ['SC'] : []),
+    ...(isPIBC ? ['PIBC'] : []),
+  ];
   const defaultCategories = isSelfTicketsOnly
     ? ['ALL', ...Array.from(baseCategorySet)]
-    : isMEOperator
-    ? ['ALL', 'ME', ...Array.from(baseCategorySet).filter(c => c !== 'ME')]
-    : isGA
-    ? ['ALL', 'GA', ...Array.from(baseCategorySet).filter(c => c !== 'GA')]
-    : isSC
-    ? ['ALL', 'SC', ...Array.from(baseCategorySet).filter(c => c !== 'SC')]
-    : isPIBC
-    ? ['ALL', 'PIBC', ...Array.from(baseCategorySet).filter(c => c !== 'PIBC')]
-    : ['ALL', 'IT', 'GA', 'ME', ...Array.from(baseCategorySet).filter(c => !['IT', 'GA', 'ME'].includes(c))];
+    : ['ALL', ...Array.from(new Set([...roleCategories, ...Array.from(baseCategorySet)]))];
   const availableCategories = Array.from(new Set(defaultCategories));
 
   const filteredTickets = baseTickets.filter((t) => {
