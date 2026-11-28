@@ -44,3 +44,10 @@
 - No role permission grants, scope rows, user-role assignments, database schema, migrations, or business data are changed by this code patch.
 - Existing Superadmin actor is excluded from session revocation for these role policy changes.
 - No merge to `main` without explicit owner approval.
+
+
+## Exact-head CI result
+
+- CI #4001 (run ID 46129237879) completed SUCCESS, 121/121 workflow steps, on exact PR head 163d26f3630bbed164f4a17380c4458bbf74590d.
+- This includes the new RBAC role permission/scope session invalidation regression, TypeScript/build, PostgreSQL integration, and Docker/runtime checks.
+- Browser UAT remains pending.
