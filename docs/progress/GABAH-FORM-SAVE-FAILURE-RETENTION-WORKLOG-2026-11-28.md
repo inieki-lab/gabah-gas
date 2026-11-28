@@ -139,7 +139,7 @@ Perbaikan:
 | `npm run test:effective-permission-ui` | NOT RUN locally — no repository checkout/runtime in this session; additional source assertions for Maintenance are included |
 | TypeScript `npm run lint` | NOT RUN |
 | Production build | NOT RUN |
-| Exact-head GitHub Actions | #3949 failed on stale ME matcher (fixed `9d16fbc...`); #3955 failed on a false-positive maintenance matcher (fixed `fd80ab1...`); exact-head rerun pending |
+| Exact-head GitHub Actions | #3949 stale ME matcher fixed; #3955 false-positive maintenance matcher fixed; #3973 TypeScript failure due missing ticket resolution state declarations fixed in `90b7c87...`; latest exact-head rerun pending |
 | Browser UAT saat API sukses/gagal | NOT RUN |
 
 
@@ -161,6 +161,15 @@ Perbaikan:
 - Replaced the pattern with an explicit source-order assertion: await callback → false-result guard → modal close.
 - Fix commit: `fd80ab1c4800f17eaf76c5660c44c851f4519750`.
 - All earlier steps in #3955 passed, including lint, asset-scope policy (105/105), PIBC ME ticket queue (28/28), and runtime persistence/security checks. New exact-head CI after the matcher correction: PENDING.
+
+
+
+## CI feedback — ticket resolution state declarations
+
+- CI #3973 (`46115012176`) failed during TypeScript typecheck because the new ticket resolution handler/modal referenced `isResolving` and `resolveError` state without declarations.
+- Added both state declarations adjacent to `resolutionNotes` in `TicketsView`.
+- Fix commit: `90b7c878b746777a7fe2384b81205e7c9ed52af7`.
+- This is a compile-time correction; no workflow or business-rule behavior changed. Exact-head CI after the correction is pending.
 
 ## Batasan dan risiko
 
