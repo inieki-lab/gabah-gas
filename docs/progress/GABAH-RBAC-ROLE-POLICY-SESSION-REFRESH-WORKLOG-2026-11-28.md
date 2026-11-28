@@ -80,3 +80,8 @@
 
 - Final review also ensures the revoked-session handler clears the global loading indicator; otherwise a 401 during bulk refresh could return the app to login while leaving the spinner state active.
 - Regression assertion added for loading-state cleanup.
+
+
+- Auth initialization was adjusted so best-effort bulk collection refresh starts only after `/api/auth/me` confirms a valid session. Anonymous visitors no longer trigger a burst of authenticated 401 collection requests.
+- Login success and role switch retain their existing explicit data refresh paths.
+- Regression assertion added for the anonymous vs authenticated initialization paths.
