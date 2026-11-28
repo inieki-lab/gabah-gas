@@ -246,15 +246,14 @@ export default function App() {
           dataRefreshGeneration.current += 1;
           clearRoleScopedData();
           setCurrentUser(me);
+          // Do not block auth initialization on bulk data refresh. Start it
+          // only after a valid session is confirmed; anonymous visitors must
+          // not trigger authenticated collection requests.
+          void refreshData();
         } else setViewMode('login');
       } catch (err) {
         console.warn('Auth initialization:', err);
         setViewMode('login');
-      } finally {
-        // Do not block auth initialization on the bulk data refresh. Each API
-        // request is best-effort, and a slow/hung endpoint must never keep the
-        // user on the "Memulihkan sesi…" screen.
-        void refreshData();
       }
     }
     initAuth();
