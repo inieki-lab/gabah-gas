@@ -3,7 +3,7 @@
 **Tanggal:** 2026-11-28  
 **Repository:** `inieki-lab/gabah-gas`  
 **Original base:** `fix/forms-preserve-input-on-save-failure-2026-11-28` @ `2fddfd618384f9118cf14175b0aebbd94ce899a0`  
-**Current PR base head:** `d5894bdfaebed9d3ec8e4dc34de6a88c68045d0b`  
+**Current PR base head:** `671fa0e74ae23d4357c49a8d62baa4d6dcdbbf5f`  
 **Working branch:** `fix/asset-initial-custodian-selection-stack-2026-11-28`  
 **Status:** IMPLEMENTATION COMMITTED — exact-head CI pending; browser UAT not run.  
 **Dependency:** stacked on PR #359; merge PR #359 first, then retarget this PR to `main`.
@@ -61,7 +61,7 @@ This is a security correction, not just a UI change. Existing permission catalog
 | `npm run test:asset-scope-policy` | NOT RUN locally; permission-gate assertions added |
 | `npm run test:asset-create-atomicity` | NOT RUN locally; assignment guard/403 ordering assertions added |
 | TypeScript/build | NOT RUN |
-| Exact-head GitHub Actions | #3950/#3960 inherited base matchers corrected; #3963 had one stale unconditional-payload matcher (fixed `a684420...`); exact-head rerun pending |
+| Exact-head GitHub Actions | #3963 stale payload matcher fixed; #3969 PASS 120/120 on code head `a1d0f4f...`; latest base advanced to `671fa0e...`, integrated rerun pending |
 | Browser UAT with IT/GA and no-directory user | NOT RUN |
 
 
@@ -98,6 +98,14 @@ This is a security correction, not just a UI change. Existing permission catalog
 - PR #359 now also contains loan-request error surfacing and ticket-resolution error recovery; latest base head is `d5894bdfaebed9d3ec8e4dc34de6a88c68045d0b`.
 - These changes touch App and UI form paths but do not overlap the asset assignment service/selector changes in this PR.
 - Re-run the stacked CI against the latest base so the merged application is verified as a whole.
+
+
+
+## CI result and latest stacked base
+
+- Exact-head CI #3969 (`46114897713`) completed SUCCESS on code head `a1d0f4f5bc9801e042e4eb5cf43537285c08c4f1`; 120/120 workflow steps passed, including asset-scope policy, asset-create atomicity, PostgreSQL integration, production build, Docker runtime smoke, and HTTP security checks.
+- After that run, PR #359 advanced to `671fa0e74ae23d4357c49a8d62baa4d6dcdbbf5f` with additional ticket-resolution and loan-request error recovery.
+- The new base changes are in separate UI paths from asset assignment, but rerun CI against the current stacked base before calling the PR ready.
 
 ## Batasan dan risiko
 
