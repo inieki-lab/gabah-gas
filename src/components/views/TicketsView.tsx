@@ -52,6 +52,8 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
 
   const [resolvingTicketId, setResolvingTicketId] = useState<string | null>(null);
   const [resolutionNotes, setResolutionNotes] = useState<string>('');
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolveError, setResolveError] = useState('');
   const [expandedCommentsTicketId, setExpandedCommentsTicketId] = useState<string | null>(null);
   const [ticketComments, setTicketComments] = useState<Record<string, TicketComment[]>>({});
   const [commentDraft, setCommentDraft] = useState('');
