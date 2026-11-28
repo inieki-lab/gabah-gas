@@ -66,3 +66,13 @@
 - CI #4013 (run ID 46130099862) caught TypeScript errors in the no-op comparison refinement: query result Set elements were inferred as unknown.
 - Added explicit `Set<string>` typing for current/next permission and scope key sets in commit a788453e1baababec83e8acad0097b6374541354.
 - Exact-head CI rerun is pending.
+
+
+## Client handling for revoked sessions
+
+- Review found that `refreshData()` treated every collection error as an empty array. A revoked user's 401 could therefore be swallowed while the browser kept the old `currentUser.permission_keys` snapshot and stale menu.
+- API errors now retain HTTP status/code.
+- Data refresh propagates 401 instead of converting it to an empty collection.
+- App session-expiry handler clears role-scoped data, clears the current user, and returns to the login screen with an explanatory message.
+- Module-status refresh uses the same 401 handler, so a revoked session cannot remain in the portal with stale navigation.
+- Regression assertions cover both normal data refresh and module-status refresh 401 paths.
