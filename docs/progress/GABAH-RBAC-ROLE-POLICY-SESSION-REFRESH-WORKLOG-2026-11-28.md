@@ -51,3 +51,11 @@
 - CI #4001 (run ID 46129237879) completed SUCCESS, 121/121 workflow steps, on exact PR head 163d26f3630bbed164f4a17380c4458bbf74590d.
 - This includes the new RBAC role permission/scope session invalidation regression, TypeScript/build, PostgreSQL integration, and Docker/runtime checks.
 - Browser UAT remains pending.
+
+
+## Safety refinement — no-op save does not log users out
+
+- Review identified that a Superadmin may open a role and save the same permission/scope set without making a change.
+- Session invalidation is now conditional on the effective permission or scope set actually changing.
+- No-op saves do not rewrite the role mapping and do not revoke any session.
+- Regression assertions cover both changed and unchanged permission/scope paths.
