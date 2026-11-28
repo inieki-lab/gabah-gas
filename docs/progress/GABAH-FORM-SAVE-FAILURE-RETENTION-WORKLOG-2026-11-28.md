@@ -1,0 +1,71 @@
+# GABAH Form Save-Failure Retention Worklog
+
+**Tanggal:** 2026-11-28  
+**Repository:** `inieki-lab/gabah-gas`  
+**Base:** `main` @ `4f10d7a3aada9f41cd9e6cd2abe980b52054839e`  
+**Branch:** `fix/forms-preserve-input-on-save-failure-2026-11-28`  
+**Status:** IMPLEMENTATION COMMITTED — exact-head CI pending; browser UAT not run.
+
+## Temuan yang dibuktikan dari source
+
+### Create Ticket
+- `CreateTicketModal.handleSubmit()` memanggil `onCreateTicket()` tanpa `await`, lalu langsung memanggil `onClose()`.
+- `App.handleCreateTicket()` menangkap kegagalan API dan hanya menampilkan toast; ia tidak melempar error atau mengembalikan status hasil.
+- Karena itu modal dapat tertutup walaupun `POST /api/tickets` gagal, sehingga isian pengguna hilang.
+
+### Create Asset
+- `CreateAssetModal.handleSubmit()` memiliki pola yang sama: memulai `onCreateAsset()`, lalu langsung menutup modal.
+- `App.handleCreateAsset()` menangkap kegagalan API dan tidak meneruskan status gagal ke form.
+- Kegagalan `POST /api/assets` berisiko menghilangkan seluruh isian aset.
+
+## Perbaikan
+
+- Callback create aset dan tiket sekarang mengembalikan `Promise<boolean>`: `true` hanya setelah API create berhasil; `false` bila API gagal.
+- Kedua modal menunggu hasil callback sebelum menutup.
+- Bila penyimpanan gagal, modal tetap terbuka, input tetap ada, dan pesan error tampil di form.
+- Tombol submit dinonaktifkan selama request berjalan untuk mencegah double-submit.
+- Parent memisahkan kegagalan penyimpanan dari kegagalan refresh: bila record sudah tersimpan tetapi refresh daftar gagal, pengguna tetap diberi status sukses penyimpanan dan tidak didorong mengirim record duplikat.
+- Menambahkan regression source-contract ke `test:effective-permission-ui`, yang sudah terdaftar dalam workflow CI.
+
+## File yang diubah
+
+- `src/App.tsx`
+- `src/components/modals/CreateTicketModal.tsx`
+- `src/components/modals/CreateAssetModal.tsx`
+- `scripts/effective-permission-ui-verify.mjs`
+- Dokumen worklog ini.
+
+## Commit implementasi
+
+- `cb52876a136560f0b24cefb9fb21fde92d22f498` — App mengembalikan hasil create aset/tiket.
+- `d1f7d5dbac94ee0165a0f95b66e3af81d493a1aa` — modal tiket menunggu hasil dan mempertahankan isian saat gagal.
+- `00cd8b56ee9c0331608353790154ad3c091cd10a` — modal aset menunggu hasil dan mempertahankan isian saat gagal.
+- `63ad22320f9623cb46402e17235c4779a4c6c953` — regression assertions awal.
+- `3c0822a1b7bb92ee5515ccc647010aa602fc77df` — koreksi matcher regression.
+- `80322aa85ed71d5a1816553821102ed1cab1b094` — bedakan hasil create yang sudah commit dari kegagalan refresh.
+
+## Validasi
+
+| Pemeriksaan | Status |
+|---|---|
+| Source inspection modal, App handlers, dan caller | DONE |
+| Regression assertions untuk ticket + asset save result | ADDED; belum dieksekusi lokal |
+| `npm run test:effective-permission-ui` | NOT RUN — tidak ada checkout/runtime repository pada sesi ini |
+| TypeScript `npm run lint` | NOT RUN |
+| Production build | NOT RUN |
+| Exact-head GitHub Actions | PENDING |
+| Browser UAT saat API sukses/gagal | NOT RUN |
+
+## Batasan dan risiko
+
+- Cakupan perubahan hanya create form Aset dan Tiket. Form lain belum otomatis dianggap sudah diaudit.
+- Tidak mengubah validasi backend, endpoint, permission, scope, database, migration, atau data operasional.
+- Pengujian browser tetap diperlukan untuk membuktikan isian bertahan pada HTTP 4xx/5xx dan modal menutup setelah API sukses.
+- Tidak ada akun, role assignment, permission assignment, atau data bisnis yang diubah.
+
+## Next
+
+1. Tunggu exact-head CI; perbaiki semua kegagalan pada branch ini.
+2. Lanjutkan pola audit yang sama ke form create/edit lainnya (kontrak, vendor, knowledge, maintenance, reservasi) tanpa menganggap semuanya memiliki bug yang sama.
+3. Uji browser per role dan per status API sebelum PR dinyatakan siap merge.
+4. Jangan merge ke `main` tanpa persetujuan eksplisit pemilik proyek.
