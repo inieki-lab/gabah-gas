@@ -123,7 +123,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     }
 
     const checklistItems = formData.checklistText
-      .split('\\n')
+      .split('\n')
       .map((s) => s.trim())
       .filter(Boolean);
 
