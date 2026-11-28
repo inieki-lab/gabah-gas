@@ -1,0 +1,55 @@
+# GABAH Staff Navigation — Own-Loan Return Capability Worklog
+
+**Tanggal:** 2026-11-28  
+**Repository:** `inieki-lab/gabah-gas`  
+**Base:** `main` @ `4f10d7a3aada9f41cd9e6cd2abe980b52054839e`  
+**Branch:** `fix/staff-navigation-loan-return-capability-2026-11-28`  
+**Status:** IMPLEMENTATION COMMITTED — exact-head CI pending; browser UAT not run.
+
+## Temuan
+
+- Migration `server/migrations/024_dynamic_rbac_core_operational_permissions.sql` memberikan `loans.return` kepada profil fungsi `karyawan` sebagai bagian dari employee self-service.
+- Hak tersebut memungkinkan peminjam mengembalikan pinjamannya sendiri; ia bukan bukti bahwa pegawai menjadi operator/custodian peminjaman.
+- `src/navigation/roleNavigation.ts` memasukkan `loans.return` ke `OPERATIONAL_NAVIGATION_PERMISSIONS`. Akibatnya `isStaffNavigationPersona('Karyawan', permissionKeys)` mengembalikan `false` untuk pegawai biasa yang memiliki grant pengembalian pinjaman.
+- `DashboardView` tidak memasukkan `loans.return` ke daftar operational-management permissions, sehingga akun yang sama diklasifikasikan sebagai dashboard staf tetapi Sidebar sebagai “Operasional Utama”. Ini inkonsistensi label/persona UI; bukan bypass otorisasi backend.
+
+## Perubahan
+
+- Menghapus `loans.return` dari daftar permission yang mengubah persona staf menjadi persona operasional.
+- Mempertahankan `loans.approve`, `loans.reject`, dan `loans.handover` sebagai permission operasional/custodian.
+- Menambah regression checks:
+  - Karyawan dengan `dashboard.read + loans.return` tetap persona staf.
+  - Karyawan dengan `dashboard.read + loans.approve` tetap persona operasional.
+- Tidak mengubah permission grant, route, service backend, database, migration, atau data pengguna.
+
+## File yang diubah
+
+- `src/navigation/roleNavigation.ts`
+- `scripts/navigation-policy-verify.ts`
+- Dokumen worklog ini.
+
+## Validasi
+
+| Pemeriksaan | Status |
+|---|---|
+| Source inspection migration 024 | DONE — grant `loans.return` termasuk employee baseline |
+| Cross-check DashboardView vs Sidebar persona logic | DONE — dua daftar sebelumnya tidak konsisten |
+| Regression assertions ditambahkan | DONE |
+| Eksekusi lokal `npm run test:navigation-policy` | NOT RUN — tidak ada checkout/runtime repository pada sesi ini |
+| TypeScript/build | NOT RUN |
+| Exact-head GitHub Actions CI | PENDING |
+| Browser UAT lintas persona | NOT RUN |
+
+## Batasan dan risiko
+
+- Perubahan hanya mengubah label/kelompok navigasi di Sidebar; tidak menambah atau mengurangi hak akses.
+- Backend tetap menentukan apakah aktor boleh mengembalikan pinjaman milik sendiri atau pinjaman milik orang lain melalui permission dan owner scope.
+- Verifikasi browser masih diperlukan untuk memastikan Sidebar dan Dashboard menampilkan persona staf secara konsisten pada akun Karyawan yang memiliki grant `loans.return`.
+- Tidak ada database, volume, akun, role assignment, permission assignment, atau data operasional yang diubah.
+
+## Next
+
+1. Tunggu exact-head CI untuk test navigation-policy dan full verification workflow.
+2. Jika CI lulus, pertahankan PR Draft sampai browser UAT Karyawan dan operator IT/GA dilakukan.
+3. Lanjutkan audit form/action callback pada seluruh view tanpa menunggu CI jalur ini.
+4. Jangan merge ke `main` tanpa persetujuan eksplisit pemilik proyek.
