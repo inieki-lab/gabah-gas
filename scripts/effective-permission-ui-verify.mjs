@@ -81,3 +81,18 @@ assert.doesNotMatch(maintenanceView, /onAddSchedule\(newObj\);[\s\S]*?setIsCreat
 assert.match(maintenanceCreateHandler, /return true;/);
 assert.match(maintenanceCreateHandler, /return false;/);
 console.log('PASS: maintenance create form waits for backend success and retains input after failure.');
+
+
+const loansView = fs.readFileSync('src/components/views/LoansView.tsx', 'utf8');
+const rejectLoanHandler = app.slice(app.indexOf('const handleRejectLoan = async'), app.indexOf('// 6. Handover Loan'));
+assert.match(loansView, /onRejectLoan: \\(loanId: string, reason: string\\) => Promise<boolean>/);
+assert.match(loansView, /const handleRejectSubmit = async/);
+assert.match(loansView, /await onRejectLoan\\(rejectingLoanId, rejectReason\\.trim\\(\\)\\)/);
+assert.match(loansView, /if \\(!saved\\)[\\s\\S]*?setRejectError/);
+assert.match(loansView, /disabled=\\{isRejecting \\|\\| !rejectReason\\.trim\\(\\)\\}/);
+assert.doesNotMatch(loansView, /onRejectLoan\\(rejectingLoanId, rejectReason\\);[\\s\\S]*?setRejectingLoanId\\(null\\)/,
+  'reject modal must not close before the API confirms the rejection');
+assert.match(rejectLoanHandler, /Promise<boolean>/);
+assert.match(rejectLoanHandler, /return true;/);
+assert.match(rejectLoanHandler, /return false;/);
+console.log('PASS: loan rejection keeps the reason and dialog open until the server confirms success.');
