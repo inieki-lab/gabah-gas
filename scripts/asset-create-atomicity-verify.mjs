@@ -23,5 +23,5 @@ const assignGuard = service.indexOf("assignedToId && !canMutateAssetOwner(actor,
 const assignedUserLookup = service.indexOf('const assignedUser = assignedToId');
 assert.ok(assignGuard >= 0, 'initial asset assignment must require assets.assign');
 assert.ok(assignedUserLookup > assignGuard, 'assignment permission must be checked before revealing target-user existence');
-assert.match(service, /assignedToId && !canMutateAssetOwner\\(actor, resolvedOwnerDivision, 'assets\\.assign'\\)[\\s\\S]*statusCode: 403/);
+assert.match(service, /assignedToId && !canMutateAssetOwner\(actor, resolvedOwnerDivision, 'assets\.assign'\)[\s\S]*statusCode: 403/);
 console.log('PASS: initial asset assignment requires assets.assign before resolving the target user.');
