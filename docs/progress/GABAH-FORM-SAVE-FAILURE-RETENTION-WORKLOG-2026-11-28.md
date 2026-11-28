@@ -81,6 +81,21 @@ Perbaikan:
 
 Catatan: ini meningkatkan visibilitas dan pemulihan form untuk kasus collision/validation. Ini tidak mengubah aturan collision atau menghapus konflik yang memang sah; untuk mendiagnosis kasus Agus/MacBook tertentu tetap diperlukan pesan HTTP aktual dan status pinjaman terkait pada database uji.
 
+
+
+## Temuan tambahan — Penyelesaian Tiket
+
+Dialog “Selesaikan Tiket Helpdesk” juga memanggil `onUpdateTicketStatus()` tanpa menunggu hasil, lalu menutup dialog dan menghapus catatan solusi. Parent handler menangkap kegagalan API dan tidak meneruskan error ke dialog.
+
+Perbaikan:
+- `App.handleUpdateTicketStatus` sekarang mengembalikan `Promise<string | null>`: null setelah status berhasil disimpan, pesan server saat gagal.
+- Dialog penyelesaian tiket menunggu hasil dan hanya ditutup setelah sukses.
+- Saat API gagal, catatan solusi tetap tersimpan di form dan error ditampilkan.
+- Tombol/textarea dikunci selama request; catatan wajib tetap bisa diedit setelah kegagalan.
+- Direct status buttons tetap menerima toast dari parent; perubahan ini menambah pemulihan inline khusus dialog penyelesaian.
+- Regression assertions ditambahkan pada test UI.
+
+
 ## File yang diubah
 
 - `src/App.tsx`
@@ -89,6 +104,7 @@ Catatan: ini meningkatkan visibilitas dan pemulihan form untuk kasus collision/v
 - `src/components/views/MaintenanceView.tsx`
 - `src/components/views/LoansView.tsx`
 - `src/components/modals/CreateLoanModal.tsx`
+- `src/components/views/TicketsView.tsx`
 - `scripts/effective-permission-ui-verify.mjs`
 - Dokumen worklog ini.
 
@@ -110,6 +126,9 @@ Catatan: ini meningkatkan visibilitas dan pemulihan form untuk kasus collision/v
 - `003245494e5f363adfc3f2ab67e8936849b87628` — App meneruskan pesan API permohonan pinjaman ke form.
 - `022c1db6cfda4183af74fbf0a1270dc217f7a943` — form pinjaman menampilkan pesan collision/validation dan mempertahankan isian.
 - `2a72baf4d6a94a4cc0b0fe241dbf533e9939d818` — regression contract untuk pesan error pinjaman.
+- `8c9fbe5c4f8fa3ae346a5d58b6296b49baa69d47` — App meneruskan hasil status tiket ke dialog.
+- `1f7b6a70b3d69e7c11318e48fe6408e233d46fe3` — dialog penyelesaian tiket menahan catatan sampai API sukses.
+- `5031d988c1d4e15cd7de8f2b00100e1354b6afdc` — regression contract untuk dialog penyelesaian tiket.
 
 ## Validasi
 
@@ -154,5 +173,5 @@ Catatan: ini meningkatkan visibilitas dan pemulihan form untuk kasus collision/v
 
 1. Tunggu exact-head CI; perbaiki semua kegagalan pada branch ini.
 2. Lanjutkan pola audit yang sama ke form create/edit lainnya (kontrak, vendor, knowledge, maintenance, reservasi) tanpa menganggap semuanya memiliki bug yang sama.
-3. Uji browser per role dan per status API, termasuk permohonan pinjaman dengan collision 409, validasi 400, network failure, dan sukses, sebelum PR dinyatakan siap merge.
+3. Uji browser per role dan per status API, termasuk permohonan pinjaman dengan collision 409, validasi 400, network failure, sukses, serta penyelesaian tiket dengan API gagal/sukses, sebelum PR dinyatakan siap merge.
 4. Jangan merge ke `main` tanpa persetujuan eksplisit pemilik proyek.
