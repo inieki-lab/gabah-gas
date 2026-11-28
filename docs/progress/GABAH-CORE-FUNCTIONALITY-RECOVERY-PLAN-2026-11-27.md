@@ -315,3 +315,10 @@ Tidak boleh menyimpulkan role dari nama lokasi seperti RPC/SC atau PIBC. Lokasi 
 - PR #362 no-op policy save kini tidak mencabut sesi; hanya perubahan efektif pada permission/scope role yang menginvalidasi sesi pengguna terdampak.
 - Perbaikan client 401: App mengosongkan data pengguna, menghentikan loading, dan kembali ke login setelah sesi dicabut; anonymous startup tidak lagi memicu bulk authenticated requests.
 - CI #4025 menemukan assertion lama yang mengharapkan pola `.catch(() => [])`; matcher diperbarui agar menguji 401 propagation. CI #4028 sedang menguji revisi terakhir.
+
+
+### Latest validation update
+- PR #362 role-policy session refresh: CI #4028 **SUCCESS 121/121**; a worklog-only update triggered CI #4031, currently in progress.
+- PR #364 GA license menu: CI #4026 and #4029 **SUCCESS 121/121**; latest worklog-only update triggered a new CI run.
+- PR #363 ticket category filter: CI #4008 and #4014 **SUCCESS 120/120**.
+- All remain Draft and no production database or account assignments have been changed.
