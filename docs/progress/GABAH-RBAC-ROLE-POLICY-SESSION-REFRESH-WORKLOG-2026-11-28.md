@@ -59,3 +59,10 @@
 - Session invalidation is now conditional on the effective permission or scope set actually changing.
 - No-op saves do not rewrite the role mapping and do not revoke any session.
 - Regression assertions cover both changed and unchanged permission/scope paths.
+
+
+## CI feedback — explicit Set typing
+
+- CI #4013 (run ID 46130099862) caught TypeScript errors in the no-op comparison refinement: query result Set elements were inferred as unknown.
+- Added explicit `Set<string>` typing for current/next permission and scope key sets in commit a788453e1baababec83e8acad0097b6374541354.
+- Exact-head CI rerun is pending.
