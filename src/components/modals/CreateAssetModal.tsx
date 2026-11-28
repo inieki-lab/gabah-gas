@@ -24,7 +24,7 @@ interface CreateAssetModalProps {
   isOpen: boolean;
   onClose: () => void;
   existingAssets?: Asset[];
-  onCreateAsset: (newAsset: Partial<Asset>) => void;
+  onCreateAsset: (newAsset: Partial<Asset>) => Promise<boolean>;
   currentUser?: UserProfile;
 }
 
@@ -311,6 +311,8 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   const [assetLocations, setAssetLocations] = useState<any[]>([]);
   const [assetLocationId, setAssetLocationId] = useState<string>('');
   const [custodianName, setCustodianName] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -359,9 +361,9 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
   if (optionsError) return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-6"><div className="max-w-md rounded-xl bg-white p-6 text-sm text-rose-700"><p className="font-bold">Pilihan owner aset gagal dimuat.</p><p className="mt-2">{optionsError}</p><button type="button" onClick={onClose} className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-white">Tutup</button></div></div>;
   if (!ownerDomains.length || !allowedMainCategories.length || !activeSub) return <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-6"><div className="max-w-md rounded-xl bg-white p-6 text-sm text-slate-700"><p className="font-bold">Tidak ada owner aset yang dapat didaftarkan.</p><p className="mt-2">Akun ini belum memiliki permission assets.create dan scope owner yang sesuai, atau belum ada kategori aktif pada owner tersebut. Hubungi Superadmin untuk pemeriksaan hak akses dan master kategori.</p><button type="button" onClick={onClose} className="mt-4 rounded-lg bg-slate-900 px-4 py-2 text-white">Tutup</button></div></div>;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (isSubmitting || !name.trim()) return;
 
     const newAsset: Partial<Asset> = {
       name: name.trim(),
@@ -407,8 +409,20 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
       };
     }
 
-    onCreateAsset(newAsset);
-    onClose();
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      const saved = await onCreateAsset(newAsset);
+      if (!saved) {
+        setSubmitError('Aset belum tersimpan. Isian tetap tersedia; periksa notifikasi dan coba kembali.');
+        return;
+      }
+      onClose();
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Gagal menyimpan aset. Isian tetap tersedia; coba kembali.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -798,6 +812,7 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
           </div>
 
           {/* Footer Buttons */}
+          {submitError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{submitError}</p>}
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-200">
             <button
               type="button"
@@ -808,10 +823,11 @@ export const CreateAssetModal: React.FC<CreateAssetModalProps> = ({
             </button>
             <button
               type="submit"
+              disabled={isSubmitting}
               className="px-5 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-black transition-all shadow-xs flex items-center gap-1.5"
             >
               <Package className="w-4 h-4" />
-              <span>Simpan Aset ke Database GABAH</span>
+              <span>{isSubmitting ? 'Menyimpan Aset...' : 'Simpan Aset ke Database GABAH'}</span>
             </button>
           </div>
 
