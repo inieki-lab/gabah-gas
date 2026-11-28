@@ -31,7 +31,7 @@ interface TicketsViewProps {
   currentUser: UserProfile;
   onOpenCreateModal?: () => void;
   onOpenNewTicketModal?: () => void;
-  onUpdateTicketStatus: (ticketId: string, status: TicketStatus, notes?: string) => void;
+  onUpdateTicketStatus: (ticketId: string, status: TicketStatus, notes?: string) => Promise<string | null>;
   onUpdateTicketAssignment?: (ticketId: string, assignedAgentId: string | null) => Promise<void>;
 }
 
@@ -193,7 +193,30 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
     if (selectedStatus !== 'ALL' && t.status !== selectedStatus) return false;
     if (searchQuery.trim() !== '') {
       const q = searchQuery.toLowerCase();
-      return (
+      const handleResolveTicket = async () => {
+    if (!resolvingTicketId || isResolving) return;
+    setIsResolving(true);
+    setResolveError('');
+    try {
+      const result = await onUpdateTicketStatus(
+        resolvingTicketId,
+        'resolved',
+        resolutionNotes || 'Masalah telah diselesaikan oleh tim teknisi.'
+      );
+      if (result) {
+        setResolveError(result);
+        return;
+      }
+      setResolvingTicketId(null);
+      setResolutionNotes('');
+    } catch (err: any) {
+      setResolveError(err?.message || 'Gagal menyelesaikan tiket. Catatan solusi tetap tersedia; coba kembali.');
+    } finally {
+      setIsResolving(false);
+    }
+  };
+
+  return (
         (t.title || '').toLowerCase().includes(q) ||
         (t.ticket_code || '').toLowerCase().includes(q) ||
         (t.reporter_name || '').toLowerCase().includes(q) ||
@@ -752,7 +775,7 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => setResolutionNotes(canned)}
+                    onClick={() => { setResolutionNotes(canned); setResolveError(''); }}
                     className="text-[10px] text-left px-2.5 py-1 rounded-lg bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 border border-slate-200 hover:border-emerald-300 transition-all truncate max-w-full"
                   >
                     + {canned}
@@ -764,26 +787,26 @@ export const TicketsView: React.FC<TicketsViewProps> = ({
             <textarea
               rows={3}
               value={resolutionNotes}
-              onChange={(e) => setResolutionNotes(e.target.value)}
+              disabled={isResolving}
+              onChange={(e) => { setResolutionNotes(e.target.value); setResolveError(''); }}
               placeholder="Contoh: Pembersihan saluran pembuangan air AC dan penggantian filter, unit kembali bekerja normal..."
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600 focus:bg-white"
             />
+            {resolveError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{resolveError}</p>}
             <div className="flex justify-end gap-2 pt-2">
               <button
-                onClick={() => setResolvingTicketId(null)}
+                disabled={isResolving}
+                onClick={() => { setResolvingTicketId(null); setResolutionNotes(''); setResolveError(''); }}
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold"
               >
                 Batal
               </button>
               <button
-                onClick={() => {
-                  onUpdateTicketStatus(resolvingTicketId, 'resolved', resolutionNotes || 'Masalah telah diselesaikan oleh tim teknisi.');
-                  setResolvingTicketId(null);
-                  setResolutionNotes('');
-                }}
-                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs"
+                disabled={isResolving}
+                onClick={handleResolveTicket}
+                className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Tandai Selesai &amp; Kirim
+                {isResolving ? 'Menyimpan Solusi...' : 'Tandai Selesai &amp; Kirim'}
               </button>
             </div>
           </div>
