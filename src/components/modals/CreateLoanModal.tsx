@@ -31,7 +31,7 @@ interface CreateLoanModalProps {
     start_date: string;
     due_date: string;
     borrower_phone: string;
-  }) => Promise<void>;
+  }) => Promise<string | null>;
 }
 
 export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
@@ -110,9 +110,11 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
   const [purpose, setPurpose] = useState<string>('');
   const [borrowerPhone, setBorrowerPhone] = useState<string>(currentUser?.phone || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [requestError, setRequestError] = useState('');
 
   // Toggle selection for an asset
   const handleToggleAsset = (id: string) => {
+    setRequestError('');
     setSelectedAssetIds(prev => {
       if (prev.includes(id)) {
         // Keep at least one or allow unchecking
@@ -170,7 +172,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
 
     setIsSubmitting(true);
     try {
-      await onRequestLoan({
+      const requestResult = await onRequestLoan({
         asset_id: selectedAssetIds[0],
         asset_ids: selectedAssetIds,
         purpose: purpose.trim(),
@@ -178,6 +180,9 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
         due_date: dueDate,
         borrower_phone: borrowerPhone.trim(),
       });
+      setRequestError(requestResult || '');
+    } catch (err: any) {
+      setRequestError(err?.message || 'Gagal mengajukan peminjaman. Isian tetap tersedia; coba kembali.');
     } finally {
       setIsSubmitting(false);
     }
@@ -223,7 +228,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 type="text"
                 required
                 value={borrowerPhone}
-                onChange={(e) => setBorrowerPhone(e.target.value)}
+                onChange={(e) => { setBorrowerPhone(e.target.value); setRequestError(''); }}
                 placeholder="0812-xxxx-xxxx"
                 className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-slate-900 font-mono mt-0.5 focus:outline-none focus:border-emerald-600"
               />
@@ -378,7 +383,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 type="datetime-local"
                 required
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(e) => { setStartDate(e.target.value); setRequestError(''); }}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600"
               />
             </div>
@@ -389,7 +394,7 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
                 type="datetime-local"
                 required
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={(e) => { setDueDate(e.target.value); setRequestError(''); }}
                 className="w-full px-3 py-2 bg-white border border-slate-300 rounded-lg text-slate-900 focus:outline-none focus:border-emerald-600"
               />
             </div>
@@ -430,10 +435,12 @@ export const CreateLoanModal: React.FC<CreateLoanModalProps> = ({
               required
               placeholder="Contoh: Kunjungan dinas luar kota, presentasi laporan beras BUMD di Balai Kota, monitoring distributor Karawang..."
               value={purpose}
-              onChange={(e) => setPurpose(e.target.value)}
+              onChange={(e) => { setPurpose(e.target.value); setRequestError(''); }}
               className="w-full p-2.5 bg-white border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:border-emerald-600"
             />
           </div>
+
+          {requestError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{requestError}</p>}
 
           {/* Footer Submit */}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
