@@ -176,6 +176,7 @@ export default function App() {
     clearRoleScopedData();
     setCurrentUser(null);
     setViewMode('login');
+    setIsLoading(false);
     setToastMessage({ text: 'Sesi berakhir karena hak akses berubah atau sudah dicabut. Silakan login kembali.', type: 'warning' });
   };
 
