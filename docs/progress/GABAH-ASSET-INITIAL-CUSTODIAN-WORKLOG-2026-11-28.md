@@ -3,7 +3,7 @@
 **Tanggal:** 2026-11-28  
 **Repository:** `inieki-lab/gabah-gas`  
 **Original base:** `fix/forms-preserve-input-on-save-failure-2026-11-28` @ `2fddfd618384f9118cf14175b0aebbd94ce899a0`  
-**Current PR base head:** `671fa0e74ae23d4357c49a8d62baa4d6dcdbbf5f`  
+**Current PR base head:** `efdf124f4d63fd81abea81667e0b93062551248e`  
 **Working branch:** `fix/asset-initial-custodian-selection-stack-2026-11-28`  
 **Status:** IMPLEMENTATION COMMITTED — exact-head CI pending; browser UAT not run.  
 **Dependency:** stacked on PR #359; merge PR #359 first, then retarget this PR to `main`.
@@ -61,7 +61,7 @@ This is a security correction, not just a UI change. Existing permission catalog
 | `npm run test:asset-scope-policy` | NOT RUN locally; permission-gate assertions added |
 | `npm run test:asset-create-atomicity` | NOT RUN locally; assignment guard/403 ordering assertions added |
 | TypeScript/build | NOT RUN |
-| Exact-head GitHub Actions | #3963 stale payload matcher fixed; #3969 PASS 120/120 on code head `a1d0f4f...`; latest base advanced to `671fa0e...`, integrated rerun pending |
+| Exact-head GitHub Actions | #3963 stale payload matcher fixed; #3969 PASS 120/120 on code head `a1d0f4f...`; #3977 used old base and failed on missing ticket handler scope; corrected base `efdf124...` now requires integrated rerun |
 | Browser UAT with IT/GA and no-directory user | NOT RUN |
 
 
@@ -106,6 +106,15 @@ This is a security correction, not just a UI change. Existing permission catalog
 - Exact-head CI #3969 (`46114897713`) completed SUCCESS on code head `a1d0f4f5bc9801e042e4eb5cf43537285c08c4f1`; 120/120 workflow steps passed, including asset-scope policy, asset-create atomicity, PostgreSQL integration, production build, Docker runtime smoke, and HTTP security checks.
 - After that run, PR #359 advanced to `671fa0e74ae23d4357c49a8d62baa4d6dcdbbf5f` with additional ticket-resolution and loan-request error recovery.
 - The new base changes are in separate UI paths from asset assignment, but rerun CI against the current stacked base before calling the PR ready.
+
+
+
+## CI feedback — previous base was missing ticket handler scope fix
+
+- CI #3977 (`46115210970`) failed TypeScript with `handleResolveTicket` not found in `TicketsView`.
+- This run used the prior stacked base before PR #359's handler-scope correction.
+- PR #359 now contains the correction in commit `30a0300d2d1e78b7c22282fea8b1f3908a385c76`; current base head is `efdf124f4d63fd81abea81667e0b93062551248e`.
+- Trigger a new exact-head CI against the corrected base; do not treat #3977 as a failure in the asset-custodian code.
 
 ## Batasan dan risiko
 
