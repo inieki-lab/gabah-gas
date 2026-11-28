@@ -27,7 +27,7 @@ interface CreateTicketModalProps {
     category: TicketCategory;
     priority: TicketPriority;
     related_asset_id?: string;
-  }) => void;
+  }) => Promise<boolean>;
 }
 
 export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
@@ -57,6 +57,8 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [relatedAssetId, setRelatedAssetId] = useState<string>(preselectedAssetId || '');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // Freshservice-inspired Quick Service Catalog Templates
   const serviceCatalogTemplates = [
@@ -207,19 +209,31 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
 
   const slaHours = priority === 'urgent' ? 4 : priority === 'high' ? 8 : priority === 'medium' ? 24 : 48;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const canCreateSelectedCategory = category === 'ME' ? canRequestMe : canCreateStandard;
-    if (!canCreateSelectedCategory || !title.trim() || !description.trim()) return;
+    if (isSubmitting || !canCreateSelectedCategory || !title.trim() || !description.trim()) return;
 
-    onCreateTicket({
-      title,
-      description,
-      category,
-      priority,
-      related_asset_id: relatedAssetId ? relatedAssetId : undefined,
-    });
-    onClose();
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      const saved = await onCreateTicket({
+        title,
+        description,
+        category,
+        priority,
+        related_asset_id: relatedAssetId ? relatedAssetId : undefined,
+      });
+      if (!saved) {
+        setSubmitError('Tiket belum tersimpan. Isian tetap tersedia; periksa notifikasi dan coba kembali.');
+        return;
+      }
+      onClose();
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Gagal menyimpan tiket. Isian tetap tersedia; coba kembali.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -435,6 +449,7 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
           )}
 
           {/* Footer Submit */}
+          {submitError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{submitError}</p>}
           <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200">
             <button
               type="button"
@@ -445,14 +460,14 @@ export const CreateTicketModal: React.FC<CreateTicketModalProps> = ({
             </button>
             <button
               type="submit"
-              disabled={category === 'ME' ? !canRequestMe : !canCreateStandard}
+              disabled={isSubmitting || (category === 'ME' ? !canRequestMe : !canCreateStandard)}
               className={`px-5 py-2 rounded-xl font-bold transition-all shadow-xs ${
                 (category === 'ME' ? !canRequestMe : !canCreateStandard)
                   ? 'bg-slate-300 text-slate-500 cursor-not-allowed' 
                   : 'bg-rose-600 hover:bg-rose-700 text-white'
               }`}
             >
-              Kirim Tiket ke Helpdesk
+              {isSubmitting ? 'Mengirim Tiket...' : 'Kirim Tiket ke Helpdesk'}
             </button>
           </div>
 
