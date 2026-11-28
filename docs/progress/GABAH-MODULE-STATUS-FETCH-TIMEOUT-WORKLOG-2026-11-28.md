@@ -37,7 +37,7 @@
 - Source inspection App → API client → Sidebar gating: DONE.
 - Regression contract untuk AbortController, 12-second timeout, abort signal, error message, timer cleanup, fail-closed state, dan retry: ADDED.
 - Local npm execution, TypeScript/build, Docker runtime, and browser UAT: NOT RUN.
-- Exact-head GitHub Actions CI: PENDING.
+- Exact-head GitHub Actions CI: PASS — run #3993 (ID 46128456441), 121/121 workflow steps succeeded on head 56f0338ccd964e0fa024ba2870392d95867eb9e7.
 - UAT wajib: normal fast response, API 503, network disconnect, request hang >12 seconds, then retry after server recovery. Confirm app no longer stays indefinitely on “Memuat status modul…”.
 
 ## Safety
@@ -45,3 +45,10 @@
 - No permission grants, module activation flags, user roles, database, migration, or operational data changed.
 - The UI continues to fail closed when module registry cannot be verified.
 - No merge to `main` without explicit owner approval.
+
+
+## CI result
+
+- GitHub Actions CI #3993 (46128456441) completed SUCCESS, 121/121 steps, on exact head 56f0338ccd964e0fa024ba2870392d95867eb9e7.
+- Workflow included the timeout regression contract, TypeScript/build, PostgreSQL integration, and Docker/runtime checks.
+- Browser UAT is still pending; CI does not simulate an actual browser network hang.
