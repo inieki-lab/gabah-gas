@@ -65,3 +65,17 @@ assert.doesNotMatch(assetModal, /onCreateAsset\(newAsset\);\s*onClose\(\);/,
 assert.match(assetCreateHandler, /return true;/);
 assert.match(assetCreateHandler, /return false;/);
 console.log('PASS: asset and ticket create forms retain input after failed saves and close only after confirmed success.');
+
+
+const maintenanceView = fs.readFileSync('src/components/views/MaintenanceView.tsx', 'utf8');
+const maintenanceCreateHandler = app.slice(app.indexOf('onAddSchedule={async (newSch) => {'), app.indexOf('            />', app.indexOf('onAddSchedule={async (newSch) => {')));
+assert.match(maintenanceView, /onAddSchedule\\?: \\(newSchedule: Partial<MaintenanceSchedule>\\) => Promise<boolean>/);
+assert.match(maintenanceView, /const handleCreateSubmit = async/);
+assert.match(maintenanceView, /const saved = await onAddSchedule\\(newObj\\)/);
+assert.match(maintenanceView, /if \\(!saved\\)[\\s\\S]*?setSubmitError/);
+assert.match(maintenanceView, /disabled=\\{isSubmitting\\}/);
+assert.doesNotMatch(maintenanceView, /onAddSchedule\\(newObj\\);[\\s\\S]*?setIsCreateModalOpen\\(false\\)/,
+  'maintenance form must not close before the server confirms persistence');
+assert.match(maintenanceCreateHandler, /return true;/);
+assert.match(maintenanceCreateHandler, /return false;/);
+console.log('PASS: maintenance create form waits for backend success and retains input after failure.');
