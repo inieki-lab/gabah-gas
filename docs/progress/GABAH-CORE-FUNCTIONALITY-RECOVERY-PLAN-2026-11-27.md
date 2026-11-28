@@ -280,3 +280,11 @@ Tidak boleh menyimpulkan role dari nama lokasi seperti RPC/SC atau PIBC. Lokasi 
 - PR #362 memperbaiki kedua route: identifikasi user yang assigned ke role, cabut sesi mereka setelah transaksi commit, refresh cache policy, dan beri tahu Superadmin jumlah pegawai yang harus login ulang. Exact-head CI sedang berjalan.
 - Ini merupakan temuan langsung yang menjelaskan sebagian gejala “menu berbeda/tidak sesuai per user”; tidak mengubah grant atau scope yang sudah ada.
 
+
+
+## Status PR lanjutan — 28 November 2026
+
+- **PR #358** (persona Sidebar/Dashboard): CI #4002 **SUCCESS 120/120** pada head `17a64fe1dccd5c376bb31d58544f7fe9aa246652`; CI baru #4006 sedang menguji commit worklog setelahnya. UAT lintas persona tetap pending.
+- **PR #361** (module status timeout): CI #3993 dan #3999 **SUCCESS 121/121**; latest worklog commit memicu CI #4004 yang sedang berjalan. UAT network hang/retry pending.
+- **PR #362** (role permission/scope change session invalidation): CI #4001 **SUCCESS 121/121** pada code/worklog head `163d26f3630bbed164f4a17380c4458bbf74590d`; commit dokumentasi terakhir memicu CI #4005 yang sedang berjalan. UAT invalidasi sesi dan login ulang pending.
+- Seluruh PR tetap Draft dan belum merge ke `main`.
