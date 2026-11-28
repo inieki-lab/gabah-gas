@@ -2,7 +2,8 @@
 
 **Tanggal:** 2026-11-28  
 **Repository:** `inieki-lab/gabah-gas`  
-**Base branch:** `fix/forms-preserve-input-on-save-failure-2026-11-28` @ `2fddfd618384f9118cf14175b0aebbd94ce899a0`  
+**Original base:** `fix/forms-preserve-input-on-save-failure-2026-11-28` @ `2fddfd618384f9118cf14175b0aebbd94ce899a0`  
+**Current PR base head:** `484188c93cf575b8dc7e7f79ca01e882be04decf`  
 **Working branch:** `fix/asset-initial-custodian-selection-stack-2026-11-28`  
 **Status:** IMPLEMENTATION COMMITTED — exact-head CI pending; browser UAT not run.  
 **Dependency:** stacked on PR #359; merge PR #359 first, then retarget this PR to `main`.
@@ -42,8 +43,17 @@
 | Regression assertions added | ADDED; not run locally |
 | `npm run test:asset-scope-policy` | NOT RUN locally |
 | TypeScript/build | NOT RUN |
-| Exact-head GitHub Actions | PENDING |
+| Exact-head GitHub Actions | #3950 FAILED on an outdated assertion inherited from the previous base; base fix available at `484188c...`; rerun pending |
 | Browser UAT with IT/GA and no-directory user | NOT RUN |
+
+
+
+## CI feedback and stacked-base update
+
+- Initial CI #3950 (`46113901258`) failed at step 81, `PIBC ME ticket queue and unit-scope regression`, because the base PR's old ticket-form source matcher did not yet include the new `isSubmitting` submit lock.
+- PR #359 corrected that matcher in commit `9d16fbc057264b97bb8f841e757a888637ba99e9`; its latest worklog/base commit is `484188c93cf575b8dc7e7f79ca01e882be04decf`.
+- The base branch advanced. GitHub compare of current base vs this head reports only the four intended asset-custodian files in the PR diff; no PR #359 files are included as duplicate changes.
+- A new exact-head CI run must be triggered after updating this branch/worklog; status PENDING.
 
 ## Batasan dan risiko
 
