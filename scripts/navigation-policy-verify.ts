@@ -82,3 +82,89 @@ assert.match(sidebar, /const isSekdir = !isSuperAdmin && hasPermission/,
   'Superadmin wildcard must not make the sidebar identify Superadmin as Sekdir');
 
 console.log('Dynamic navigation policy: PASS (no fixed role catalogue; permissions and landing-page checks)');
+
+
+const app = fs.readFileSync('src/App.tsx', 'utf8');
+const expectedRenderedTabs = [
+  'dashboard', 'my_assets', 'meeting_rooms', 'assets', 'maintenance', 'loans',
+  'tickets', 'licenses', 'contracts', 'vendors', 'knowledge', 'reports',
+];
+for (const tab of expectedRenderedTabs) {
+  assert.ok(sidebar.includes("id: '" + tab + "'"), 'Sidebar must expose the ' + tab + ' navigation item');
+  assert.ok(app.includes("activeTab === '" + tab + "'"), 'App must render a page for the ' + tab + ' navigation item');
+}
+assert.ok(sidebar.includes('onClick={() => onTabChange(item.id)}'),
+  'clicking a visible sidebar item must invoke the navigation callback');
+assert.ok(app.includes('const navigateToTab = (tab: NavTab) => {'),
+  'App must provide a single navigation gate');
+assert.ok(app.includes('!isNavTabAllowedForRole(currentUser.role, tab, currentUser.permission_keys) || !isModuleAvailable(tab)'),
+  'navigation must enforce both effective permissions and global module lifecycle');
+assert.ok(app.includes('setCurrentTab(tab)'),
+  'an authorized, active module selection must update the rendered tab');
+console.log('Menu-to-view contract: PASS (all 12 sidebar tabs have an App render branch and a guarded click path).');
+
+
+const server = fs.readFileSync('server.ts', 'utf8');
+const readRouteContracts: Array<[string, string]> = [
+  ['/api/dashboard/stats', 'dashboard.read'],
+  ['/api/dashboard/attention', 'dashboard.read'],
+  ['/api/assets', 'assets.read'],
+  ['/api/loans', 'loans.read'],
+  ['/api/tickets', 'tickets.read'],
+  ['/api/meeting-rooms', 'meeting_rooms.read'],
+  ['/api/room-reservations', 'room_reservations.read'],
+  ['/api/maintenances', 'maintenances.read'],
+  ['/api/contracts', 'contracts.read'],
+  ['/api/vendors', 'vendors.read'],
+  ['/api/knowledge', 'knowledge.read'],
+  ['/api/audit-logs', 'audit.read'],
+];
+for (const [path, permission] of readRouteContracts) {
+  const routeStart = server.indexOf("app.get('" + path + "'");
+  assert.ok(routeStart >= 0, 'backend read endpoint must exist: ' + path);
+  const nextRoute = server.indexOf('\n  app.', routeStart + 1);
+  const routeSource = server.slice(routeStart, nextRoute < 0 ? undefined : nextRoute);
+  assert.ok(routeSource.includes("requireRbacPermission(req, res, '" + permission + "')"),
+    path + ' must enforce ' + permission + ' on the backend');
+}
+const routeNavContracts: Array<[string, string[]]> = [
+  ['dashboard', ['dashboard.read']],
+  ['my_assets', ['assets.read']],
+  ['meeting_rooms', ['meeting_rooms.read', 'room_reservations.read']],
+  ['assets', ['assets.read', 'assets.catalog.read']],
+  ['maintenance', ['maintenances.read']],
+  ['loans', ['loans.read']],
+  ['tickets', ['tickets.read']],
+  ['licenses', ['licenses.read', 'assets.read']],
+  ['contracts', ['contracts.read']],
+  ['vendors', ['vendors.read']],
+  ['knowledge', ['knowledge.read']],
+];
+for (const [tab, grants] of routeNavContracts) {
+  assert.ok(isNavTabAllowedForRole('Custom Role', tab as any, grants),
+    tab + ' navigation must be granted by the same read permissions used by its API');
+}
+assert.ok(isNavTabAllowedForRole('Custom Role', 'reports', ['reports.read', 'assets.read']));
+assert.equal(isNavTabAllowedForRole('Custom Role', 'reports', ['reports.read']), false);
+console.log('Menu-to-API permission contract: PASS (backend read endpoints enforce the permissions that expose each menu).');
+
+
+// Every required callback declared by a page component must be wired by App.
+// Optional callbacks may intentionally use a documented fallback/no-op.
+const viewComponents = [
+  'DashboardView', 'AssetsView', 'MyAssetsView', 'MeetingRoomsView',
+  'MaintenanceView', 'LoansView', 'TicketsView', 'LicensesView',
+  'ContractsView', 'VendorsView', 'KnowledgeBaseView', 'ReportsView',
+];
+for (const view of viewComponents) {
+  const viewSource = fs.readFileSync('src/components/views/' + view + '.tsx', 'utf8');
+  const propsBlock = viewSource.match(new RegExp('interface ' + view + 'Props \\{([\\s\\S]*?)\\n\\}'));
+  assert.ok(propsBlock, view + ' must declare its public props contract');
+  const requiredCallbacks = [...propsBlock[1].matchAll(/^\s*(on[A-Z]\w*)\s*:/gm)].map(match => match[1]);
+  const appTag = app.match(new RegExp('<' + view + '\\b[\\s\\S]*?\\/>'));
+  assert.ok(appTag, 'App must render ' + view);
+  for (const callback of requiredCallbacks) {
+    assert.match(appTag[0], new RegExp('\\b' + callback + '\\s*='), view + ' required callback ' + callback + ' must be wired by App');
+  }
+}
+console.log('Menu action wiring contract: PASS (all required page callbacks are connected to App handlers).');
