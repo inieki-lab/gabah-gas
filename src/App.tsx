@@ -188,18 +188,18 @@ export default function App() {
     try {
       setIsLoading(true);
       const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge, fetchedMovements] = await Promise.all([
-        gabahApi.getAssets().catch(() => []),
-        gabahApi.getLoans().catch(() => []),
-        gabahApi.getTickets().catch(() => []),
-        gabahApi.getAuditLogs().catch(() => []),
-        gabahApi.getUsers().catch(() => []),
-        gabahApi.getMeetingRooms().catch(() => []),
-        gabahApi.getRoomReservations().catch(() => []),
-        gabahApi.getContracts().catch(() => []),
-        gabahApi.getMaintenances().catch(() => []),
-        gabahApi.getVendors().catch(() => []),
-        gabahApi.getKnowledgeArticles().catch(() => []),
-        gabahApi.getMovements().catch(() => []),
+        gabahApi.getAssets().catch(recoverDataRequestFailure),
+        gabahApi.getLoans().catch(recoverDataRequestFailure),
+        gabahApi.getTickets().catch(recoverDataRequestFailure),
+        gabahApi.getAuditLogs().catch(recoverDataRequestFailure),
+        gabahApi.getUsers().catch(recoverDataRequestFailure),
+        gabahApi.getMeetingRooms().catch(recoverDataRequestFailure),
+        gabahApi.getRoomReservations().catch(recoverDataRequestFailure),
+        gabahApi.getContracts().catch(recoverDataRequestFailure),
+        gabahApi.getMaintenances().catch(recoverDataRequestFailure),
+        gabahApi.getVendors().catch(recoverDataRequestFailure),
+        gabahApi.getKnowledgeArticles().catch(recoverDataRequestFailure),
+        gabahApi.getMovements().catch(recoverDataRequestFailure),
       ]);
 
       // A role switch/logout may have happened while these requests were in flight.
