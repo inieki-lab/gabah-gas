@@ -330,6 +330,9 @@ export class GabahDomainService {
 
     const isEmployeeBaseline = !isSuperadminActor(user) && !isAuditorActor(user);
 
+    const isItWorkstation = (asset: ServerAsset) =>
+      ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+
     if (!isPostgresPersistenceActive()) {
       const assignedOrLoanable = (asset: ServerAsset) =>
         asset.assigned_to?.id === user.id
@@ -348,14 +351,14 @@ export class GabahDomainService {
         );
       }
       if (hasGaCapability) {
-        // GA owns GA assets and may read IT laptops/desktops only; it must not
-        // gain visibility into IT servers/network infrastructure.
-        return db.assets.filter(asset =>
-          assignedOrLoanable(asset)
-          || String(asset.owner_division || '').toUpperCase() === 'GA'
-          || (String(asset.owner_division || '').toUpperCase() === 'IT'
-            && ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase()))
-        );
+        // GA owns GA assets and may read IT HLT/HPC workstations only. Do not
+        // let the general loan-pool fallback widen this to other IT categories.
+        return db.assets.filter(asset => {
+          const owner = String(asset.owner_division || '').toUpperCase();
+          return asset.assigned_to?.id === user.id
+            || owner === 'GA'
+            || (owner === 'IT' && isItWorkstation(asset));
+        });
       }
       if (isEmployeeBaseline) return db.assets.filter(assignedOrLoanable);
       return [];
@@ -366,8 +369,9 @@ export class GabahDomainService {
     // roles without changing employee identity or office location.
     const dynamicAssets = filterAssetsByDynamicScopes(db.assets, user);
     const canReadItWorkstations = hasRbacPermission(String(user.id), 'assets.read.it_workstations');
-    const isItWorkstation = (asset: ServerAsset) =>
-      ['HLT', 'HPC'].includes(String(asset.category_code || '').trim().toUpperCase());
+    const hasGaOwnerScope = hasRbacScope(String(user.id), 'division', 'GA');
+    const hasItOwnerScope = hasRbacScope(String(user.id), 'division', 'IT');
+    const restrictItLoanablePool = !hasItOwnerScope && (hasGaOwnerScope || canReadItWorkstations);
     // This read-only exception is a capability, not a primary-role shortcut.
     // Any explicitly assigned role can grant it, while the category + IT owner
     // filter prevents access to servers, network infrastructure, or IT write paths.
@@ -378,7 +382,15 @@ export class GabahDomainService {
       : [];
 
     const personalAssets = isEmployeeBaseline
-      ? db.assets.filter(asset => asset.assigned_to?.id === user.id || asset.is_loanable)
+      ? db.assets.filter(asset => {
+        if (asset.assigned_to?.id === user.id) return true;
+        if (!asset.is_loanable) return false;
+        const owner = String(asset.owner_division || '').toUpperCase();
+        if (restrictItLoanablePool && owner === 'IT') {
+          return canReadItWorkstations && isItWorkstation(asset);
+        }
+        return true;
+      })
       : [];
     const visibleIds = new Set([...personalAssets, ...dynamicAssets, ...readOnlyItWorkstations].map(asset => asset.id));
     return db.assets.filter(asset => visibleIds.has(asset.id));
