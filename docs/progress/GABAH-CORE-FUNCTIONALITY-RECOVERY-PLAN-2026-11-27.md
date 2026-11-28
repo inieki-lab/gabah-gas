@@ -270,3 +270,13 @@ Tidak boleh menyimpulkan role dari nama lokasi seperti RPC/SC atau PIBC. Lokasi 
 - PR #358: latest integrated CI #3998 berjalan; UAT lintas persona belum.
 - Tahap 3 RBAC per-user masih belum selesai karena belum ada snapshot database akun/role assignment aktual yang bisa dibandingkan dengan menu dan endpoint; source migration saja tidak membuktikan assignment akun tertentu.
 - Tahap 6 UAT browser tetap belum dilakukan.
+
+
+## Temuan tambahan — snapshot permission frontend setelah perubahan role
+
+- UI menyimpan `currentUser.permission_keys` sebagai snapshot ketika login.
+- Endpoint update permission role dan scope role sebelumnya hanya memperbarui cache RBAC backend; berbeda dengan endpoint assignment role user yang sudah memanggil `revokeUserSessions(userId)`.
+- Akibatnya, pegawai yang sedang login dapat tetap melihat menu lama setelah Superadmin mengubah permission/scope role. Backend sudah memakai policy baru sehingga klik/aksi dari menu lama dapat ditolak 403; grant baru juga belum muncul sampai sesi dimuat ulang.
+- PR #362 memperbaiki kedua route: identifikasi user yang assigned ke role, cabut sesi mereka setelah transaksi commit, refresh cache policy, dan beri tahu Superadmin jumlah pegawai yang harus login ulang. Exact-head CI sedang berjalan.
+- Ini merupakan temuan langsung yang menjelaskan sebagian gejala “menu berbeda/tidak sesuai per user”; tidak mengubah grant atau scope yang sudah ada.
+
