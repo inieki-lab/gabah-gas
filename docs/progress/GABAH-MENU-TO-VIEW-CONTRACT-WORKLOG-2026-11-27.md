@@ -52,3 +52,11 @@ Use the test result as a guardrail, then inspect each view's data dependencies a
 - This catches a menu that opens a page but leaves a required action handler disconnected.
 - Latest test commit: `3f4622f5aee51d69ff6b465f4932ae8ea0bdcd13`.
 - Exact-head CI pending.
+
+
+## Exact-head CI result
+
+- Exact code head: `4fa96561a6736d85b1d7dcc4ff7ce65b0d20e128`.
+- GitHub Actions #3930 (run ID `46005322324`) completed **SUCCESS**.
+- CI result covers the workflow's TypeScript, test, integration, production build, and Docker smoke steps for this exact code head.
+- Browser UAT remains NOT RUN; CI success does not prove the local browser menu flow works for every role.
