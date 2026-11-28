@@ -334,7 +334,11 @@ export default function App() {
 
       showToast(`Aset berhasil didaftarkan: ${created.asset_number}`);
       setIsCreateAssetModalOpen(false);
-      await refreshData();
+      try {
+        await refreshData();
+      } catch {
+        showToast('Aset tersimpan, tetapi daftar aset belum dapat diperbarui. Muat ulang data untuk melihat hasilnya.', 'warning');
+      }
       return true;
     } catch (err: any) {
       showToast(`Gagal mendaftarkan aset: ${err.message}`, 'warning');
@@ -505,7 +509,11 @@ export default function App() {
       showToast(`Tiket ${newTicket.ticket_number} berhasil dibuat! Target SLA: ${newTicket.sla_hours} jam.`);
       setIsCreateTicketModalOpen(false);
       setPreselectedTicketAssetId(undefined);
-      await refreshData();
+      try {
+        await refreshData();
+      } catch {
+        showToast('Tiket tersimpan, tetapi daftar tiket belum dapat diperbarui. Muat ulang data untuk melihat hasilnya.', 'warning');
+      }
       return true;
     } catch (err: any) {
       showToast(err.message || 'Gagal membuat tiket', 'warning');
