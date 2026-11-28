@@ -251,3 +251,22 @@ Tidak boleh menyimpulkan role dari nama lokasi seperti RPC/SC atau PIBC. Lokasi 
 4. **Jalur D:** tambah regression checks dan catat exact-head CI; UAT tetap diberi status pending sampai benar-benar dijalankan.
 
 **Batas:** Source/CI bukan browser UAT. Tidak ada data produksi, user assignment, permission grant, atau database yang diubah. Tidak merge ke `main` tanpa persetujuan eksplisit.
+
+
+## Update pelaksanaan — 28 November 2026, sore
+
+### Temuan tambahan pada bootstrap/menu
+- Audit `GabahApiClient.getModules()` menemukan request `GET /api/modules` tidak memiliki timeout. `App.refreshModuleStatuses()` hanya menampilkan state gagal bila Promise reject; request yang menggantung membuat `activeModuleKeys` tetap `null` dan Sidebar terus tersembunyi.
+- PR #361 menambahkan AbortController timeout 12 detik, pesan error yang jelas, cleanup timer, dan regression test/CI. CI #3993 (run ID `46128456441`) **SUCCESS 121/121** pada code head `56f0338ccd964e0fa024ba2870392d95867eb9e7`; update worklog sesudahnya memicu CI #3999 yang berjalan. Browser UAT hang/retry tetap pending.
+- Ini jalur berbeda dari race `initAuth()` PR #345; kedua proteksi dibutuhkan.
+
+### Temuan tambahan persona pengguna
+- PR #358 diperluas: Sidebar dan Dashboard sekarang berbagi satu daftar capability operasional, termasuk `room_reservations.checkin/checkout`; `loans.return` tetap self-service.
+- Migration 048 menormalisasi primary profile Auditor menjadi Karyawan dengan secondary role `auditor`. Sidebar sebelumnya tidak membaca role sekunder Auditor, sehingga label “Staf” berbeda dari Dashboard Auditor. PR #358 sekarang membedakan “Audit & Pemantauan”, “Dashboard Auditor”, dan menyembunyikan badge antrean operasional.
+- CI #3991 gagal pada matcher Dashboard lama yang mengharapkan array duplikat; matcher diperbarui. CI #3998 berjalan pada latest head setelah tambahan Auditor; belum ada hasil final.
+
+### Status bukti setelah update
+- PR #361: code-head CI lulus; latest docs-head CI #3999 berjalan.
+- PR #358: latest integrated CI #3998 berjalan; UAT lintas persona belum.
+- Tahap 3 RBAC per-user masih belum selesai karena belum ada snapshot database akun/role assignment aktual yang bisa dibandingkan dengan menu dan endpoint; source migration saja tidak membuktikan assignment akun tertentu.
+- Tahap 6 UAT browser tetap belum dilakukan.
