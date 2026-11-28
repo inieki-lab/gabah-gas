@@ -386,8 +386,9 @@ export class GabahDomainService {
         if (asset.assigned_to?.id === user.id) return true;
         if (!asset.is_loanable) return false;
         const owner = String(asset.owner_division || '').toUpperCase();
-        if (restrictItLoanablePool && owner === 'IT') {
-          return canReadItWorkstations && isItWorkstation(asset);
+        if (restrictItLoanablePool) {
+          if (hasGaOwnerScope && owner === 'GA') return true;
+          return owner === 'IT' && canReadItWorkstations && isItWorkstation(asset);
         }
         return true;
       })
