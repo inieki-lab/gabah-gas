@@ -322,3 +322,10 @@ Tidak boleh menyimpulkan role dari nama lokasi seperti RPC/SC atau PIBC. Lokasi 
 - PR #364 GA license menu: CI #4026 and #4029 **SUCCESS 121/121**; latest worklog-only update triggered a new CI run.
 - PR #363 ticket category filter: CI #4008 and #4014 **SUCCESS 120/120**.
 - All remain Draft and no production database or account assignments have been changed.
+
+
+## Dokumen uji per-user
+
+- Ditambahkan `docs/progress/GABAH-PER-USER-MENU-UAT-MATRIX-2026-11-28.md` sebagai expected baseline matrix 12 menu untuk Superadmin, IT, GA, Auditor, Karyawan, Humas, Sekdir, ME queue, serta aturan lokasi HO/PIBC/RPC/Pangsub/Kantor Perawatan.
+- Matrix membedakan role dari lokasi, permission dari scope data, dan menu global dari hak akses per-user. Dokumen juga berisi checklist browser UAT dan bukti yang harus dikumpulkan.
+- Matrix ini bukan bukti bahwa assignment setiap akun aktual sudah benar; snapshot database non-production dan browser UAT tetap diperlukan.
