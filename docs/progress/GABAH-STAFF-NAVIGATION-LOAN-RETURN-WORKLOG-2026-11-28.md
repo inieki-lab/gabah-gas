@@ -40,6 +40,35 @@
 | Exact-head GitHub Actions CI | PASS — run #3939 / 46113074821, exact head `fec5c4a9f546daed4dfe35de73a5824021443e2d`; all 116 verification steps succeeded, including lint, navigation policy, dashboard scope, production build, Docker runtime smoke, PostgreSQL integration, P0 HTTP security, loan and ticket checks |
 | Browser UAT lintas persona | NOT RUN |
 
+
+
+## Audit lanjutan — Dashboard dan Sidebar harus memakai satu sumber persona
+
+### Temuan baru
+- Setelah mengeluarkan `loans.return` dari capability operasional, ditemukan drift lain: Sidebar menganggap `room_reservations.checkin` dan `room_reservations.checkout` sebagai kemampuan operasional, tetapi Dashboard memiliki daftar hard-coded terpisah yang tidak memuat dua permission tersebut.
+- Akibatnya, akun custom yang hanya diberi tugas check-in/check-out dapat diberi label “Operasional Utama” di Sidebar tetapi masih menerima klasifikasi dashboard staf.
+- Ini bukan perubahan hak akses; masalahnya klasifikasi persona UI yang tidak konsisten.
+
+### Perbaikan tambahan
+- Ekspor `OPERATIONAL_NAVIGATION_PERMISSIONS` sebagai sumber capability bersama dari `roleNavigation.ts`.
+- Dashboard sekarang memakai daftar yang sama dengan Sidebar; daftar permission duplikat di Dashboard dihapus.
+- Tambah regression assertions untuk:
+  - `assets.lifecycle` tetap operasional.
+  - `room_reservations.checkin` dan `room_reservations.checkout` tetap operasional.
+  - `loans.return` tetap self-service dan bukan capability operasional.
+  - Dashboard menggunakan shared list dan tidak memelihara daftar kedua.
+- Ini mencegah daftar permission Dashboard dan Sidebar drift lagi ketika permission baru ditambahkan.
+
+### File tambahan yang berubah
+- `src/components/views/DashboardView.tsx`
+- `scripts/navigation-policy-verify.ts`
+- `src/navigation/roleNavigation.ts` (export shared capability list)
+
+### Validation update
+- Source-level mismatch terkonfirmasi pada baseline main: Dashboard list tidak memiliki dua room check-in/out grants yang ada pada Sidebar list.
+- Regression assertions ditambahkan; exact-head CI untuk perubahan tambahan ini harus berjalan.
+- Browser UAT untuk Karyawan, room operator, IT, GA, dan Humas tetap belum dilakukan.
+
 ## Batasan dan risiko
 
 - Perubahan hanya mengubah label/kelompok navigasi di Sidebar; tidak menambah atau mengurangi hak akses.
