@@ -137,6 +137,7 @@ export default function App() {
   // Fetch all authoritative data from Backend API
   // Prevent an older user's in-flight API response from repopulating state after an identity change.
   const dataRefreshGeneration = useRef(0);
+  const sessionExpiredHandled = useRef(false);
   const clearRoleScopedData = () => {
     setAssets([]);
     setLoans([]);
@@ -172,6 +173,8 @@ export default function App() {
   };
 
   const handleSessionExpired = () => {
+    if (sessionExpiredHandled.current) return;
+    sessionExpiredHandled.current = true;
     dataRefreshGeneration.current += 1;
     clearRoleScopedData();
     setCurrentUser(null);
@@ -179,6 +182,12 @@ export default function App() {
     setIsLoading(false);
     setToastMessage({ text: 'Sesi berakhir karena hak akses berubah atau sudah dicabut. Silakan login kembali.', type: 'warning' });
   };
+
+  useEffect(() => {
+    const onSessionExpired = () => handleSessionExpired();
+    window.addEventListener('gabah:session-expired', onSessionExpired);
+    return () => window.removeEventListener('gabah:session-expired', onSessionExpired);
+  }, []);
 
   const refreshData = useCallback(async () => {
     const generation = dataRefreshGeneration.current;
@@ -243,6 +252,7 @@ export default function App() {
           new Promise<null>((resolve) => setTimeout(() => resolve(null), 10000)),
         ]);
         if (me) {
+          sessionExpiredHandled.current = false;
           dataRefreshGeneration.current += 1;
           clearRoleScopedData();
           setCurrentUser(me);
@@ -270,6 +280,7 @@ export default function App() {
         showToast('Alih peran ditolak oleh server.', 'warning');
         return;
       }
+      sessionExpiredHandled.current = false;
       dataRefreshGeneration.current += 1;
       clearRoleScopedData();
       setCurrentUser(targetUser);
@@ -703,6 +714,7 @@ export default function App() {
         <LoginPage
           initialEmail={loginEmail}
           onLoginSuccess={(u) => {
+            sessionExpiredHandled.current = false;
             dataRefreshGeneration.current += 1;
             clearRoleScopedData();
             setCurrentUser(u);
