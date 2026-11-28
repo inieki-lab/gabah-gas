@@ -50,12 +50,28 @@ Pemeriksaan lanjutan:
 - `EditAssetModal` juga menunggu callback; caller `onSaveAsset` melempar ulang error setelah toast sehingga modal tetap terbuka ketika penyimpanan gagal.
 - Audit ini merupakan source inspection, bukan browser UAT.
 
+
+
+## Temuan tambahan — Penolakan Peminjaman
+
+Audit aksi persetujuan menemukan dialog Tolak Peminjaman langsung menutup dan menghapus alasan setelah memanggil `onRejectLoan()`, tanpa menunggu API. Parent handler menangkap kegagalan API dan tidak meneruskan hasilnya, sehingga alasan penolakan dapat hilang walaupun transaksi gagal.
+
+Perbaikan:
+- `App.handleRejectLoan` kini mengembalikan `Promise<boolean>`: false untuk kegagalan API, true setelah penolakan tersimpan.
+- Kegagalan refresh setelah penolakan sukses dipisahkan dari hasil transaksi agar pengguna tidak mengulang penolakan yang sudah commit.
+- `LoansView` menunggu hasil callback; dialog hanya ditutup dan alasan dihapus setelah server mengonfirmasi sukses.
+- Saat gagal, alasan tetap ada, pesan error ditampilkan, dan tombol submit terkunci selama request.
+- Alasan wajib diisi sebelum mengirim.
+- Regression assertions ditambahkan pada test UI yang sudah terdaftar di CI.
+
+
 ## File yang diubah
 
 - `src/App.tsx`
 - `src/components/modals/CreateTicketModal.tsx`
 - `src/components/modals/CreateAssetModal.tsx`
 - `src/components/views/MaintenanceView.tsx`
+- `src/components/views/LoansView.tsx`
 - `scripts/effective-permission-ui-verify.mjs`
 - Dokumen worklog ini.
 
@@ -71,6 +87,9 @@ Pemeriksaan lanjutan:
 - `3cfd9f1c00ba8043d4666e42514e2807d3399b57` — maintenance form menunggu hasil dan mempertahankan isian saat gagal.
 - `32d1162fc14434b98d3c7b34b7cbaedd7fbd0178` — mempertahankan parsing checklist per baris.
 - `7efc57e82d0fe564667901f80c439f35104c5cff` — regression test menolak false-success maintenance toast.
+- `897075b089cd13e729cb006c3493f3f227241be6` — App mengembalikan hasil API penolakan pinjaman.
+- `494584abfd6fb0b320506168b7cc8b50620d88d1` — dialog penolakan menahan alasan sampai API sukses.
+- `15fc12871a616d85fdb36609ec1aea7da0a8be93` — regression matcher untuk dialog penolakan.
 
 ## Validasi
 
@@ -105,5 +124,5 @@ Pemeriksaan lanjutan:
 
 1. Tunggu exact-head CI; perbaiki semua kegagalan pada branch ini.
 2. Lanjutkan pola audit yang sama ke form create/edit lainnya (kontrak, vendor, knowledge, maintenance, reservasi) tanpa menganggap semuanya memiliki bug yang sama.
-3. Uji browser per role dan per status API sebelum PR dinyatakan siap merge.
+3. Uji browser per role dan per status API, termasuk penolakan pinjaman dengan API sukses/gagal, sebelum PR dinyatakan siap merge.
 4. Jangan merge ke `main` tanpa persetujuan eksplisit pemilik proyek.
