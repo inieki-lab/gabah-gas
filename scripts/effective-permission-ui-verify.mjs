@@ -76,8 +76,11 @@ assert.match(maintenanceView, /if \(!saved\)[\s\S]*?setSubmitError/);
 assert.match(maintenanceView, /disabled=\{isSubmitting\}/);
 assert.doesNotMatch(maintenanceView, /Jadwal pemeliharaan berhasil didaftarkan/,
   'maintenance form must not show success before the server confirms persistence');
-assert.doesNotMatch(maintenanceView, /onAddSchedule\(newObj\);[\s\S]*?setIsCreateModalOpen\(false\)/,
-  'maintenance form must not close before the server confirms persistence');
+const maintenanceSaveAwait = maintenanceView.indexOf('const saved = await onAddSchedule(newObj);');
+const maintenanceFailureGuard = maintenanceView.indexOf('if (!saved)', maintenanceSaveAwait);
+const maintenanceClose = maintenanceView.indexOf('setIsCreateModalOpen(false)', maintenanceSaveAwait);
+assert.ok(maintenanceSaveAwait >= 0 && maintenanceFailureGuard > maintenanceSaveAwait && maintenanceClose > maintenanceFailureGuard,
+  'maintenance form must await save, handle false, then close only on success');
 assert.match(maintenanceCreateHandler, /return true;/);
 assert.match(maintenanceCreateHandler, /return false;/);
 console.log('PASS: maintenance create form waits for backend success and retains input after failure.');
