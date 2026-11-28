@@ -30,8 +30,25 @@
 
 - `src/components/modals/CreateAssetModal.tsx`
 - `src/App.tsx`
+- `server/services.ts`
 - `scripts/asset-scope-policy-verify.mjs`
+- `scripts/asset-create-atomicity-verify.mjs`
 - Dokumen worklog ini.
+
+
+
+## Backend authorization finding — assets.assign
+
+The first review of the create service showed that `POST /api/assets` requires `assets.create`, but the service accepted `assigned_to_user_id` without separately requiring `assets.assign`. The existing standalone assignment endpoint already requires `assets.assign`; allowing the same mutation during create would bypass that permission boundary.
+
+Additional fix:
+- `createAsset()` now requires both `assets.create` and owner-scoped `assets.assign` when `assigned_to_user_id` is supplied.
+- The `assets.assign` check runs before looking up the target user, so an actor without assignment authority cannot probe whether a user ID is active.
+- The UI only shows the initial-custodian selector when effective `assets.assign` is present. PostgreSQL Dynamic RBAC remains authoritative; IT/GA legacy fallback is used only when permission metadata is absent in file-store mode.
+- Users who can create assets but cannot assign them can still create an unassigned Pool / Fasilitas Umum asset.
+- Added CI source regressions for the service guard, HTTP 403 contract, permission-gated UI, and active-user relation.
+
+This is a security correction, not just a UI change. Existing permission catalog/migration already defines `assets.assign`; no migration is added.
 
 ## Validasi
 
@@ -41,7 +58,8 @@
 | API payload supports `assigned_to_user_id` | DONE |
 | Backend validates active user before asset number allocation | DONE |
 | Regression assertions added | ADDED; not run locally |
-| `npm run test:asset-scope-policy` | NOT RUN locally |
+| `npm run test:asset-scope-policy` | NOT RUN locally; permission-gate assertions added |
+| `npm run test:asset-create-atomicity` | NOT RUN locally; assignment guard/403 ordering assertions added |
 | TypeScript/build | NOT RUN |
 | Exact-head GitHub Actions | #3950 FAILED on an outdated assertion inherited from the previous base; base fix available at `484188c...`; rerun pending |
 | Browser UAT with IT/GA and no-directory user | NOT RUN |
