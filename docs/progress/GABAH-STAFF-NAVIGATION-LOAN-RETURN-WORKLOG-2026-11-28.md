@@ -106,3 +106,10 @@
 - Badge antrean peminjaman/tiket operasional disembunyikan untuk Auditor.
 - Regression assertions ditambahkan untuk mencegah Auditor kembali diklasifikasikan sebagai staf biasa.
 - Tidak mengubah permission, data visibility, backend read-only policy, atau role assignment.
+
+
+## Final integrated CI result
+
+- CI #3998 (run ID `46128719074`) completed **SUCCESS**, 120/120 workflow steps, on latest integrated code/worklog head `b2928b851eb587f3b8680b0dd1443dd9582cc863`.
+- This run includes the shared Dashboard/Sidebar capability policy, Auditor secondary-role presentation, and the corrected dashboard owner-summary matcher.
+- Browser UAT remains pending for Karyawan, Auditor, custom room operator, IT, GA, and Humas.
