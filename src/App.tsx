@@ -309,7 +309,7 @@ export default function App() {
   };
 
   // 1. Create Asset (Handled Authoritatively by Backend Engine)
-  const handleCreateAsset = async (data: Partial<Asset>) => {
+  const handleCreateAsset = async (data: Partial<Asset> & { assigned_to_user_id?: string }) => {
     try {
       const created = await gabahApi.createAsset({
         category_name_or_code: (data as any).category_code || data.subcategory || data.category_type || 'HLT',
@@ -327,6 +327,7 @@ export default function App() {
         // T2B-2: relasi lokasi fisik aset diteruskan ke backend.
         asset_location_id: data.asset_location_id,
         is_loanable: data.is_loanable,
+        assigned_to_user_id: data.assigned_to_user_id,
         condition: data.condition || 'new',
         license_detail: data.license_detail,
         notes: data.notes,
@@ -1035,6 +1036,14 @@ export default function App() {
         isOpen={isCreateAssetModalOpen}
         onClose={() => setIsCreateAssetModalOpen(false)}
         existingAssets={assets}
+        users={allUsers}
+        canAssignInitialCustodian={Boolean(currentUser && (
+          GabahService.hasEffectivePermission(currentUser, 'assets.assign')
+          || (!Array.isArray(currentUser.permission_keys) && (
+            GabahService.hasLegacyCapability(currentUser, 'it')
+            || GabahService.hasLegacyCapability(currentUser, 'ga')
+          ))
+        ))}
         onCreateAsset={handleCreateAsset}
       />
 
