@@ -141,7 +141,7 @@ Perbaikan:
 | `npm run test:effective-permission-ui` | NOT RUN locally — no repository checkout/runtime in this session; additional source assertions for Maintenance are included |
 | TypeScript `npm run lint` | NOT RUN |
 | Production build | NOT RUN |
-| Exact-head GitHub Actions | #3949 stale ME matcher fixed; #3955 maintenance matcher false positive fixed; #3973 missing state declarations fixed; #3976 handler scope error fixed in `30a0300...`; latest exact-head rerun pending |
+| Exact-head GitHub Actions | PASS — run #3979 (`46115275355`) on exact head `efdf124...`; 120/120 workflow steps passed after all regression matcher/typecheck corrections |
 | Browser UAT saat API sukses/gagal | NOT RUN |
 
 
@@ -181,6 +181,14 @@ Perbaikan:
 - Moved the handler to the component scope, immediately before the ticket capability/action derivations.
 - Fix commit: `30a0300d2d1e78b7c22282fea8b1f3908a385c76`.
 - Exact-head CI after the scope correction is pending.
+
+
+
+## Final exact-head CI result
+
+- CI run #3979 (`46115275355`) completed **SUCCESS** on exact head `efdf124f4d63fd81abea81667e0b93062551248e`.
+- All 120/120 workflow steps passed, including TypeScript, effective-permission UI regressions, navigation/role checks, PostgreSQL integration, production build, Docker runtime smoke, P0 HTTP security, and loan/ticket checks.
+- Browser UAT remains NOT RUN; user-facing success/failure flows still require local browser verification.
 
 ## Batasan dan risiko
 
