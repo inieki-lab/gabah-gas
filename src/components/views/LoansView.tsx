@@ -34,7 +34,7 @@ interface LoansViewProps {
   onOpenCreateModal?: () => void;
   onOpenNewLoanModal?: () => void;
   onApproveLoan: (loanId: string) => void;
-  onRejectLoan: (loanId: string, reason: string) => void;
+  onRejectLoan: (loanId: string, reason: string) => Promise<boolean>;
   onHandoverLoan: (loanId: string) => void;
   onReturnLoan: (loanId: string, condition: 'excellent' | 'good' | 'fair' | 'poor' | 'broken' | 'damaged', notes: string) => Promise<boolean> | boolean | void;
   onOpenBastModal?: (loan: Loan) => void;
@@ -60,6 +60,8 @@ export const LoansView: React.FC<LoansViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [rejectingLoanId, setRejectingLoanId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState<string>('');
+  const [isRejecting, setIsRejecting] = useState(false);
+  const [rejectError, setRejectError] = useState('');
 
   const [returningLoan, setReturningLoan] = useState<Loan | null>(null);
   const [returnCondition, setReturnCondition] = useState<'excellent' | 'good' | 'fair' | 'poor' | 'broken' | 'damaged'>('good');
@@ -97,6 +99,30 @@ export const LoansView: React.FC<LoansViewProps> = ({
     ?? hasEffectivePermission('loans.handover', ['Admin GABAH', 'IT', 'GA']);
   const canReturn = (loan: Loan) => loan.allowed_actions?.return
     ?? (!isReadOnly && (hasEffectivePermission('loans.return', ['Admin GABAH', 'IT', 'GA']) || loan.borrower_id === currentUser.id));
+
+  const handleRejectSubmit = async () => {
+    if (!rejectingLoanId || isRejecting) return;
+    if (!rejectReason.trim()) {
+      setRejectError('Alasan penolakan wajib diisi.');
+      return;
+    }
+
+    setIsRejecting(true);
+    setRejectError('');
+    try {
+      const saved = await onRejectLoan(rejectingLoanId, rejectReason.trim());
+      if (!saved) {
+        setRejectError('Penolakan belum tersimpan. Alasan tetap tersedia; periksa notifikasi dan coba kembali.');
+        return;
+      }
+      setRejectingLoanId(null);
+      setRejectReason('');
+    } catch (err: any) {
+      setRejectError(err?.message || 'Gagal menolak peminjaman. Alasan tetap tersedia; coba kembali.');
+    } finally {
+      setIsRejecting(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -299,7 +325,7 @@ export const LoansView: React.FC<LoansViewProps> = ({
                       )}
                       {userCanReject && (
                         <button
-                          onClick={() => setRejectingLoanId(loan.id)}
+                          onClick={() => { setRejectReason(''); setRejectError(''); setRejectingLoanId(loan.id); }}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold transition-all"
                         >
                           <XCircle className="w-3.5 h-3.5" />
@@ -381,26 +407,26 @@ export const LoansView: React.FC<LoansViewProps> = ({
             <textarea
               rows={3}
               value={rejectReason}
+              disabled={isRejecting}
               onChange={(e) => setRejectReason(e.target.value)}
               placeholder="Contoh: Unit sedang dijadwalkan servis berkala, atau keperluan rapat direksi..."
               className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-rose-500 focus:bg-white"
             />
+            {rejectError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{rejectError}</p>}
             <div className="flex justify-end gap-2">
               <button
-                onClick={() => setRejectingLoanId(null)}
+                disabled={isRejecting}
+                onClick={() => { setRejectingLoanId(null); setRejectReason(''); setRejectError(''); }}
                 className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-semibold"
               >
                 Batal
               </button>
               <button
-                onClick={() => {
-                  onRejectLoan(rejectingLoanId, rejectReason);
-                  setRejectingLoanId(null);
-                  setRejectReason('');
-                }}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold"
+                disabled={isRejecting || !rejectReason.trim()}
+                onClick={handleRejectSubmit}
+                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Konfirmasi Tolak
+                {isRejecting ? 'Memproses Penolakan...' : 'Konfirmasi Tolak'}
               </button>
             </div>
           </div>
