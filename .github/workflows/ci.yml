@@ -83,6 +83,9 @@ jobs:
       - name: Dynamic RBAC foundation contract checks
         run: npm run test:dynamic-rbac-foundation
 
+      - name: RBAC role permission and scope change session refresh
+        run: npm run test:rbac-role-change-session-refresh
+
       - name: Vendor and Knowledge Base fail-closed authorization contract
         run: npm run test:vendor-knowledge-rbac-fail-closed
 
