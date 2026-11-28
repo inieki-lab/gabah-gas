@@ -141,7 +141,7 @@ Perbaikan:
 | `npm run test:effective-permission-ui` | NOT RUN locally — no repository checkout/runtime in this session; additional source assertions for Maintenance are included |
 | TypeScript `npm run lint` | NOT RUN |
 | Production build | NOT RUN |
-| Exact-head GitHub Actions | PASS — run #3979 (`46115275355`) on exact head `efdf124...`; 120/120 workflow steps passed after all regression matcher/typecheck corrections |
+| Exact-head GitHub Actions | PASS — #3979 on code head `efdf124...` and #3981 on latest head `d73f4d...`; both 120/120 workflow steps passed |
 | Browser UAT saat API sukses/gagal | NOT RUN |
 
 
@@ -189,6 +189,14 @@ Perbaikan:
 - CI run #3979 (`46115275355`) completed **SUCCESS** on exact head `efdf124f4d63fd81abea81667e0b93062551248e`.
 - All 120/120 workflow steps passed, including TypeScript, effective-permission UI regressions, navigation/role checks, PostgreSQL integration, production build, Docker runtime smoke, P0 HTTP security, and loan/ticket checks.
 - Browser UAT remains NOT RUN; user-facing success/failure flows still require local browser verification.
+
+
+
+## Final exact-head CI result
+
+- CI #3981 (`46115489030`) completed **SUCCESS** on latest PR head `d73f4d35929cf9506174d3e18acd5066d6abf86e`.
+- All 120/120 workflow steps passed. This includes the final worklog-only commit after the code-head pass #3979.
+- Browser UAT remains NOT RUN; test the API failure and success paths in the local browser with representative roles.
 
 ## Batasan dan risiko
 
