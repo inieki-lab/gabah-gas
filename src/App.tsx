@@ -335,8 +335,10 @@ export default function App() {
       showToast(`Aset berhasil didaftarkan: ${created.asset_number}`);
       setIsCreateAssetModalOpen(false);
       await refreshData();
+      return true;
     } catch (err: any) {
       showToast(`Gagal mendaftarkan aset: ${err.message}`, 'warning');
+      return false;
     }
   };
 
@@ -504,8 +506,10 @@ export default function App() {
       setIsCreateTicketModalOpen(false);
       setPreselectedTicketAssetId(undefined);
       await refreshData();
+      return true;
     } catch (err: any) {
       showToast(err.message || 'Gagal membuat tiket', 'warning');
+      return false;
     }
   };
 
