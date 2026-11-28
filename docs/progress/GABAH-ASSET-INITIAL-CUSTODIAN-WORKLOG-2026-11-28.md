@@ -61,7 +61,7 @@ This is a security correction, not just a UI change. Existing permission catalog
 | `npm run test:asset-scope-policy` | NOT RUN locally; permission-gate assertions added |
 | `npm run test:asset-create-atomicity` | NOT RUN locally; assignment guard/403 ordering assertions added |
 | TypeScript/build | NOT RUN |
-| Exact-head GitHub Actions | #3963 stale payload matcher fixed; #3969 PASS 120/120 on code head `a1d0f4f...`; #3977 used old base and failed on missing ticket handler scope; corrected base `efdf124...` now requires integrated rerun |
+| Exact-head GitHub Actions | PASS — #3980 (`46115322315`) 120/120 steps on head `7b6cc5cdb736cdb85f797959df4373b9de20be2f`; includes corrected stacked base `efdf124...` |
 | Browser UAT with IT/GA and no-directory user | NOT RUN |
 
 
@@ -115,6 +115,15 @@ This is a security correction, not just a UI change. Existing permission catalog
 - This run used the prior stacked base before PR #359's handler-scope correction.
 - PR #359 now contains the correction in commit `30a0300d2d1e78b7c22282fea8b1f3908a385c76`; current base head is `efdf124f4d63fd81abea81667e0b93062551248e`.
 - Trigger a new exact-head CI against the corrected base; do not treat #3977 as a failure in the asset-custodian code.
+
+
+
+## Final integrated exact-head CI result
+
+- CI #3980 (`46115322315`) completed **SUCCESS** on exact head `7b6cc5cdb736cdb85f797959df4373b9de20be2f`.
+- All 120/120 workflow steps passed, including TypeScript, asset-scope policy, asset-create atomicity, PostgreSQL 17 integration, production build, Docker runtime smoke, and HTTP security checks.
+- The run included the corrected stacked base from PR #359 at `efdf124f4d63fd81abea81667e0b93062551248e`.
+- Browser UAT remains NOT RUN; verify initial custodian selection and server 403 behavior using real role test accounts before merge.
 
 ## Batasan dan risiko
 
