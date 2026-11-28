@@ -61,7 +61,7 @@ This is a security correction, not just a UI change. Existing permission catalog
 | `npm run test:asset-scope-policy` | NOT RUN locally; permission-gate assertions added |
 | `npm run test:asset-create-atomicity` | NOT RUN locally; assignment guard/403 ordering assertions added |
 | TypeScript/build | NOT RUN |
-| Exact-head GitHub Actions | #3950 stale ME matcher; #3960 false-positive maintenance matcher; both corrected in stacked base `5c2fcca...`; rerun pending |
+| Exact-head GitHub Actions | #3950/#3960 inherited base matchers corrected; #3963 had one stale unconditional-payload matcher (fixed `a684420...`); exact-head rerun pending |
 | Browser UAT with IT/GA and no-directory user | NOT RUN |
 
 
@@ -80,6 +80,16 @@ This is a security correction, not just a UI change. Existing permission catalog
 - CI #3960 (`46114473603`) failed at the inherited `test:effective-permission-ui` step because the base branch still contained a false-positive maintenance source matcher.
 - PR #359 corrected the assertion in `fd80ab1c4800f17eaf76c5660c44c851f4519750` and recorded it in base worklog commit `5c2fcca38ee66306ff0e834d87151fe5be74af53`.
 - The stacked PR base has now advanced to that commit. The next exact-head CI run must verify the updated base plus asset assignment permission changes.
+
+
+
+## CI feedback — permission-gated payload matcher
+
+- CI #3963 (`46114571674`) reached the asset scope policy suite and failed one source assertion.
+- The implementation correctly changed the payload from unconditional `assigned_to_user_id` to `canAssignInitialCustodian ? assignedToUserId : undefined`, but the earlier test still expected the unconditional form.
+- Updated the regression matcher to assert the permission-gated payload expression.
+- Fix commit: `a684420da7b248926d0cad36fc23b9fff3035912`.
+- All other 111 asset-scope assertions passed, including the new UI permission gate, App forwarding, and backend `assets.assign` service check. Exact-head rerun pending.
 
 ## Batasan dan risiko
 
