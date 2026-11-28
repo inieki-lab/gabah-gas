@@ -92,3 +92,10 @@
 - CI #4025 (run ID 46130679482) reached `test:effective-permission-ui` and failed because an existing assertion expected the old `.catch(() => [])` best-effort pattern.
 - Updated that regression to expect `recoverDataRequestFailure`, assert that 401 is propagated, and assert the session-expiry handler returns the app to login.
 - The change is test-only; exact-head CI rerun is pending.
+
+
+## Final exact-head CI result
+
+- CI #4028 (run ID 46131081967) completed SUCCESS, 121/121 workflow steps, on latest integrated code/worklog head fd2dc449f35425aae8ac74f364a07f5ee5d14db0.
+- This run includes role permission/scope change detection, no-op save safety, session revocation, HTTP 401 client handling, loading-state cleanup, and anonymous auth startup regression checks.
+- Browser UAT remains pending.
