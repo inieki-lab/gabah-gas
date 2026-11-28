@@ -159,6 +159,11 @@ const checks = [
   ['App forwards the selected initial custodian ID and authorized user directory to asset creation', /assigned_to_user_id: data\.assigned_to_user_id/.test(appUi) && /<CreateAssetModal[\s\S]*?users=\{allUsers\}/.test(appUi)],
   ['Backend validates initial custodian as an active user and persists the real relational assignment', /const assignedToId = payload\.assigned_to_user_id/.test(services) && /db\.users\.find\(user => user\.id === assignedToId && user\.is_active\)/.test(services) && /assignedObj = \{[\s\S]*?id: assignedUser\.id/.test(services)],
 
+  ['Initial custodian UI is hidden without effective assets.assign permission', /canAssignInitialCustodian \?/.test(assetCreateUi) && /permission assets\.assign/.test(assetCreateUi) && /GabahService\.hasEffectivePermission\(currentUser, 'assets\.assign'\)/.test(appUi)],
+  ['Initial custodian selection only sends a real active-user ID when assignment permission is present', /assigned_to_user_id: canAssignInitialCustodian \? \(assignedToUserId \|\| undefined\) : undefined/.test(assetCreateUi) && /activeCustodianUsers = useMemo/.test(assetCreateUi) && !assetCreateUi.includes('CUST-')],
+  ['Asset create forwards assigned_to_user_id through the existing API client', /assigned_to_user_id: data\.assigned_to_user_id/.test(appUi) && /assigned_to_user_id\?: string/.test(assetCreateApi)],
+  ['Asset create service requires assets.assign and owner scope for initial assignment', /assignedToId && !canMutateAssetOwner\(actor, resolvedOwnerDivision, 'assets\.assign'\)/.test(services) && /statusCode: 403/.test(services)],
+
 ];
 
 let failed = 0;
