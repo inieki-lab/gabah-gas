@@ -91,3 +91,18 @@
 - Updated `scripts/dashboard-owner-summary-verify.mjs` to assert the shared capability list is imported and used.
 - This was a regression-test expectation mismatch, not a TypeScript or runtime failure.
 - New exact-head CI is required after this test correction.
+
+
+## Temuan lanjutan — Auditor salah tampil sebagai staf biasa di Sidebar
+
+- Migration 048 menormalkan profil utama Auditor menjadi `Karyawan` dan menyimpan capability Auditor sebagai role sekunder `auditor`.
+- Dashboard memakai `GabahService.isAuditor(currentUser)` yang membaca role sekunder tersebut, sehingga Dashboard menampilkan mode read-only Auditor.
+- Sidebar sebelumnya hanya memeriksa profil utama `Karyawan` melalui `isStaffNavigationPersona`; ia tidak memeriksa role sekunder `auditor`. Akibatnya Auditor dapat melihat judul “Layanan & Tugas Staf” dan “Dashboard Staf” walaupun Dashboard berada pada mode Auditor.
+- Sidebar juga dapat menampilkan badge antrean operasional untuk akun Auditor karena hanya memeriksa `isStaff`.
+
+### Perbaikan
+- Sidebar sekarang mendeteksi role sekunder `auditor` dari `currentUserRoleKeys`.
+- Auditor mendapat bagian “Audit & Pemantauan” dan label “Dashboard Auditor”.
+- Badge antrean peminjaman/tiket operasional disembunyikan untuk Auditor.
+- Regression assertions ditambahkan untuk mencegah Auditor kembali diklasifikasikan sebagai staf biasa.
+- Tidak mengubah permission, data visibility, backend read-only policy, atau role assignment.
