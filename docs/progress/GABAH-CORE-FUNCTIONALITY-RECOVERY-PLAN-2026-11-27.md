@@ -195,3 +195,59 @@ Dokumen tersebut menjadi checklist UAT per menu, termasuk pemisahan bukti wiring
 - **PR #355 rencana pemulihan:** CI #3909, #3913, #3916, #3922 SUCCESS.
 - Semua perubahan masih Draft; tidak ada merge ke `main`.
 
+
+
+## Status audit ulang — 28 November 2026 (permintaan UAT: menu per pengguna)
+
+### Kesimpulan
+Pemulihan fondasi belum sama dengan penyelesaian menu per pengguna. Matriks 12 menu sudah ada pada level source, tetapi belum ada matriks efektif per akun yang menggabungkan seluruh role, permission, module status, dan scope lokasi/divisi. Browser UAT lintas persona juga belum dijalankan. Karena itu status keseluruhan tetap **BELUM SELESAI**.
+
+### Status tahapan 0–7
+
+| Tahap | Status saat ini | Bukti yang tersedia | Sisa pekerjaan wajib |
+|---|---|---|---|
+| 0 Inventaris menu | **PARTIAL** | Matriks 12 menu → view → data → aksi di `GABAH-MENU-PAGE-API-MATRIX-2026-11-27.md`; source contract PR #353 | Lengkapi matriks efektif per persona/akun, termasuk header actions, Administration submenus, dan tombol per halaman |
+| 1 Bootstrap/login | **CODE + CI PARTIAL** | PR #345 auth restore race; PR #352 data refresh/error handling; PR #356 Error Boundary | Uji browser reload/login/logout, session expiry, failed module status, dan retry pada akun nyata |
+| 2 Navigasi/render | **CODE + CI PARTIAL** | PR #353 menu-to-view/callback contract; PR #357 composite menu grants; PR #358 persona alignment | Uji semua 12 menu dengan akun yang punya/tidak punya permission dan modul aktif/nonaktif; cek active highlight dan default landing |
+| 3 RBAC/module/scope | **INCOMPLETE — PRIORITY** | `server/rbac-policy.ts` menggabungkan permission dari semua role yang ditugaskan per user; menu memakai `permission_keys`; backend memakai permission/scope guards | Belum ada hasil audit per-user yang membandingkan assigned roles vs effective permissions vs Sidebar vs API 403/200; audit seluruh endpoint dan scope owner/lokasi/divisi; verifikasi module toggles |
+| 4 Operasi/form | **PARTIAL** | PR #359 perbaikan retensi isian/error; PR #360 assignment PIC awal aset; PR #336/#338 loan collision | Audit semua aksi per view: edit/delete, approval, handover, return, ticket assign/close, room workflow, contract/vendor/knowledge; pastikan tiap aksi sesuai permission backend |
+| 5 API/integritas data | **PARTIAL** | PR #352 empty/error refresh; PR #336/#338 loan locking/collision; sejumlah owner-scope audit PR | Cocokkan semua tombol dengan endpoint, permission, scope, response, dan refresh; lakukan PostgreSQL 17 upgrade/rehearsal untuk migration yang belum terintegrasi |
+| 6 UAT lintas persona | **NOT STARTED / NO EVIDENCE** | Daftar persona dan skenario ada pada worklog/PR | Jalankan akun Superadmin, Admin GABAH, IT, GA, staf biasa, Humas/Sekdir, ME, serta staf HO/PIBC/RPC; uji allow/deny dan data scope |
+| 7 Stabilitas/rilis | **NOT READY** | Beberapa exact-head CI PR lulus | Rekonsiliasi dependency stack, browser UAT, exact-head CI final, review; belum ada persetujuan merge ke main |
+
+### Temuan baru: satu sumber klasifikasi persona belum dipakai bersama
+- PR #358 telah memperbaiki salah klasifikasi `loans.return`: hak pengembalian pinjaman milik sendiri bukan hak operator peminjaman.
+- Audit berikutnya menemukan Sidebar memasukkan `room_reservations.checkin` dan `room_reservations.checkout` sebagai kemampuan operasional, sedangkan Dashboard mempunyai daftar permission terpisah dan tidak memasukkan dua kemampuan itu.
+- Ini dapat membuat custom room operator mendapat label/persona berbeda antara Sidebar dan Dashboard.
+- Perbaikan lanjutan sudah dibuat pada branch PR #358: daftar `OPERATIONAL_NAVIGATION_PERMISSIONS` diekspor dari navigation policy dan dipakai Dashboard serta Sidebar; regression assertions ditambahkan. Exact-head CI untuk tambahan ini belum terkonfirmasi.
+
+### Aturan audit per pengguna yang akan dipakai
+Untuk setiap akun uji, audit harus merekam:
+1. primary profile dan seluruh role/capability yang ditugaskan;
+2. effective permission keys hasil union role (serta efek read-only policy);
+3. effective scope per module: owner/division, unit, dan lokasi;
+4. module status aktif/nonaktif;
+5. menu yang seharusnya terlihat dan landing page yang seharusnya dibuka;
+6. API read dan mutation yang seharusnya 200/403, termasuk object-level scope;
+7. hasil aktual browser setelah login ulang (perubahan assignment mencabut sesi lama).
+
+Tidak boleh menyimpulkan role dari nama lokasi seperti RPC/SC atau PIBC. Lokasi adalah scope/master data; role adalah capability. Tidak boleh mengubah grant massal hanya untuk membuat menu tampak muncul.
+
+### PR yang relevan dan status UAT
+- #345 bootstrap/login race — exact-head CI terdahulu lulus; browser UAT pending.
+- #352 data refresh — exact implementation CI lulus; browser UAT pending.
+- #353 menu-to-view contract — exact-head CI lulus; hanya structural coverage.
+- #356 Error Boundary — exact-head CI lulus; browser UAT pending.
+- #357 role editor/menu dependency — exact-head CI lulus; browser UAT pending.
+- #358 Sidebar/Dashboard persona — CI lulus untuk head sebelumnya; tambahan shared capability Dashboard baru menunggu CI.
+- #359 form error retention — exact-head CI lulus; browser UAT pending.
+- #360 asset initial custodian — integrated CI lulus pada stack head sebelumnya; browser UAT pending.
+- #339–#351 sebagian merupakan stack Administration/master-data/RBAC lama. Sebelum dianggap siap, dependency base/HEAD dan exact-head CI masing-masing harus direkonsiliasi; jangan cherry-pick/merge sebagian secara acak.
+
+### Next work (lanjut paralel)
+1. **Jalur B:** bangun permission/scope matrix per role dari migrations + backend route guards; tandai permission yang tidak punya menu/action atau sebaliknya.
+2. **Jalur A:** audit active module state, default landing, currentTab, Sidebar, dan menu header saat user switch/login.
+3. **Jalur C:** audit aksi mutation seluruh view dan endpoint, mulai dari meeting rooms, tickets, loans, dan asset edit/assignment.
+4. **Jalur D:** tambah regression checks dan catat exact-head CI; UAT tetap diberi status pending sampai benar-benar dijalankan.
+
+**Batas:** Source/CI bukan browser UAT. Tidak ada data produksi, user assignment, permission grant, atau database yang diubah. Tidak merge ke `main` tanpa persetujuan eksplisit.
