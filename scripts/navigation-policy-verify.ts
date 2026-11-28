@@ -85,6 +85,19 @@ assert.match(sidebar, /const isHumas = !isSuperAdmin && hasPermission/,
 assert.match(sidebar, /const isSekdir = !isSuperAdmin && hasPermission/,
   'Superadmin wildcard must not make the sidebar identify Superadmin as Sekdir');
 
+assert.match(sidebar, /const isAuditor = !isSuperAdmin && currentUserRoleKeys\?\.includes\('auditor'\) === true/,
+  'Auditor must be identified from the effective secondary role, not primary Karyawan profile');
+assert.match(sidebar, /const isStaff = !isAuditor &&/,
+  'Auditor must not be classified as an ordinary employee staff persona');
+assert.match(sidebar, /isAuditor \? 'Audit & Pemantauan'/,
+  'Auditor must receive an audit-specific navigation section');
+assert.match(sidebar, /isAuditor \? 'Dashboard Auditor'/,
+  'Auditor must receive an audit-specific dashboard label');
+assert.match(sidebar, /pendingLoansCount > 0 && !isStaff && !isAuditor/,
+  'Auditor must not receive operational pending-loan queue badges');
+assert.match(sidebar, /openTicketsCount > 0 && !isStaff && !isAuditor/,
+  'Auditor must not receive operational open-ticket queue badges');
+
 
 assert.ok(OPERATIONAL_NAVIGATION_PERMISSIONS.includes('assets.lifecycle'),
   'asset lifecycle operators must use the operational persona');
