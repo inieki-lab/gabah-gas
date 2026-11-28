@@ -29,7 +29,7 @@ interface MaintenanceViewProps {
   assets: Asset[];
   currentUser: UserProfile | null;
   onUpdateScheduleStatus?: (id: string, status: MaintenanceStatus) => void;
-  onAddSchedule?: (newSchedule: Partial<MaintenanceSchedule>) => void;
+  onAddSchedule?: (newSchedule: Partial<MaintenanceSchedule>) => Promise<boolean>;
   onOpenAssetDetail?: (asset: Asset) => void;
   showToast?: (msg: string, type: 'success' | 'warning' | 'info') => void;
 }
@@ -47,6 +47,8 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [divisionFilter, setDivisionFilter] = useState<string>('ALL');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   // Form states for new maintenance
   const [formData, setFormData] = useState({
@@ -102,25 +104,33 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   const totalCompleted = schedules.filter((s) => s.status === 'completed').length;
   const totalBudget = schedules.reduce((acc, curr) => acc + (curr.actual_cost || curr.estimated_cost || 0), 0);
 
-  const handleCreateSubmit = (e: React.FormEvent) => {
+  const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.asset_id) {
+    if (isSubmitting) return;
+    if (!formData.title.trim() || !formData.asset_id) {
       if (showToast) showToast('Judul dan Aset wajib diisi.', 'warning');
       return;
     }
 
     const selectedAsset = (assets || []).find((a) => a.id === formData.asset_id);
-    if (!selectedAsset) return;
+    if (!selectedAsset) {
+      setSubmitError('Aset yang dipilih tidak lagi tersedia. Pilih ulang aset sebelum menyimpan.');
+      return;
+    }
+    if (!onAddSchedule) {
+      setSubmitError('Aksi penyimpanan jadwal pemeliharaan belum tersedia untuk akun ini.');
+      return;
+    }
 
     const checklistItems = formData.checklistText
-      .split('\n')
+      .split('\\n')
       .map((s) => s.trim())
       .filter(Boolean);
 
     const newObj: Partial<MaintenanceSchedule> = {
       id: `mnt-${Date.now()}`,
       schedule_code: `MNT-2026-${String(schedules.length + 1).padStart(3, '0')}`,
-      title: formData.title,
+      title: formData.title.trim(),
       asset_id: selectedAsset.id,
       asset_name: selectedAsset.name,
       asset_number: selectedAsset.asset_number,
@@ -137,22 +147,31 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
       created_at: new Date().toISOString(),
     };
 
-    if (onAddSchedule) {
-      onAddSchedule(newObj);
+    setIsSubmitting(true);
+    setSubmitError('');
+    try {
+      const saved = await onAddSchedule(newObj);
+      if (!saved) {
+        setSubmitError('Jadwal belum tersimpan. Isian tetap tersedia; periksa notifikasi dan coba kembali.');
+        return;
+      }
+      setIsCreateModalOpen(false);
+      setFormData({
+        title: '',
+        asset_id: '',
+        scheduled_date: new Date().toISOString().split('T')[0],
+        frequency: 'quarterly',
+        technician_name: '',
+        vendor_name: '',
+        estimated_cost: '',
+        notes: '',
+        checklistText: '',
+      });
+    } catch (err: any) {
+      setSubmitError(err?.message || 'Gagal menyimpan jadwal. Isian tetap tersedia; coba kembali.');
+    } finally {
+      setIsSubmitting(false);
     }
-    setIsCreateModalOpen(false);
-    setFormData({
-      title: '',
-      asset_id: '',
-      scheduled_date: new Date().toISOString().split('T')[0],
-      frequency: 'quarterly',
-      technician_name: '',
-      vendor_name: '',
-      estimated_cost: '',
-      notes: '',
-      checklistText: '',
-    });
-    if (showToast) showToast('Jadwal pemeliharaan berhasil didaftarkan.', 'success');
   };
 
   return (
@@ -565,6 +584,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                 />
               </div>
 
+              {submitError && <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs text-rose-700">{submitError}</p>}
               <div className="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
@@ -575,9 +595,10 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
                 </button>
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   className="px-4 py-2 rounded-xl bg-[#4ABDAC] hover:bg-[#3ca89a] text-white font-bold shadow-md shadow-[#4ABDAC]/25"
                 >
-                  Simpan Jadwal
+                  {isSubmitting ? 'Menyimpan Jadwal...' : 'Simpan Jadwal'}
                 </button>
               </div>
             </form>
