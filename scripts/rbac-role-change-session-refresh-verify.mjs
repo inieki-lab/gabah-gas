@@ -42,6 +42,15 @@ assert.match(modal, /Permission role tersimpan\.[\s\S]{0,160}pegawai terdampak h
 
 assert.match(api, /err\.status = res\.status/,
   'API client must retain HTTP status so the app can distinguish revoked sessions');
+
+assert.match(api, /res\.status === 401 && endpoint !== '\/api\/auth\/login' && endpoint !== '\/api\/auth\/me'[\s\S]*window\.dispatchEvent\(new Event\('gabah:session-expired'\)\)/,
+  'any authenticated API action returning 401 must notify the app, excluding login and session bootstrap');
+assert.match(app, /window\.addEventListener\('gabah:session-expired', onSessionExpired\)/,
+  'App must listen for unauthorized responses from forms and other API actions');
+assert.match(app, /const sessionExpiredHandled = useRef\(false\)/,
+  'duplicate 401 responses must be handled idempotently');
+assert.match(app, /sessionExpiredHandled\.current = false;[\s\S]*setCurrentUser\(u\)/,
+  'successful login must reset the expired-session guard');
 assert.match(app, /const handleSessionExpired = \(\) => \{[\s\S]*setCurrentUser\(null\)[\s\S]*setViewMode\('login'\)[\s\S]*setIsLoading\(false\)/,
   'a revoked session must clear the current user and return the app to login');
 assert.match(app, /const recoverDataRequestFailure = \(error: any\) => \{\s*if \(error\?\.status === 401\) throw error;/,
