@@ -3,7 +3,7 @@
 **Tanggal:** 2026-11-28  
 **Repository:** `inieki-lab/gabah-gas`  
 **Original base:** `fix/forms-preserve-input-on-save-failure-2026-11-28` @ `2fddfd618384f9118cf14175b0aebbd94ce899a0`  
-**Current PR base head:** `5c2fcca38ee66306ff0e834d87151fe5be74af53`  
+**Current PR base head:** `d5894bdfaebed9d3ec8e4dc34de6a88c68045d0b`  
 **Working branch:** `fix/asset-initial-custodian-selection-stack-2026-11-28`  
 **Status:** IMPLEMENTATION COMMITTED — exact-head CI pending; browser UAT not run.  
 **Dependency:** stacked on PR #359; merge PR #359 first, then retarget this PR to `main`.
@@ -90,6 +90,14 @@ This is a security correction, not just a UI change. Existing permission catalog
 - Updated the regression matcher to assert the permission-gated payload expression.
 - Fix commit: `a684420da7b248926d0cad36fc23b9fff3035912`.
 - All other 111 asset-scope assertions passed, including the new UI permission gate, App forwarding, and backend `assets.assign` service check. Exact-head rerun pending.
+
+
+
+## Base branch advanced after form-action additions
+
+- PR #359 now also contains loan-request error surfacing and ticket-resolution error recovery; latest base head is `d5894bdfaebed9d3ec8e4dc34de6a88c68045d0b`.
+- These changes touch App and UI form paths but do not overlap the asset assignment service/selector changes in this PR.
+- Re-run the stacked CI against the latest base so the merged application is verified as a whole.
 
 ## Batasan dan risiko
 
