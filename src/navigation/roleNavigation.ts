@@ -62,7 +62,9 @@ export function isSuperadminNavigationAllowed(
  */
 const OPERATIONAL_NAVIGATION_PERMISSIONS: readonly string[] = [
   'assets.create', 'assets.update', 'assets.bulk_import', 'assets.assign', 'assets.move', 'assets.lifecycle',
-  'loans.approve', 'loans.reject', 'loans.handover', 'loans.return',
+  // loans.return is a baseline employee capability for returning the actor's own loan;
+  // it does not by itself make a Karyawan an operational custodian.
+  'loans.approve', 'loans.reject', 'loans.handover',
   'tickets.assign', 'tickets.update',
   'maintenances.create', 'maintenances.update',
   'room_reservations.approve', 'room_reservations.reject',
