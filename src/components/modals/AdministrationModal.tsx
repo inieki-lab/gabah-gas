@@ -43,6 +43,7 @@ import { UserProfile, UserRole, AuditLog, Asset, Loan, Ticket, OwnerDivision } f
 import { gabahApi, AssetNumberingRule } from '../../services/gabahApi';
 import { exportUsersToCsv, downloadUsersImportTemplate, parseUsersImportCsv } from '../../services/gabahService';
 import { ModuleLifecyclePanel } from './ModuleLifecyclePanel';
+import { getMissingSidebarMenuPermissions, getSidebarMenuPermissionChange, isSidebarMenuPermissionEnabled } from '../../navigation/sidebarMenuPermissions';
 
 export type AdminSection =
   | 'overview'
@@ -559,55 +560,35 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
   const selectedRbacRole = rbacRoles.find(role => role.id === rbacSelectedRoleId) || null;
   // Every primary sidebar destination is explicitly represented here.
   // Menu visibility is persisted through the same role permission matrix used by the API.
-  const sidebarMenuControls: Array<{ tab: string; label: string; description: string; required: string[]; alternative?: string[] }> = [
+  const sidebarMenuControls = [
     { tab: 'dashboard', label: 'Dashboard', description: 'Ringkasan dan KPI', required: ['dashboard.read'] },
     { tab: 'my_assets', label: 'Aset Saya', description: 'Aset yang ditugaskan kepada pegawai', required: ['assets.read'] },
     { tab: 'meeting_rooms', label: 'Ruang Rapat / Reservasi', description: 'Katalog ruang dan antrean reservasi', required: ['meeting_rooms.read', 'room_reservations.read'] },
-    { tab: 'assets', label: 'Aset', description: 'Katalog dan pengelolaan aset; tetap memerlukan assets.read', required: ['assets.read', 'assets.catalog.read'], alternative: ['assets.audit.read'] },
+    { tab: 'assets', label: 'Aset', description: 'Katalog dan pengelolaan aset; tetap memerlukan assets.read', required: ['assets.read'], alternative: ['assets.catalog.read', 'assets.audit.read'], revoke: ['assets.catalog.read', 'assets.audit.read'] },
     { tab: 'maintenance', label: 'Maintenance', description: 'Pemeliharaan dan servis', required: ['maintenances.read'] },
     { tab: 'loans', label: 'Peminjaman Barang', description: 'Pengajuan dan pengelolaan peminjaman', required: ['loans.read'] },
     { tab: 'tickets', label: 'Helpdesk & Tiket', description: 'Tiket bantuan dan penanganan insiden', required: ['tickets.read'] },
-    { tab: 'licenses', label: 'Software & SaaS', description: 'Inventaris lisensi', required: ['licenses.read'] },
+    { tab: 'licenses', label: 'Software & SaaS', description: 'Inventaris lisensi', required: ['licenses.read', 'assets.read'], revoke: ['licenses.read'] },
     { tab: 'contracts', label: 'Contract Management', description: 'Register dan reminder kontrak', required: ['contracts.read'] },
     { tab: 'vendors', label: 'Vendor Rekanan', description: 'Data vendor dan rekanan', required: ['vendors.read'] },
     { tab: 'knowledge', label: 'Knowledge Base', description: 'Panduan dan SOP', required: ['knowledge.read'] },
-    { tab: 'reports', label: 'Laporan & Audit', description: 'Laporan operasional dan audit', required: ['reports.read'] },
-  ];
-  const coreSidebarTabs = new Set(['dashboard', 'my_assets', 'loans', 'tickets', 'knowledge']);
-  const activePermissionKeys = new Set(rbacPermissions.filter((permission: any) => permission.is_active).map((permission: any) => permission.permission_key));
-  const getMissingSidebarMenuPermissions = (item: typeof sidebarMenuControls[number]) => {
-    if (coreSidebarTabs.has(item.tab)) return [];
-    if (item.tab === 'assets') return [
-      ...(!activePermissionKeys.has('assets.read') ? ['assets.read'] : []),
-      ...(!activePermissionKeys.has('assets.catalog.read') && !activePermissionKeys.has('assets.audit.read')
-        ? ['assets.catalog.read atau assets.audit.read'] : []),
-    ];
-    return item.required.filter(key => !activePermissionKeys.has(key));
-  };
-  const isSidebarMenuEnabled = (item: typeof sidebarMenuControls[number]) => {
-    if (coreSidebarTabs.has(item.tab)) return true;
-    if (item.tab === 'assets') return rbacSelectedPermissionKeys.includes('assets.read')
-      && (rbacSelectedPermissionKeys.includes('assets.catalog.read') || rbacSelectedPermissionKeys.includes('assets.audit.read'));
-    return item.required.every(key => rbacSelectedPermissionKeys.includes(key));
-  };
+    { tab: 'reports', label: 'Laporan & Audit', description: 'Laporan operasional dan audit', required: ['reports.read'], anyOf: ['assets.read', 'loans.read', 'tickets.read', 'maintenances.read'], revoke: ['reports.read'] },
+  ] as const;
+  const activePermissionKeys = new Set<string>(rbacPermissions.filter((permission: any) => permission.is_active).map((permission: any) => String(permission.permission_key)));
+  const getMissingMenuPermissions = (item: typeof sidebarMenuControls[number]) =>
+    getMissingSidebarMenuPermissions(item, activePermissionKeys);
+  const isSidebarMenuEnabled = (item: typeof sidebarMenuControls[number]) =>
+    isSidebarMenuPermissionEnabled(item, rbacSelectedPermissionKeys);
   const toggleSidebarMenu = (item: typeof sidebarMenuControls[number], enabled: boolean) => {
-    if (coreSidebarTabs.has(item.tab)) return;
-    const keysToChange = item.tab === 'assets'
-      ? ['assets.catalog.read', 'assets.audit.read']
-      : item.required;
-    const availableKeys = keysToChange.filter(key => activePermissionKeys.has(key));
+    const change = getSidebarMenuPermissionChange(item, enabled, activePermissionKeys, rbacSelectedPermissionKeys);
+    if (change.missing.length) {
+      showToast('Permission menu belum tersedia di katalog: ' + change.missing.join(', '), 'warning');
+      return;
+    }
     if (enabled) {
-      const missing = getMissingSidebarMenuPermissions(item);
-      if (missing.length) {
-        showToast('Permission menu belum tersedia di katalog: ' + missing.join(', '), 'warning');
-        return;
-      }
-      const keysToEnable = item.tab === 'assets'
-        ? ['assets.read', activePermissionKeys.has('assets.catalog.read') ? 'assets.catalog.read' : 'assets.audit.read']
-        : item.required;
-      setRbacSelectedPermissionKeys(current => [...new Set([...current, ...keysToEnable])]);
+      setRbacSelectedPermissionKeys(current => [...new Set([...current, ...change.add])]);
     } else {
-      setRbacSelectedPermissionKeys(current => current.filter(key => !availableKeys.includes(key)));
+      setRbacSelectedPermissionKeys(current => current.filter(key => !change.remove.includes(key)));
     }
   };
 
@@ -3053,22 +3034,22 @@ export const AdministrationModal: React.FC<AdministrationModalProps> = ({
                               <>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                   {sidebarMenuControls.map(item => {
-                                    const missing = getMissingSidebarMenuPermissions(item);
+                                    const missing = getMissingMenuPermissions(item);
                                     const enabled = isSidebarMenuEnabled(item);
                                     return (
                                       <label key={item.tab} className="flex items-start gap-2 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 text-xs">
-                                        <input type="checkbox" checked={enabled} onChange={event => toggleSidebarMenu(item, event.target.checked)} disabled={rbacSaving || missing.length > 0 || coreSidebarTabs.has(item.tab)} className="mt-0.5" />
+                                        <input type="checkbox" checked={enabled} onChange={event => toggleSidebarMenu(item, event.target.checked)} disabled={rbacSaving || missing.length > 0} className="mt-0.5" />
                                         <span className="min-w-0">
                                           <span className="font-bold text-slate-800">{item.label}</span>
                                           <span className="block text-[10px] text-slate-500">{item.description}</span>
-                                          {coreSidebarTabs.has(item.tab) ? <span className="block text-[10px] text-emerald-700">Menu dasar — selalu aktif</span> : missing.length > 0 && <span className="block text-[10px] text-amber-700">Belum tersedia: {missing.join(', ')}</span>}
+                                          {missing.length > 0 && <span className="block text-[10px] text-amber-700">Belum tersedia: {missing.join(', ')}</span>}
                                         </span>
                                       </label>
                                     );
                                   })}
                                 </div>
                                 <div className="flex items-center justify-between flex-wrap gap-2">
-                                  <p className="text-[10px] text-slate-500">Dashboard, Aset Saya, Peminjaman, Tiket, dan Knowledge Base adalah menu dasar yang selalu aktif. Menu lain dapat diatur per role; menu Administrasi khusus Superadmin.</p>
+                                  <p className="text-[10px] text-slate-500">Setiap menu mengikuti permission baca yang dipilih untuk role ini. Permission yang dipakai bersama oleh beberapa menu dapat memengaruhi lebih dari satu menu; menu Administrasi khusus Superadmin.</p>
                                   <button type="button" onClick={() => void handleSaveRbacPermissions()} disabled={rbacSaving} className="px-4 py-2 rounded-xl bg-emerald-600 text-white text-xs font-bold disabled:opacity-50">Simpan Menu Role</button>
                                 </div>
                               </>
