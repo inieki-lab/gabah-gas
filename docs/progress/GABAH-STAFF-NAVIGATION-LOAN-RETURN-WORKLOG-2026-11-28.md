@@ -82,3 +82,12 @@
 2. Jika CI lulus, pertahankan PR Draft sampai browser UAT Karyawan dan operator IT/GA dilakukan.
 3. Lanjutkan audit form/action callback pada seluruh view tanpa menunggu CI jalur ini.
 4. Jangan merge ke `main` tanpa persetujuan eksplisit pemilik proyek.
+
+
+## CI feedback — dashboard summary regression expectation updated
+
+- CI #3991 (run ID `46127969300`) failed at `test:dashboard-owner-summary`.
+- Failure was a stale source assertion expecting Dashboard's old duplicated `operationalManagementPermissions` array. The implementation intentionally removes that duplicate and imports `OPERATIONAL_NAVIGATION_PERMISSIONS` from the shared navigation policy.
+- Updated `scripts/dashboard-owner-summary-verify.mjs` to assert the shared capability list is imported and used.
+- This was a regression-test expectation mismatch, not a TypeScript or runtime failure.
+- New exact-head CI is required after this test correction.
