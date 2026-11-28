@@ -534,13 +534,20 @@ export default function App() {
   };
 
   // 9. Update Ticket Status
-  const handleUpdateTicketStatus = async (ticketId: string, status: TicketStatus, notes?: string) => {
+  const handleUpdateTicketStatus = async (ticketId: string, status: TicketStatus, notes?: string): Promise<string | null> => {
     try {
       const updated = await gabahApi.updateTicketStatus(ticketId, status, notes);
       showToast(`Tiket ${updated.ticket_number} diperbarui ke status: ${status}.`);
-      await refreshData();
+      try {
+        await refreshData();
+      } catch {
+        showToast('Perubahan tiket tersimpan, tetapi daftar belum dapat diperbarui. Muat ulang data untuk melihat status terbaru.', 'warning');
+      }
+      return null;
     } catch (err: any) {
-      showToast(err.message || 'Gagal memperbarui status tiket', 'warning');
+      const message = err?.message || 'Gagal memperbarui status tiket';
+      showToast(message, 'warning');
+      return message;
     }
   };
 
