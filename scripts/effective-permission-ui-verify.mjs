@@ -112,3 +112,17 @@ assert.match(loanRequestHandler, /Promise<string \| null>/);
 assert.match(loanRequestHandler, /return null;/);
 assert.match(loanRequestHandler, /return err\?\.message/);
 console.log('PASS: loan request displays authoritative API validation/collision errors and retains all form inputs.');
+
+
+const ticketsView = fs.readFileSync('src/components/views/TicketsView.tsx', 'utf8');
+const ticketStatusHandler = app.slice(app.indexOf('const handleUpdateTicketStatus = async'), app.indexOf('const handleUpdateTicketAssignment'));
+assert.match(ticketsView, /onUpdateTicketStatus:[\\s\\S]*?=> Promise<string \\| null>/);
+assert.match(ticketsView, /const handleResolveTicket = async/);
+assert.match(ticketsView, /await onUpdateTicketStatus\\([\\s\\S]*?'resolved'/);
+assert.match(ticketsView, /if \\(result\\)[\\s\\S]*?setResolveError/);
+assert.match(ticketsView, /resolveError &&/);
+assert.match(ticketsView, /disabled=\\{isResolving\\}/);
+assert.match(ticketStatusHandler, /Promise<string \\| null>/);
+assert.match(ticketStatusHandler, /return null;/);
+assert.match(ticketStatusHandler, /return message;/);
+console.log('PASS: ticket resolution keeps solution notes and dialog open until API confirms success.');
