@@ -428,15 +428,22 @@ export default function App() {
   };
 
   // 5. Reject Loan
-  const handleRejectLoan = async (loanId: string, reason: string) => {
+  const handleRejectLoan = async (loanId: string, reason: string): Promise<boolean> => {
+    let rejected;
     try {
-      const rejected = await gabahApi.rejectLoan(loanId, reason);
-      showToast(`Reservasi ${rejected.loan_number} ditolak. Peminjam telah diberi notifikasi.`, 'info');
-      await refreshData();
+      rejected = await gabahApi.rejectLoan(loanId, reason);
     } catch (err: any) {
       showToast(err.message || 'Gagal menolak peminjaman', 'warning');
-      await refreshData();
+      return false;
     }
+
+    showToast(`Reservasi ${rejected.loan_number} ditolak. Peminjam telah diberi notifikasi.`, 'info');
+    try {
+      await refreshData();
+    } catch {
+      showToast('Penolakan berhasil, tetapi daftar belum dapat diperbarui. Muat ulang data untuk melihat status terbaru.', 'warning');
+    }
+    return true;
   };
 
   // 6. Handover Loan (Status to Active & Asset to Loaned)
