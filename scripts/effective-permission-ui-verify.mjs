@@ -99,3 +99,16 @@ assert.match(rejectLoanHandler, /Promise<boolean>/);
 assert.match(rejectLoanHandler, /return true;/);
 assert.match(rejectLoanHandler, /return false;/);
 console.log('PASS: loan rejection keeps the reason and dialog open until the server confirms success.');
+
+
+const loanRequestModal = fs.readFileSync('src/components/modals/CreateLoanModal.tsx', 'utf8');
+const loanRequestHandler = app.slice(app.indexOf('const handleRequestLoan = async'), app.indexOf('// 4.'));
+assert.match(loanRequestModal, /onRequestLoan:[\\s\\S]*?=> Promise<string \\| null>/);
+assert.match(loanRequestModal, /const requestResult = await onRequestLoan\\(/);
+assert.match(loanRequestModal, /setRequestError\\(requestResult \\|\\| ''\\)/);
+assert.match(loanRequestModal, /requestError &&/);
+assert.match(loanRequestModal, /disabled=\\{isSubmitting/);
+assert.match(loanRequestHandler, /Promise<string \\| null>/);
+assert.match(loanRequestHandler, /return null;/);
+assert.match(loanRequestHandler, /return err\\?\\.message/);
+console.log('PASS: loan request displays authoritative API validation/collision errors and retains all form inputs.');
