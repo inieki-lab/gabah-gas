@@ -18,3 +18,10 @@ assert.ok(route.includes('db.assets.splice(0, db.assets.length, ...db.assets.fil
 assert.ok(route.includes('createdAuditIds') && route.includes('db.auditLogs.splice'));
 assert.doesNotMatch(route, /await persistDataStore\(\)/);
 console.log('PASS: asset creation rolls back the created asset and audit if durable persistence fails');
+
+const assignGuard = service.indexOf("assignedToId && !canMutateAssetOwner(actor, resolvedOwnerDivision, 'assets.assign')");
+const assignedUserLookup = service.indexOf('const assignedUser = assignedToId');
+assert.ok(assignGuard >= 0, 'initial asset assignment must require assets.assign');
+assert.ok(assignedUserLookup > assignGuard, 'assignment permission must be checked before revealing target-user existence');
+assert.match(service, /assignedToId && !canMutateAssetOwner\\(actor, resolvedOwnerDivision, 'assets\\.assign'\\)[\\s\\S]*statusCode: 403/);
+console.log('PASS: initial asset assignment requires assets.assign before resolving the target user.');
