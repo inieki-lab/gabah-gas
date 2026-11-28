@@ -92,6 +92,9 @@ jobs:
       - name: Employee profile capability normalization regression
         run: npm run test:employee-role-normalization
 
+      - name: GA read-only workstation and license menu scope regression
+        run: npm run test:ga-license-menu-scope
+
       - name: Branch migration non-destructive safety check
         run: npm run test:branch-migration-safety
 
