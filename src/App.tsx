@@ -171,8 +171,20 @@ export default function App() {
     setIsAdministrationModalOpen(false);
   };
 
+  const handleSessionExpired = () => {
+    dataRefreshGeneration.current += 1;
+    clearRoleScopedData();
+    setCurrentUser(null);
+    setViewMode('login');
+    setToastMessage({ text: 'Sesi berakhir karena hak akses berubah atau sudah dicabut. Silakan login kembali.', type: 'warning' });
+  };
+
   const refreshData = useCallback(async () => {
     const generation = dataRefreshGeneration.current;
+    const recoverDataRequestFailure = (error: any) => {
+      if (error?.status === 401) throw error;
+      return [];
+    };
     try {
       setIsLoading(true);
       const [fetchedAssets, fetchedLoans, fetchedTickets, fetchedLogs, fetchedUsers, fetchedRooms, fetchedReservations, fetchedContracts, fetchedMaintenances, fetchedVendors, fetchedKnowledge, fetchedMovements] = await Promise.all([
@@ -210,7 +222,11 @@ export default function App() {
       if (Array.isArray(fetchedKnowledge) && fetchedKnowledge.length > 0) setKnowledgeBase(fetchedKnowledge);
       if (Array.isArray(fetchedMovements)) setMovements(fetchedMovements);
     } catch (err: any) {
-      console.error('Failed to fetch from backend:', err);
+      if (err?.status === 401 && generation === dataRefreshGeneration.current) {
+        handleSessionExpired();
+      } else {
+        console.error('Failed to fetch from backend:', err);
+      }
     } finally {
       if (generation === dataRefreshGeneration.current) setIsLoading(false);
     }
@@ -271,7 +287,11 @@ export default function App() {
     try {
       const modules = await gabahApi.getModules();
       setActiveModuleKeys(modules.filter(module => module.is_active).map(module => module.module_key));
-    } catch {
+    } catch (error: any) {
+      if (error?.status === 401) {
+        handleSessionExpired();
+        return;
+      }
       // Do not expose navigation when the global module registry cannot be
       // verified. Backend enforcement is authoritative and also fails closed.
       setActiveModuleKeys(null);
