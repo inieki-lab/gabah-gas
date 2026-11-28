@@ -81,8 +81,18 @@ Pemeriksaan lanjutan:
 | `npm run test:effective-permission-ui` | NOT RUN locally — no repository checkout/runtime in this session; additional source assertions for Maintenance are included |
 | TypeScript `npm run lint` | NOT RUN |
 | Production build | NOT RUN |
-| Exact-head GitHub Actions | PENDING |
+| Exact-head GitHub Actions | #3949 FAILED at one stale source assertion; matcher corrected in `9d16fbc...`, rerun pending |
 | Browser UAT saat API sukses/gagal | NOT RUN |
+
+
+
+## CI feedback and correction
+
+- CI run #3949 (`46113581439`) failed at step 81, `PIBC ME ticket queue and unit-scope regression`.
+- The only failing assertion was the existing source matcher for the ME-only ticket submit button. The form now also disables submit while `isSubmitting`; the old matcher expected the previous `disabled={category ...}` expression.
+- The permission/category behavior itself remained unchanged. Updated the source-contract matcher to require both the existing ME-vs-IT/GA permission condition and the new submit lock.
+- Fix commit: `9d16fbc057264b97bb8f841e757a888637ba99e9`.
+- New exact-head CI after this test correction: PENDING.
 
 ## Batasan dan risiko
 
