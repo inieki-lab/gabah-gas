@@ -13,6 +13,15 @@ assert.ok(permissionsStart >= 0 && scopesStart > permissionsStart && usersStart 
 const permissionRoute = server.slice(permissionsStart, scopesStart);
 const scopeRoute = server.slice(scopesStart, usersStart);
 
+assert.match(permissionRoute, /permissionsChanged[\s\S]*?const affected = permissionsChanged\s*\? await client\.query\('SELECT DISTINCT user_id FROM gabah_user_roles WHERE role_id = \\$1'[\s\S]*?: \{ rows: \[\] \}/,
+  'unchanged role permissions must not invalidate any user session');
+assert.match(permissionRoute, /if \(permissionsChanged\) \{[\s\S]*DELETE FROM gabah_role_permissions/,
+  'role permissions should only be rewritten when the effective set changes');
+assert.match(scopeRoute, /scopesChanged[\s\S]*?const affected = scopesChanged\s*\? await client\.query\('SELECT DISTINCT user_id FROM gabah_user_roles WHERE role_id = \\$1'[\s\S]*?: \{ rows: \[\] \}/,
+  'unchanged role scopes must not invalidate any user session');
+assert.match(scopeRoute, /if \(scopesChanged\) \{[\s\S]*DELETE FROM gabah_role_division_scopes/,
+  'role scopes should only be rewritten when the effective set changes');
+
 for (const [label, route] of [['role permission change', permissionRoute], ['role scope change', scopeRoute]]) {
   assert.match(route, /SELECT DISTINCT user_id FROM gabah_user_roles WHERE role_id = \$1/,
     label + ' must identify every user assigned to the changed role');
