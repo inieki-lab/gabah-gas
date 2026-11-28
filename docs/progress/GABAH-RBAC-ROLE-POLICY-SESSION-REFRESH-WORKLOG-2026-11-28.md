@@ -99,3 +99,11 @@
 - CI #4028 (run ID 46131081967) completed SUCCESS, 121/121 workflow steps, on latest integrated code/worklog head fd2dc449f35425aae8ac74f364a07f5ee5d14db0.
 - This run includes role permission/scope change detection, no-op save safety, session revocation, HTTP 401 client handling, loading-state cleanup, and anonymous auth startup regression checks.
 - Browser UAT remains pending.
+
+
+## Global 401 handling for mutation actions
+
+- Further review found that forms and view actions can call the API outside `refreshData()`; those paths could receive 401 without triggering the collection-refresh handler.
+- API client now emits a `gabah:session-expired` event for authenticated endpoint 401 responses, excluding login and `/api/auth/me` bootstrap.
+- App listens globally, clears the user/data/loading state, and returns to login. A ref guard prevents multiple simultaneous 401s from duplicating the transition; successful login/role switch resets the guard.
+- Regression checks cover the global event, excluded bootstrap/login endpoints, listener, and idempotency.
