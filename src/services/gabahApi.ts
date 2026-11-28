@@ -96,7 +96,20 @@ class GabahApiClient {
   }
 
   async getModules(): Promise<ModuleLifecycleRecord[]> {
-    return this.request<ModuleLifecycleRecord[]>('/api/modules');
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 12_000);
+    try {
+      return await this.request<ModuleLifecycleRecord[]>('/api/modules', {
+        signal: controller.signal,
+      });
+    } catch (error) {
+      if (controller.signal.aborted) {
+        throw new Error('Waktu tunggu pemuatan status modul habis. Periksa koneksi server lalu coba lagi.');
+      }
+      throw error;
+    } finally {
+      clearTimeout(timeoutId);
+    }
   }
 
   async updateModuleStatus(moduleKey: string, payload: { is_active: boolean; reason: string }): Promise<ModuleLifecycleRecord> {
