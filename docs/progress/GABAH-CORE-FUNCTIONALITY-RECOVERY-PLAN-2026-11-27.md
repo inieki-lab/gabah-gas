@@ -302,3 +302,16 @@ Tidak boleh menyimpulkan role dari nama lokasi seperti RPC/SC atau PIBC. Lokasi 
 - PR #361 latest worklog head `be5e55c2707d3ed10277308918a28153318e1a91`: CI #4004 **SUCCESS 121/121**.
 - PR #362 latest worklog head `8e31ebcaf535392b51387b93c2d1a35f1d51c3e2`: CI #4005 **SUCCESS 121/121**.
 - Semua browser UAT tetap pending. Jangan menyamakan green CI dengan pembuktian akun aktual.
+
+
+## Temuan per-user tambahan — GA dan Helpdesk
+
+- Migration 023 memberikan `licenses.read` kepada role GA. Karena GA juga memiliki `assets.read`, menu Software & SaaS tampil untuk GA, padahal scope GA yang disetujui hanya read-only IT workstation HLT/HPC, bukan IT software/license. PR #364 menambahkan migration 050 untuk mencabut grant default tersebut tanpa mengubah IT/Auditor/Superadmin atau custom grants. CI #4026 **SUCCESS 121/121**.
+- `TicketsView` sebelumnya selalu menampilkan filter IT, GA, dan ME kepada semua operator; operator IT saja dapat memilih filter GA/ME yang tidak ada dalam data scope-nya. PR #363 mengikat filter ke role/capability efektif plus kategori dalam data API yang sudah terscope. CI #4008 **SUCCESS 120/120**.
+- PR #364 latest worklog head memicu CI #4029 yang berjalan; PR #363 latest worklog head memicu CI #4014 **SUCCESS 120/120**.
+- Temuan ini memperjelas bahwa audit menu harus memeriksa permission menu utama, submenu/filter, dan scope data; bukan sekadar apakah tab dapat dibuka.
+
+## Update PR RBAC session refresh
+- PR #362 no-op policy save kini tidak mencabut sesi; hanya perubahan efektif pada permission/scope role yang menginvalidasi sesi pengguna terdampak.
+- Perbaikan client 401: App mengosongkan data pengguna, menghentikan loading, dan kembali ke login setelah sesi dicabut; anonymous startup tidak lagi memicu bulk authenticated requests.
+- CI #4025 menemukan assertion lama yang mengharapkan pola `.catch(() => [])`; matcher diperbarui agar menguji 401 propagation. CI #4028 sedang menguji revisi terakhir.
