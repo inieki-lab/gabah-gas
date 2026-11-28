@@ -55,16 +55,7 @@ The Administration → Roles → Sidebar Menu controls did not fully model the s
 
 ## Exact-head CI result
 
-- Run #3920 passed on implementation/test commit `0c1a633d9ec24bb1792b4ec084f41df26c816432`.
-- Run #3921 passed on latest branch head `205b90a8e0aa6f375208ff2418d295e21157e34b` (documentation-only commit after the implementation/test commit).
-- Both exact runs completed successfully; browser UAT remains not run.
-
-
-## Baseline menu configurability finding
-
-- A further comparison showed the role editor hard-coded Dashboard, My Assets, Loans, Tickets, and Knowledge Base as "always active" and disabled their checkboxes.
-- PostgreSQL navigation does not actually bypass read grants for those menus; it still requires `dashboard.read`, `assets.read`, `loans.read`, `tickets.read`, and `knowledge.read`. A custom role created without those grants could therefore have no visible core menu while the role editor incorrectly reported them as always active.
-- Removed that UI-only exemption. All 12 sidebar menus now reflect the effective permission grants and can be configured in the role editor. The permission dependency helper still preserves shared grants where needed.
-- Added regression coverage for enabling/disabling the five baseline menus and for the role editor's editable checkbox behavior.
-- Latest code commit: `a14d6db772181d36ca475f83571f8722d9e79417`; latest test commit: `c21555dafb4c39fc3d1046775befb383adbaf33c`.
-- New exact-head CI pending.
+- Exact code head: `7b0d965e5d7eec90eadf4f79eb4c31aca9f49751`.
+- GitHub Actions #3937 (run ID `46005607792`) completed **SUCCESS**.
+- CI result covers the workflow's TypeScript, test, integration, production build, and Docker smoke steps for this exact code head.
+- Browser UAT remains NOT RUN; CI success does not prove the local browser menu flow works for every role.
