@@ -43,24 +43,24 @@ const assetModal = fs.readFileSync('src/components/modals/CreateAssetModal.tsx',
 const ticketCreateHandler = app.slice(app.indexOf('const handleCreateTicket = async'), app.indexOf('// 9. Update Ticket Status'));
 const assetCreateHandler = app.slice(app.indexOf('const handleCreateAsset = async'), app.indexOf('// 2. Update Asset'));
 
-assert.match(ticketModal, /onCreateTicket:[\\s\\S]*?=> Promise<boolean>/,
+assert.match(ticketModal, /onCreateTicket:[\s\S]*?=> Promise<boolean>/,
   'ticket modal must receive an explicit save result');
 assert.match(ticketModal, /const handleSubmit = async/);
-assert.match(ticketModal, /const saved = await onCreateTicket\\(/);
-assert.match(ticketModal, /if \\(!saved\\)[\\s\\S]*?setSubmitError/);
-assert.match(ticketModal, /disabled=\\{isSubmitting \\|\\|/);
-assert.doesNotMatch(ticketModal, /onCreateTicket\\([\\s\\S]*?\\);\\s*onClose\\(\\);/,
+assert.match(ticketModal, /const saved = await onCreateTicket\(/);
+assert.match(ticketModal, /if \(!saved\)[\s\S]*?setSubmitError/);
+assert.match(ticketModal, /disabled=\{isSubmitting \|\|/);
+assert.doesNotMatch(ticketModal, /onCreateTicket\([\s\S]*?\);\s*onClose\(\);/,
   'ticket modal must not close immediately after starting an API request');
 assert.match(ticketCreateHandler, /return true;/);
 assert.match(ticketCreateHandler, /return false;/);
 
-assert.match(assetModal, /onCreateAsset:[\\s\\S]*?=> Promise<boolean>/,
+assert.match(assetModal, /onCreateAsset:[\s\S]*?=> Promise<boolean>/,
   'asset modal must receive an explicit save result');
 assert.match(assetModal, /const handleSubmit = async/);
-assert.match(assetModal, /const saved = await onCreateAsset\\(newAsset\\)/);
-assert.match(assetModal, /if \\(!saved\\)[\\s\\S]*?setSubmitError/);
-assert.match(assetModal, /disabled=\\{isSubmitting\\}/);
-assert.doesNotMatch(assetModal, /onCreateAsset\\(newAsset\\);\\s*onClose\\(\\);/,
+assert.match(assetModal, /const saved = await onCreateAsset\(newAsset\)/);
+assert.match(assetModal, /if \(!saved\)[\s\S]*?setSubmitError/);
+assert.match(assetModal, /disabled=\{isSubmitting\}/);
+assert.doesNotMatch(assetModal, /onCreateAsset\(newAsset\);\s*onClose\(\);/,
   'asset modal must not close immediately after starting an API request');
 assert.match(assetCreateHandler, /return true;/);
 assert.match(assetCreateHandler, /return false;/);
