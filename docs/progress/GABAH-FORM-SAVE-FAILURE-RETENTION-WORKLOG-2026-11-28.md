@@ -129,6 +129,8 @@ Perbaikan:
 - `8c9fbe5c4f8fa3ae346a5d58b6296b49baa69d47` — App meneruskan hasil status tiket ke dialog.
 - `1f7b6a70b3d69e7c11318e48fe6408e233d46fe3` — dialog penyelesaian tiket menahan catatan sampai API sukses.
 - `5031d988c1d4e15cd7de8f2b00100e1354b6afdc` — regression contract untuk dialog penyelesaian tiket.
+- `90b7c878b746777a7fe2384b81205e7c9ed52af7` — declaration state untuk dialog penyelesaian tiket.
+- `30a0300d2d1e78b7c22282fea8b1f3908a385c76` — letakkan handler penyelesaian tiket di scope komponen.
 
 ## Validasi
 
@@ -139,7 +141,7 @@ Perbaikan:
 | `npm run test:effective-permission-ui` | NOT RUN locally — no repository checkout/runtime in this session; additional source assertions for Maintenance are included |
 | TypeScript `npm run lint` | NOT RUN |
 | Production build | NOT RUN |
-| Exact-head GitHub Actions | #3949 stale ME matcher fixed; #3955 false-positive maintenance matcher fixed; #3973 TypeScript failure due missing ticket resolution state declarations fixed in `90b7c87...`; latest exact-head rerun pending |
+| Exact-head GitHub Actions | #3949 stale ME matcher fixed; #3955 maintenance matcher false positive fixed; #3973 missing state declarations fixed; #3976 handler scope error fixed in `30a0300...`; latest exact-head rerun pending |
 | Browser UAT saat API sukses/gagal | NOT RUN |
 
 
@@ -170,6 +172,15 @@ Perbaikan:
 - Added both state declarations adjacent to `resolutionNotes` in `TicketsView`.
 - Fix commit: `90b7c878b746777a7fe2384b81205e7c9ed52af7`.
 - This is a compile-time correction; no workflow or business-rule behavior changed. Exact-head CI after the correction is pending.
+
+
+
+## CI feedback — ticket resolution handler scope
+
+- CI #3976 (`46115149746`) failed TypeScript because `handleResolveTicket` had been inserted inside the `filteredTickets` callback, so it was not visible to the modal JSX.
+- Moved the handler to the component scope, immediately before the ticket capability/action derivations.
+- Fix commit: `30a0300d2d1e78b7c22282fea8b1f3908a385c76`.
+- Exact-head CI after the scope correction is pending.
 
 ## Batasan dan risiko
 
