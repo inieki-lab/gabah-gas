@@ -334,9 +334,15 @@ export default function App() {
 
       showToast(`Aset berhasil didaftarkan: ${created.asset_number}`);
       setIsCreateAssetModalOpen(false);
-      await refreshData();
+      try {
+        await refreshData();
+      } catch {
+        showToast('Aset tersimpan, tetapi daftar aset belum dapat diperbarui. Muat ulang data untuk melihat hasilnya.', 'warning');
+      }
+      return true;
     } catch (err: any) {
       showToast(`Gagal mendaftarkan aset: ${err.message}`, 'warning');
+      return false;
     }
   };
 
@@ -378,7 +384,7 @@ export default function App() {
     start_date: string;
     due_date: string;
     borrower_phone: string;
-  }) => {
+  }): Promise<string | null> => {
     try {
       if (data.asset_ids && data.asset_ids.length > 1) {
         const res = await gabahApi.requestBatchLoans({
@@ -404,9 +410,14 @@ export default function App() {
       }
 
       setIsCreateLoanModalOpen(false);
-      await refreshData();
+      try {
+        await refreshData();
+      } catch {
+        showToast('Permohonan tersimpan, tetapi daftar pinjaman belum dapat diperbarui. Muat ulang data untuk melihat status terbaru.', 'warning');
+      }
+      return null;
     } catch (err: any) {
-      showToast(err.message || 'Gagal mengajukan peminjaman', 'warning');
+      return err?.message || 'Gagal mengajukan peminjaman. Periksa data dan coba kembali.';
     }
   };
 
@@ -422,15 +433,22 @@ export default function App() {
   };
 
   // 5. Reject Loan
-  const handleRejectLoan = async (loanId: string, reason: string) => {
+  const handleRejectLoan = async (loanId: string, reason: string): Promise<boolean> => {
+    let rejected;
     try {
-      const rejected = await gabahApi.rejectLoan(loanId, reason);
-      showToast(`Reservasi ${rejected.loan_number} ditolak. Peminjam telah diberi notifikasi.`, 'info');
-      await refreshData();
+      rejected = await gabahApi.rejectLoan(loanId, reason);
     } catch (err: any) {
       showToast(err.message || 'Gagal menolak peminjaman', 'warning');
-      await refreshData();
+      return false;
     }
+
+    showToast(`Reservasi ${rejected.loan_number} ditolak. Peminjam telah diberi notifikasi.`, 'info');
+    try {
+      await refreshData();
+    } catch {
+      showToast('Penolakan berhasil, tetapi daftar belum dapat diperbarui. Muat ulang data untuk melihat status terbaru.', 'warning');
+    }
+    return true;
   };
 
   // 6. Handover Loan (Status to Active & Asset to Loaned)
@@ -503,20 +521,33 @@ export default function App() {
       showToast(`Tiket ${newTicket.ticket_number} berhasil dibuat! Target SLA: ${newTicket.sla_hours} jam.`);
       setIsCreateTicketModalOpen(false);
       setPreselectedTicketAssetId(undefined);
-      await refreshData();
+      try {
+        await refreshData();
+      } catch {
+        showToast('Tiket tersimpan, tetapi daftar tiket belum dapat diperbarui. Muat ulang data untuk melihat hasilnya.', 'warning');
+      }
+      return true;
     } catch (err: any) {
       showToast(err.message || 'Gagal membuat tiket', 'warning');
+      return false;
     }
   };
 
   // 9. Update Ticket Status
-  const handleUpdateTicketStatus = async (ticketId: string, status: TicketStatus, notes?: string) => {
+  const handleUpdateTicketStatus = async (ticketId: string, status: TicketStatus, notes?: string): Promise<string | null> => {
     try {
       const updated = await gabahApi.updateTicketStatus(ticketId, status, notes);
       showToast(`Tiket ${updated.ticket_number} diperbarui ke status: ${status}.`);
-      await refreshData();
+      try {
+        await refreshData();
+      } catch {
+        showToast('Perubahan tiket tersimpan, tetapi daftar belum dapat diperbarui. Muat ulang data untuk melihat status terbaru.', 'warning');
+      }
+      return null;
     } catch (err: any) {
-      showToast(err.message || 'Gagal memperbarui status tiket', 'warning');
+      const message = err?.message || 'Gagal memperbarui status tiket';
+      showToast(message, 'warning');
+      return message;
     }
   };
 
@@ -900,16 +931,16 @@ export default function App() {
                   }
                 })();
               }}
-              onAddSchedule={(newSch) => {
-                (async () => {
-                  try {
-                    const created = await gabahApi.createMaintenance(newSch);
-                    setMaintenanceSchedules(prev => [created, ...prev.filter(s => s.id !== created.id)]);
-                    showToast(`Jadwal servis ${created.schedule_code} tersimpan di server.`, 'success');
-                  } catch (err: any) {
-                    showToast(err?.message || 'Gagal menyimpan jadwal servis ke server.', 'warning');
-                  }
-                })();
+              onAddSchedule={async (newSch) => {
+                try {
+                  const created = await gabahApi.createMaintenance(newSch);
+                  setMaintenanceSchedules(prev => [created, ...prev.filter(s => s.id !== created.id)]);
+                  showToast(`Jadwal servis ${created.schedule_code} tersimpan di server.`, 'success');
+                  return true;
+                } catch (err: any) {
+                  showToast(err?.message || 'Gagal menyimpan jadwal servis ke server.', 'warning');
+                  return false;
+                }
               }}
             />
           )}
