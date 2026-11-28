@@ -3,6 +3,8 @@ import fs from 'node:fs';
 
 const server = fs.readFileSync('server.ts', 'utf8');
 const modal = fs.readFileSync('src/components/modals/AdministrationModal.tsx', 'utf8');
+const api = fs.readFileSync('src/services/gabahApi.ts', 'utf8');
+const app = fs.readFileSync('src/App.tsx', 'utf8');
 
 const permissionsStart = server.indexOf("app.put('/api/admin/rbac/roles/:id/permissions'");
 const scopesStart = server.indexOf("app.put('/api/admin/rbac/roles/:id/scopes'", permissionsStart);
@@ -37,6 +39,17 @@ for (const [label, route] of [['role permission change', permissionRoute], ['rol
 
 assert.match(modal, /Permission role tersimpan\.[\s\S]{0,160}pegawai terdampak harus login ulang/,
   'role permission UI must tell affected users to log in again');
+
+assert.match(api, /err\.status = res\.status/,
+  'API client must retain HTTP status so the app can distinguish revoked sessions');
+assert.match(app, /const handleSessionExpired = \(\) => \{[\s\S]*setCurrentUser\(null\)[\s\S]*setViewMode\('login'\)/,
+  'a revoked session must clear the current user and return the app to login');
+assert.match(app, /const recoverDataRequestFailure = \(error: any\) => \{\s*if \(error\?\.status === 401\) throw error;/,
+  'best-effort data refresh must not swallow session-expired responses');
+assert.match(app, /err\?\.status === 401 && generation === dataRefreshGeneration\.current/,
+  'refreshData must handle 401 only for the current authenticated generation');
+assert.match(app, /catch \(error: any\) \{\s*if \(error\?\.status === 401\) \{\s*handleSessionExpired\(\)/,
+  'module status refresh must also end a revoked session instead of leaving stale menus visible');
 assert.match(modal, /Cakupan data role tersimpan\.[\s\S]{0,160}pegawai terdampak harus login ulang/,
   'role scope UI must tell affected users to log in again');
 assert.match(server, /revokeUserSessions\(userId\);[\s\S]{0,100}await refreshRbacPolicy\(\)/,
